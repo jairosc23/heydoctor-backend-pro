@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "signup_requests",
+  "info": {
+    "singularName": "signup-request",
+    "pluralName": "signup-requests",
+    "displayName": "signup request"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "doctor": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::doctor.doctor",
+      "inversedBy": "signup_request"
+    },
+    "status": {
+      "type": "boolean",
+      "default": false
+    },
+    "doc1": {
+      "allowedTypes": [
+        "images",
+        "files"
+      ],
+      "type": "media",
+      "multiple": true,
+      "required": true
+    },
+    "doc2": {
+      "allowedTypes": [
+        "images",
+        "files"
+      ],
+      "type": "media",
+      "multiple": true,
+      "required": true
+    },
+    "doc3": {
+      "allowedTypes": [
+        "images",
+        "files"
+      ],
+      "type": "media",
+      "multiple": true,
+      "required": true
+    },
+    "doc4": {
+      "allowedTypes": [
+        "images",
+        "files"
+      ],
+      "type": "media",
+      "multiple": true,
+      "required": true
+    },
+    "rejectionMessage": {
+      "type": "richtext"
+    }
+  }
+}

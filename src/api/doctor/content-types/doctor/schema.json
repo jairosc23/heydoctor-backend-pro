@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "doctors",
+  "info": {
+    "singularName": "doctor",
+    "pluralName": "doctors",
+    "displayName": "doctor",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "doctor"
+    },
+    "specialty_profiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::specialty-profile.specialty-profile",
+      "inversedBy": "doctors"
+    },
+    "agenda": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::agenda.agenda",
+      "mappedBy": "doctor"
+    },
+    "signup_request": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::signup-request.signup-request",
+      "mappedBy": "doctor"
+    },
+    "serviceCost": {
+      "type": "biginteger",
+      "default": "1",
+      "required": true
+    }
+  }
+}
