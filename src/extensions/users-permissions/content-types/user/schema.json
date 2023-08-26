@@ -79,6 +79,26 @@
       "relation": "oneToOne",
       "target": "api::doctor.doctor",
       "mappedBy": "user"
+    },
+    "reviewsGiven": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::review.review",
+      "mappedBy": "user"
+    },
+    "firstname": {
+      "type": "string",
+      "required": true
+    },
+    "lastname": {
+      "type": "string"
+    },
+    "profilePicture": {
+      "allowedTypes": [
+        "images"
+      ],
+      "type": "media",
+      "multiple": false
     }
   }
 }

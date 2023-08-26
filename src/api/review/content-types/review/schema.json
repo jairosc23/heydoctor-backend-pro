@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "reviews",
+  "info": {
+    "singularName": "review",
+    "pluralName": "reviews",
+    "displayName": "review"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "doctor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::doctor.doctor",
+      "inversedBy": "reviews"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "inversedBy": "reviewsGiven"
+    },
+    "rating": {
+      "pluginOptions": {},
+      "type": "integer",
+      "required": true,
+      "max": 5,
+      "min": 1,
+      "default": 5
+    },
+    "comment": {
+      "pluginOptions": {},
+      "type": "text",
+      "maxLength": 250
+    }
+  }
+}
