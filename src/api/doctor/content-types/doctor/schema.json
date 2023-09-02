@@ -24,12 +24,6 @@
       "target": "api::specialty-profile.specialty-profile",
       "inversedBy": "doctors"
     },
-    "agenda": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::agenda.agenda",
-      "mappedBy": "doctor"
-    },
     "signup_request": {
       "type": "relation",
       "relation": "oneToOne",
@@ -45,6 +39,12 @@
       "type": "relation",
       "relation": "oneToMany",
       "target": "api::review.review",
+      "mappedBy": "doctor"
+    },
+    "agenda": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::agenda.agenda",
       "mappedBy": "doctor"
     }
   }

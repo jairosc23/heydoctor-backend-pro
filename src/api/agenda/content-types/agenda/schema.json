@@ -8,17 +8,13 @@
     "description": ""
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
-  "pluginOptions": {
-    "i18n": {
-      "localized": true
-    }
-  },
+  "pluginOptions": {},
   "attributes": {
     "doctor": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::doctor.doctor",
       "inversedBy": "agenda"
     },
@@ -28,21 +24,18 @@
       "target": "api::appointment.appointment"
     },
     "start": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      },
+      "pluginOptions": {},
       "type": "date",
       "required": true
     },
     "end": {
-      "pluginOptions": {
-        "i18n": {
-          "localized": false
-        }
-      },
+      "pluginOptions": {},
       "type": "date"
+    },
+    "active": {
+      "pluginOptions": {},
+      "type": "boolean",
+      "default": false
     }
   }
 }

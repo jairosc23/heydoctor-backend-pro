@@ -22,6 +22,11 @@ module.exports = [
             "res.cloudinary.com",
           ],
           upgradeInsecureRequests: null,
+          "frame-src": [
+            "http://localhost:*",
+            "self",
+            "sandbox.embed.apollographql.com",
+          ],
         },
       },
     },
