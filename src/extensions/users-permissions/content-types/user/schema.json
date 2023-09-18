@@ -68,37 +68,22 @@
     "expoPushToken": {
       "type": "string"
     },
-    "appointment": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "api::appointment.appointment",
-      "mappedBy": "patient"
-    },
     "doctor": {
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::doctor.doctor",
       "mappedBy": "user"
     },
-    "reviewsGiven": {
+    "patient": {
       "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::review.review",
-      "mappedBy": "user"
+      "relation": "oneToOne",
+      "target": "api::patient.patient",
+      "inversedBy": "user"
     },
-    "firstname": {
-      "type": "string",
+    "isPatient": {
+      "type": "boolean",
+      "default": true,
       "required": true
-    },
-    "lastname": {
-      "type": "string"
-    },
-    "profilePicture": {
-      "allowedTypes": [
-        "images"
-      ],
-      "type": "media",
-      "multiple": false
     }
   }
 }

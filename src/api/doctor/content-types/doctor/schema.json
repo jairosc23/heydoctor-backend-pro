@@ -46,6 +46,12 @@
       "relation": "oneToMany",
       "target": "api::agenda.agenda",
       "mappedBy": "doctor"
+    },
+    "appointments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::appointment.appointment",
+      "mappedBy": "doctor"
     }
   }
 }

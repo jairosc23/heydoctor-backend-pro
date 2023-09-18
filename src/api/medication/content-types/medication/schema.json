@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "medications",
+  "info": {
+    "singularName": "medication",
+    "pluralName": "medications",
+    "displayName": "medication"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "i18n": {
+      "localized": true
+    }
+  },
+  "attributes": {
+    "name": {
+      "pluginOptions": {
+        "i18n": {
+          "localized": true
+        }
+      },
+      "type": "string"
+    },
+    "specialty_profiles": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::specialty-profile.specialty-profile",
+      "inversedBy": "medications"
+    },
+    "treatments": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::treatment.treatment",
+      "mappedBy": "medications"
+    }
+  }
+}

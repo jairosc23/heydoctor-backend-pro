@@ -12,12 +12,6 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "patient": {
-      "type": "relation",
-      "relation": "oneToOne",
-      "target": "plugin::users-permissions.user",
-      "inversedBy": "appointment"
-    },
     "duration": {
       "type": "integer",
       "default": 45
@@ -29,6 +23,24 @@
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::specialty-profile.specialty-profile",
+      "inversedBy": "appointments"
+    },
+    "patient": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::patient.patient",
+      "mappedBy": "appointment"
+    },
+    "doctor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::doctor.doctor",
+      "inversedBy": "appointments"
+    },
+    "clinical_record": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinical-record.clinical-record",
       "inversedBy": "appointments"
     }
   }

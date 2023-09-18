@@ -57,6 +57,12 @@
           "localized": false
         }
       }
+    },
+    "medications": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::medication.medication",
+      "mappedBy": "specialty_profiles"
     }
   }
 }

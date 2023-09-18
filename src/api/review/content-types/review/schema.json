@@ -17,12 +17,6 @@
       "target": "api::doctor.doctor",
       "inversedBy": "reviews"
     },
-    "user": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "plugin::users-permissions.user",
-      "inversedBy": "reviewsGiven"
-    },
     "rating": {
       "pluginOptions": {},
       "type": "integer",
@@ -35,6 +29,12 @@
       "pluginOptions": {},
       "type": "text",
       "maxLength": 250
+    },
+    "patient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::patient.patient",
+      "inversedBy": "reviews_given"
     }
   }
 }

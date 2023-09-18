@@ -1,0 +1,89 @@
+{
+  "kind": "collectionType",
+  "collectionName": "patients",
+  "info": {
+    "singularName": "patient",
+    "pluralName": "patients",
+    "displayName": "patient",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "firstname": {
+      "type": "string"
+    },
+    "lastname": {
+      "type": "string"
+    },
+    "identification_type": {
+      "type": "enumeration",
+      "enum": [
+        "passport",
+        "id card",
+        "rut"
+      ]
+    },
+    "identification": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "province": {
+      "type": "string"
+    },
+    "birth_date": {
+      "type": "date"
+    },
+    "gender": {
+      "type": "enumeration",
+      "enum": [
+        "M",
+        "F",
+        "Other"
+      ]
+    },
+    "profile_picture": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "reviews_given": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::review.review",
+      "mappedBy": "patient"
+    },
+    "clinical_record": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::clinical-record.clinical-record",
+      "mappedBy": "patient"
+    },
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user",
+      "mappedBy": "patient"
+    },
+    "uid": {
+      "type": "uid",
+      "targetField": "identification"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "appointment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::appointment.appointment",
+      "inversedBy": "patient"
+    }
+  }
+}

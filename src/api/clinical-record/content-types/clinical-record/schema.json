@@ -1,0 +1,64 @@
+{
+  "kind": "collectionType",
+  "collectionName": "clinical_records",
+  "info": {
+    "singularName": "clinical-record",
+    "pluralName": "clinical-records",
+    "displayName": "clinical record",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "patient": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::patient.patient",
+      "inversedBy": "clinical_record"
+    },
+    "observations": {
+      "type": "text"
+    },
+    "personal_background": {
+      "type": "text"
+    },
+    "family_background": {
+      "type": "text"
+    },
+    "clinical_judgement": {
+      "type": "string"
+    },
+    "date": {
+      "type": "date"
+    },
+    "diagnosis": {
+      "type": "string"
+    },
+    "habits": {
+      "type": "text"
+    },
+    "admission_reason": {
+      "type": "text"
+    },
+    "allergies": {
+      "type": "text"
+    },
+    "uid": {
+      "type": "uid"
+    },
+    "treatments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::treatment.treatment",
+      "mappedBy": "clinical_record"
+    },
+    "appointments": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::appointment.appointment",
+      "mappedBy": "clinical_record"
+    }
+  }
+}
