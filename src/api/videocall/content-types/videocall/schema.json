@@ -1,0 +1,39 @@
+{
+  "kind": "collectionType",
+  "collectionName": "videocalls",
+  "info": {
+    "singularName": "videocall",
+    "pluralName": "videocalls",
+    "displayName": "videocall",
+    "description": ""
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "doctor": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::doctor.doctor"
+    },
+    "patient": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::patient.patient"
+    },
+    "appointment": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::appointment.appointment",
+      "inversedBy": "videocall"
+    },
+    "room_id": {
+      "type": "string"
+    },
+    "uid": {
+      "type": "uid",
+      "targetField": "room_id"
+    }
+  }
+}

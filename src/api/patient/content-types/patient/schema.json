@@ -12,12 +12,6 @@
   },
   "pluginOptions": {},
   "attributes": {
-    "firstname": {
-      "type": "string"
-    },
-    "lastname": {
-      "type": "string"
-    },
     "identification_type": {
       "type": "enumeration",
       "enum": [
@@ -25,9 +19,6 @@
         "id card",
         "rut"
       ]
-    },
-    "identification": {
-      "type": "string"
     },
     "city": {
       "type": "string"
@@ -73,17 +64,60 @@
       "mappedBy": "patient"
     },
     "uid": {
-      "type": "uid",
-      "targetField": "identification"
-    },
-    "phone": {
-      "type": "string"
+      "type": "uid"
     },
     "appointment": {
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::appointment.appointment",
       "inversedBy": "patient"
+    },
+    "firstname": {
+      "type": "customField",
+      "options": {
+        "hint": "",
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "required": true,
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "lastname": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "required": true,
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "identification": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "required": true,
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "phone": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
     }
   }
 }

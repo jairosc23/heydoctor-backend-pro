@@ -29,6 +29,9 @@ module.exports = ({ env }) => ({
   },
   "apollo-sandbox": {
     enabled: true,
-    introspection: true
+    introspection: true,
+  },
+  "encryptable-field": {
+    enabled: true,
   },
 });

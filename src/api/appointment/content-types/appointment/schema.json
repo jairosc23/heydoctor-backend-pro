@@ -42,6 +42,12 @@
       "relation": "manyToOne",
       "target": "api::clinical-record.clinical-record",
       "inversedBy": "appointments"
+    },
+    "videocall": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::videocall.videocall",
+      "mappedBy": "appointment"
     }
   }
 }

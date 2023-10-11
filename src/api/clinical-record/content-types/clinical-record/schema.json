@@ -18,32 +18,8 @@
       "target": "api::patient.patient",
       "inversedBy": "clinical_record"
     },
-    "observations": {
-      "type": "text"
-    },
-    "personal_background": {
-      "type": "text"
-    },
-    "family_background": {
-      "type": "text"
-    },
-    "clinical_judgement": {
-      "type": "string"
-    },
     "date": {
       "type": "date"
-    },
-    "diagnosis": {
-      "type": "string"
-    },
-    "habits": {
-      "type": "text"
-    },
-    "admission_reason": {
-      "type": "text"
-    },
-    "allergies": {
-      "type": "text"
     },
     "uid": {
       "type": "uid"
@@ -59,6 +35,94 @@
       "relation": "oneToMany",
       "target": "api::appointment.appointment",
       "mappedBy": "clinical_record"
+    },
+    "observations": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "personal_background": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "family_background": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "clinical_judgement": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "diagnosis": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "habits": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "admission_reason": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
+    },
+    "allergies": {
+      "type": "customField",
+      "options": {
+        "hint": null,
+        "roles": [
+          "1",
+          "id"
+        ]
+      },
+      "customField": "plugin::encryptable-field.encryptable-field"
     }
   }
 }
