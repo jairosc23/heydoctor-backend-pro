@@ -31,12 +31,28 @@ module.exports = [
       },
     },
   },
-  "strapi::cors",
-  "strapi::poweredBy",
+  {
+    name: "strapi::cors",
+    config: {
+      credentials: true,
+    },
+  },
+  {
+    name: "strapi::poweredBy",
+    config: {
+      poweredBy: "SAVAC MedTech LLC",
+    },
+  },
   "strapi::logger",
   "strapi::query",
   "strapi::body",
-  "strapi::session",
+  {
+    name: "strapi::session",
+    config: {
+      rolling: true,
+      renew: true,
+    },
+  },
   "strapi::favicon",
   "strapi::public",
 ];

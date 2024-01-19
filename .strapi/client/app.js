@@ -8,6 +8,7 @@ import graphql from "@strapi/plugin-graphql/strapi-admin";
 import i18N from "@strapi/plugin-i18n/strapi-admin";
 import usersPermissions from "@strapi/plugin-users-permissions/strapi-admin";
 import expoNotifications from "@surunnuage/strapi-plugin-expo-notifications/strapi-admin";
+import strapiChatgpt from "strapi-chatgpt/strapi-admin";
 import contentTypeExplorer from "strapi-content-type-explorer/strapi-admin";
 import encryptableField from "strapi-plugin-encryptable-field/strapi-admin";
 import graphsBuilder from "strapi-plugin-graphs-builder/strapi-admin";
@@ -22,6 +23,7 @@ renderAdmin(document.getElementById("strapi"), {
     i18n: i18N,
     "users-permissions": usersPermissions,
     "expo-notifications": expoNotifications,
+    "strapi-chatgpt": strapiChatgpt,
     "content-type-explorer": contentTypeExplorer,
     "encryptable-field": encryptableField,
     "graphs-builder": graphsBuilder,
