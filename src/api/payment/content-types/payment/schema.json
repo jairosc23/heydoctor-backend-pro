@@ -24,12 +24,6 @@
     "timestamp": {
       "type": "datetime"
     },
-    "doctor": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::doctor.doctor",
-      "inversedBy": "payments"
-    },
     "order": {
       "type": "biginteger",
       "required": true,
@@ -37,7 +31,8 @@
     },
     "status": {
       "type": "string",
-      "required": true
+      "required": true,
+      "default": "pending"
     },
     "payment_data": {
       "type": "json"

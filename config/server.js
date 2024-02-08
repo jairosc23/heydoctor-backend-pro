@@ -7,8 +7,6 @@ module.exports = ({ env }) => ({
   // WebSocket settings
   websockets: {
     enabled: true,
-    options: {
-      path: env("SOCKET_URL", "/socket.io"),
-    },
   },
+  socketsByUserId: {},
 });
