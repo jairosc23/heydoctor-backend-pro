@@ -4,9 +4,4 @@ module.exports = ({ env }) => ({
   app: {
     keys: env.array("APP_KEYS"),
   },
-  // WebSocket settings
-  websockets: {
-    enabled: true,
-  },
-  socketsByUserId: {},
 });

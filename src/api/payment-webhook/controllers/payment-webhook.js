@@ -5,41 +5,64 @@
  */
 
 const { createCoreController } = require("@strapi/strapi").factories;
+const axios = require("axios");
+const PAYKU_URL = process.env.PAYKU_URL;
+const TKPUB = process.env.PAYKU_TKPUB;
 
-const handlePaymentNotification = (entry) => {
-  const { userId, paymentStatus, paymentData } = entry;
+const Axios = axios.create({
+  baseURL: PAYKU_URL,
+  withCredentials: true,
+  timeout: 3000,
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${TKPUB}`,
+  },
+});
+
+const handlePaymentNotification = async (notification) => {
+  const io = strapi.io;
 
   // Process payment notification
-  console.log(
-    `Received payment notification for user ${userId}: ${paymentStatus}`
-  );
-
-  // Send WebSocket notification to the client
-  const io = strapi.io;
-  const userSockets = io.sockets.socketsByUserId[userId];
-
-  if (userSockets && userSockets.length > 0) {
-    userSockets.forEach((socket) => {
-      socket.emit("paymentNotification", { paymentStatus, paymentData });
+  if (notification) {
+    const userID = +notification.payment.additional_parameters.userID;
+    const userConnection = await strapi.db
+      .query("api::connection.connection")
+      .findOne({ where: { userID: userID } });
+    io.to(userConnection.socketID).emit("paymentNotification", {
+      notification: notification,
     });
   }
-
-  ctx.send({ message: "Payment notification processed" });
 };
 
 module.exports = createCoreController(
   "api::payment-webhook.payment-webhook",
   ({ strapi }) => ({
     async create(ctx) {
-      if (ctx.request.body) {
-        ctx.request.body = {
-          data: {
-            notification: ctx.request.body,
-          },
-        };
-        const entry = await super.create(ctx);
-        handlePaymentNotification(entry);
-        return entry;
+      const body = ctx.request.body;
+      if (body) {
+        try {
+          const tx = await Axios.get(
+            `/transaction/${body.data.transaction_id}`
+          );
+          const payment = await strapi.db.query("api::payment.payment").update({
+            where: { order: +tx.data.order },
+            data: {
+              status: tx.data.status,
+            },
+          });
+
+          ctx.request.body = {
+            data: {
+              notification: tx.data,
+              payment: payment.id,
+            },
+          };
+          const entry = await super.create(ctx);
+          handlePaymentNotification(tx.data);
+          return entry;
+        } catch (e) {
+          console.error("error on payment-webhook :>> ", e);
+        }
       }
     },
   })
