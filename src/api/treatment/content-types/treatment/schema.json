@@ -50,15 +50,7 @@
           "localized": true
         }
       },
-      "type": "customField",
-      "options": {
-        "hint": null,
-        "roles": [
-          "1",
-          "id"
-        ]
-      },
-      "customField": "plugin::encryptable-field.encryptable-field"
+      "type": "string"
     },
     "description": {
       "pluginOptions": {
@@ -66,15 +58,7 @@
           "localized": true
         }
       },
-      "type": "customField",
-      "options": {
-        "hint": null,
-        "roles": [
-          "1",
-          "id"
-        ]
-      },
-      "customField": "plugin::encryptable-field.encryptable-field"
+      "type": "string"
     }
   }
 }

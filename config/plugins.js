@@ -27,9 +27,6 @@ module.exports = ({ env }) => ({
       },
     },
   },
-  "encryptable-field": {
-    enabled: true,
-  },
   'transformer': {
     enabled: true,
     config: {

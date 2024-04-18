@@ -1,0 +1,20 @@
+{
+  "kind": "singleType",
+  "collectionName": "immediate_attentions",
+  "info": {
+    "singularName": "immediate-attention",
+    "pluralName": "immediate-attentions",
+    "displayName": "Immediate Attention"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "doctors": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::doctor.doctor"
+    }
+  }
+}

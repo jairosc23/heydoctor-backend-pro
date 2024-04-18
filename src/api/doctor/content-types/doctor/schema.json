@@ -30,11 +30,6 @@
       "target": "api::signup-request.signup-request",
       "mappedBy": "doctor"
     },
-    "serviceCost": {
-      "type": "biginteger",
-      "default": "1",
-      "required": true
-    },
     "reviews": {
       "type": "relation",
       "relation": "oneToMany",
@@ -110,11 +105,30 @@
       "repeatable": true,
       "component": "profile.experience"
     },
-    "service_settings": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::service-setting.service-setting",
-      "mappedBy": "doctor"
+    "profile_picture": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "firstname": {
+      "type": "string"
+    },
+    "lastname": {
+      "type": "string"
+    },
+    "online": {
+      "type": "boolean",
+      "default": false
+    },
+    "immediate_available": {
+      "type": "boolean",
+      "default": true
+    },
+    "profile_title": {
+      "type": "string"
     }
   }
 }

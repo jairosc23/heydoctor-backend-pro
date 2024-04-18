@@ -1,0 +1,23 @@
+{
+  "collectionName": "components_service_extra_rates",
+  "info": {
+    "displayName": "extra rates",
+    "icon": "plus"
+  },
+  "options": {},
+  "attributes": {
+    "minimum": {
+      "type": "integer"
+    },
+    "maximum": {
+      "type": "integer"
+    },
+    "fixed": {
+      "type": "boolean",
+      "default": false
+    },
+    "title": {
+      "type": "string"
+    }
+  }
+}

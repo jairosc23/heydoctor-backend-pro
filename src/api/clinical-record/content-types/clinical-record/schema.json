@@ -41,6 +41,27 @@
       "relation": "oneToMany",
       "target": "api::diagnostic.diagnostic",
       "mappedBy": "clinical_record"
+    },
+    "observations": {
+      "type": "string"
+    },
+    "personal_background": {
+      "type": "string"
+    },
+    "family_background": {
+      "type": "string"
+    },
+    "clinical_judgement": {
+      "type": "string"
+    },
+    "habits": {
+      "type": "text"
+    },
+    "admission_reason": {
+      "type": "text"
+    },
+    "allergies": {
+      "type": "string"
     }
   }
 }

@@ -85,14 +85,6 @@
       "default": true,
       "required": true
     },
-    "profile_picture": {
-      "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": [
-        "images"
-      ]
-    },
     "uid": {
       "type": "uid",
       "targetField": "expoPushToken"

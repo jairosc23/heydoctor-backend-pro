@@ -66,58 +66,28 @@
     "uid": {
       "type": "uid"
     },
-    "appointment": {
+    "appointments": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "oneToMany",
       "target": "api::appointment.appointment",
-      "inversedBy": "patient"
+      "mappedBy": "patient"
     },
     "firstname": {
-      "type": "customField",
-      "options": {
-        "hint": "",
-        "roles": [
-          "1",
-          "id"
-        ]
-      },
-      "required": true,
-      "customField": "plugin::encryptable-field.encryptable-field"
+      "type": "string"
     },
     "lastname": {
-      "type": "customField",
-      "options": {
-        "hint": null,
-        "roles": [
-          "1",
-          "id"
-        ]
-      },
-      "required": true,
-      "customField": "plugin::encryptable-field.encryptable-field"
+      "type": "string"
     },
     "identification": {
-      "type": "customField",
-      "options": {
-        "hint": null,
-        "roles": [
-          "1",
-          "id"
-        ]
-      },
-      "required": true,
-      "customField": "plugin::encryptable-field.encryptable-field"
+      "type": "string"
     },
     "phone": {
-      "type": "customField",
-      "options": {
-        "hint": null,
-        "roles": [
-          "1",
-          "id"
-        ]
-      },
-      "customField": "plugin::encryptable-field.encryptable-field"
+      "type": "string"
+    },
+    "favorite_doctors": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::doctor.doctor"
     }
   }
 }

@@ -27,9 +27,9 @@
     },
     "patient": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::patient.patient",
-      "mappedBy": "appointment"
+      "inversedBy": "appointments"
     },
     "doctor": {
       "type": "relation",
@@ -63,18 +63,23 @@
       "type": "text"
     },
     "files": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
       "allowedTypes": [
         "images",
         "files"
-      ],
-      "type": "media",
-      "multiple": true
+      ]
     },
     "diagnostic": {
       "type": "relation",
       "relation": "oneToOne",
       "target": "api::diagnostic.diagnostic",
       "mappedBy": "appointment"
+    },
+    "active": {
+      "type": "boolean",
+      "default": true
     }
   }
 }

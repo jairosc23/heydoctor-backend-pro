@@ -12,11 +12,6 @@
     },
     "duration": {
       "type": "biginteger"
-    },
-    "services": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::service.service"
     }
   }
 }

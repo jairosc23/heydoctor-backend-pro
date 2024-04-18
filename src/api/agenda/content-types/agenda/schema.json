@@ -36,6 +36,15 @@
       "pluginOptions": {},
       "type": "boolean",
       "default": false
+    },
+    "timeSlots": {
+      "displayName": "time slots",
+      "type": "component",
+      "repeatable": true,
+      "component": "agenda.time-slots"
+    },
+    "timezone": {
+      "type": "string"
     }
   }
 }

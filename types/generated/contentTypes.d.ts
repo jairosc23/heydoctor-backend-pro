@@ -403,9 +403,12 @@ export interface PluginUploadFile extends Schema.CollectionType {
     folderPath: Attribute.String &
       Attribute.Required &
       Attribute.Private &
-      Attribute.SetMinMax<{
-        min: 1;
-      }>;
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -441,9 +444,12 @@ export interface PluginUploadFolder extends Schema.CollectionType {
   attributes: {
     name: Attribute.String &
       Attribute.Required &
-      Attribute.SetMinMax<{
-        min: 1;
-      }>;
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
     pathId: Attribute.Integer & Attribute.Required & Attribute.Unique;
     parent: Attribute.Relation<
       'plugin::upload.folder',
@@ -462,9 +468,12 @@ export interface PluginUploadFolder extends Schema.CollectionType {
     >;
     path: Attribute.String &
       Attribute.Required &
-      Attribute.SetMinMax<{
-        min: 1;
-      }>;
+      Attribute.SetMinMax<
+        {
+          min: 1;
+        },
+        number
+      >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -475,6 +484,105 @@ export interface PluginUploadFolder extends Schema.CollectionType {
       Attribute.Private;
     updatedBy: Attribute.Relation<
       'plugin::upload.folder',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface PluginContentReleasesRelease extends Schema.CollectionType {
+  collectionName: 'strapi_releases';
+  info: {
+    singularName: 'release';
+    pluralName: 'releases';
+    displayName: 'Release';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    name: Attribute.String & Attribute.Required;
+    releasedAt: Attribute.DateTime;
+    scheduledAt: Attribute.DateTime;
+    timezone: Attribute.String;
+    status: Attribute.Enumeration<
+      ['ready', 'blocked', 'failed', 'done', 'empty']
+    > &
+      Attribute.Required;
+    actions: Attribute.Relation<
+      'plugin::content-releases.release',
+      'oneToMany',
+      'plugin::content-releases.release-action'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'plugin::content-releases.release',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'plugin::content-releases.release',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface PluginContentReleasesReleaseAction
+  extends Schema.CollectionType {
+  collectionName: 'strapi_release_actions';
+  info: {
+    singularName: 'release-action';
+    pluralName: 'release-actions';
+    displayName: 'Release Action';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    'content-manager': {
+      visible: false;
+    };
+    'content-type-builder': {
+      visible: false;
+    };
+  };
+  attributes: {
+    type: Attribute.Enumeration<['publish', 'unpublish']> & Attribute.Required;
+    entry: Attribute.Relation<
+      'plugin::content-releases.release-action',
+      'morphToOne'
+    >;
+    contentType: Attribute.String & Attribute.Required;
+    locale: Attribute.String;
+    release: Attribute.Relation<
+      'plugin::content-releases.release-action',
+      'manyToOne',
+      'plugin::content-releases.release'
+    >;
+    isEntryValid: Attribute.Boolean;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'plugin::content-releases.release-action',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'plugin::content-releases.release-action',
       'oneToOne',
       'admin::user'
     > &
@@ -504,10 +612,13 @@ export interface PluginI18NLocale extends Schema.CollectionType {
   };
   attributes: {
     name: Attribute.String &
-      Attribute.SetMinMax<{
-        min: 1;
-        max: 50;
-      }>;
+      Attribute.SetMinMax<
+        {
+          min: 1;
+          max: 50;
+        },
+        number
+      >;
     code: Attribute.String & Attribute.Unique;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
@@ -673,8 +784,12 @@ export interface PluginUsersPermissionsUser extends Schema.CollectionType {
     isPatient: Attribute.Boolean &
       Attribute.Required &
       Attribute.DefaultTo<true>;
-    profile_picture: Attribute.Media;
     uid: Attribute.UID<'plugin::users-permissions.user', 'expoPushToken'>;
+    notifications: Attribute.Relation<
+      'plugin::users-permissions.user',
+      'oneToMany',
+      'api::notification.notification'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -807,6 +922,8 @@ export interface ApiAgendaAgenda extends Schema.CollectionType {
     start: Attribute.Date & Attribute.Required;
     end: Attribute.Date;
     active: Attribute.Boolean & Attribute.DefaultTo<false>;
+    timeSlots: Attribute.Component<'agenda.time-slots', true>;
+    timezone: Attribute.String;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -845,7 +962,7 @@ export interface ApiAppointmentAppointment extends Schema.CollectionType {
     >;
     patient: Attribute.Relation<
       'api::appointment.appointment',
-      'oneToOne',
+      'manyToOne',
       'api::patient.patient'
     >;
     doctor: Attribute.Relation<
@@ -863,6 +980,20 @@ export interface ApiAppointmentAppointment extends Schema.CollectionType {
       'oneToOne',
       'api::videocall.videocall'
     >;
+    payment: Attribute.Relation<
+      'api::appointment.appointment',
+      'oneToOne',
+      'api::payment.payment'
+    >;
+    confirmed: Attribute.Boolean & Attribute.DefaultTo<false>;
+    appointment_reason: Attribute.Text;
+    files: Attribute.Media;
+    diagnostic: Attribute.Relation<
+      'api::appointment.appointment',
+      'oneToOne',
+      'api::diagnostic.diagnostic'
+    >;
+    active: Attribute.Boolean & Attribute.DefaultTo<true>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -877,6 +1008,108 @@ export interface ApiAppointmentAppointment extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+  };
+}
+
+export interface ApiCie10CodeCie10Code extends Schema.CollectionType {
+  collectionName: 'cie_10_codes';
+  info: {
+    singularName: 'cie-10-code';
+    pluralName: 'cie-10-codes';
+    displayName: 'CIE10 code';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
+  };
+  attributes: {
+    code: Attribute.String &
+      Attribute.Required &
+      Attribute.Unique &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    code_0: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    code_1: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    code_2: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    code_3: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    code_4: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    description: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    level: Attribute.Integer &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    source: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    uid: Attribute.UID<'api::cie-10-code.cie-10-code', 'code'> &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::cie-10-code.cie-10-code',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::cie-10-code.cie-10-code',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    localizations: Attribute.Relation<
+      'api::cie-10-code.cie-10-code',
+      'oneToMany',
+      'api::cie-10-code.cie-10-code'
+    >;
+    locale: Attribute.String;
   };
 }
 
@@ -897,15 +1130,7 @@ export interface ApiClinicalRecordClinicalRecord extends Schema.CollectionType {
       'oneToOne',
       'api::patient.patient'
     >;
-    observations: Attribute.Text;
-    personal_background: Attribute.Text;
-    family_background: Attribute.Text;
-    clinical_judgement: Attribute.String;
     date: Attribute.Date;
-    diagnosis: Attribute.String;
-    habits: Attribute.Text;
-    admission_reason: Attribute.Text;
-    allergies: Attribute.Text;
     uid: Attribute.UID;
     treatments: Attribute.Relation<
       'api::clinical-record.clinical-record',
@@ -917,6 +1142,18 @@ export interface ApiClinicalRecordClinicalRecord extends Schema.CollectionType {
       'oneToMany',
       'api::appointment.appointment'
     >;
+    diagnostics: Attribute.Relation<
+      'api::clinical-record.clinical-record',
+      'oneToMany',
+      'api::diagnostic.diagnostic'
+    >;
+    observations: Attribute.String;
+    personal_background: Attribute.String;
+    family_background: Attribute.String;
+    clinical_judgement: Attribute.String;
+    habits: Attribute.Text;
+    admission_reason: Attribute.Text;
+    allergies: Attribute.String;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -934,12 +1171,45 @@ export interface ApiClinicalRecordClinicalRecord extends Schema.CollectionType {
   };
 }
 
+export interface ApiConnectionConnection extends Schema.CollectionType {
+  collectionName: 'connections';
+  info: {
+    singularName: 'connection';
+    pluralName: 'connections';
+    displayName: 'connection';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    socketID: Attribute.String;
+    isConnected: Attribute.Boolean & Attribute.DefaultTo<true>;
+    userID: Attribute.BigInteger;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::connection.connection',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::connection.connection',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiCountryCountry extends Schema.CollectionType {
   collectionName: 'countries';
   info: {
     singularName: 'country';
     pluralName: 'countries';
     displayName: 'country';
+    description: '';
   };
   options: {
     draftAndPublish: false;
@@ -947,7 +1217,11 @@ export interface ApiCountryCountry extends Schema.CollectionType {
   attributes: {
     name: Attribute.String & Attribute.Required;
     uid: Attribute.UID<'api::country.country', 'name'>;
-    timezone: Attribute.String;
+    language: Attribute.Relation<
+      'api::country.country',
+      'manyToOne',
+      'api::language.language'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -958,6 +1232,71 @@ export interface ApiCountryCountry extends Schema.CollectionType {
       Attribute.Private;
     updatedBy: Attribute.Relation<
       'api::country.country',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiDiagnosticDiagnostic extends Schema.CollectionType {
+  collectionName: 'diagnostics';
+  info: {
+    singularName: 'diagnostic';
+    pluralName: 'diagnostics';
+    displayName: 'diagnostic';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    doctor: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'oneToOne',
+      'api::doctor.doctor'
+    >;
+    patient: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'oneToOne',
+      'api::patient.patient'
+    >;
+    medications: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'oneToMany',
+      'api::medication.medication'
+    >;
+    cie_10_code: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'oneToOne',
+      'api::cie-10-code.cie-10-code'
+    >;
+    clinical_record: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'manyToOne',
+      'api::clinical-record.clinical-record'
+    >;
+    appointment: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'oneToOne',
+      'api::appointment.appointment'
+    >;
+    diagnostic_date: Attribute.Date & Attribute.Required;
+    diagnosis_details: Attribute.Text &
+      Attribute.Private &
+      Attribute.SetMinMaxLength<{
+        minLength: 20;
+      }>;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::diagnostic.diagnostic',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::diagnostic.diagnostic',
       'oneToOne',
       'admin::user'
     > &
@@ -992,9 +1331,6 @@ export interface ApiDoctorDoctor extends Schema.CollectionType {
       'oneToOne',
       'api::signup-request.signup-request'
     >;
-    serviceCost: Attribute.BigInteger &
-      Attribute.Required &
-      Attribute.DefaultTo<'1'>;
     reviews: Attribute.Relation<
       'api::doctor.doctor',
       'oneToMany',
@@ -1010,6 +1346,30 @@ export interface ApiDoctorDoctor extends Schema.CollectionType {
       'oneToMany',
       'api::appointment.appointment'
     >;
+    services: Attribute.Relation<
+      'api::doctor.doctor',
+      'oneToMany',
+      'api::service.service'
+    >;
+    non_validated_experience: Attribute.Media;
+    profile_description: Attribute.Text;
+    registration_number: Attribute.String;
+    registration_issuer: Attribute.String;
+    country: Attribute.Relation<
+      'api::doctor.doctor',
+      'oneToOne',
+      'api::country.country'
+    >;
+    stamp: Attribute.Media;
+    signature: Attribute.Media;
+    languages: Attribute.Component<'profile.languages', true>;
+    validated_experience: Attribute.Component<'profile.experience', true>;
+    profile_picture: Attribute.Media;
+    firstname: Attribute.String;
+    lastname: Attribute.String;
+    online: Attribute.Boolean & Attribute.DefaultTo<false>;
+    immediate_available: Attribute.Boolean & Attribute.DefaultTo<true>;
+    profile_title: Attribute.String;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     publishedAt: Attribute.DateTime;
@@ -1028,12 +1388,47 @@ export interface ApiDoctorDoctor extends Schema.CollectionType {
   };
 }
 
-export interface ApiMedicationMedication extends Schema.CollectionType {
-  collectionName: 'medications';
+export interface ApiImmediateAttentionImmediateAttention
+  extends Schema.SingleType {
+  collectionName: 'immediate_attentions';
   info: {
-    singularName: 'medication';
-    pluralName: 'medications';
-    displayName: 'medication';
+    singularName: 'immediate-attention';
+    pluralName: 'immediate-attentions';
+    displayName: 'Immediate Attention';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    doctors: Attribute.Relation<
+      'api::immediate-attention.immediate-attention',
+      'oneToMany',
+      'api::doctor.doctor'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::immediate-attention.immediate-attention',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::immediate-attention.immediate-attention',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiLanguageLanguage extends Schema.CollectionType {
+  collectionName: 'languages';
+  info: {
+    singularName: 'language';
+    pluralName: 'languages';
+    displayName: 'language';
+    description: '';
   };
   options: {
     draftAndPublish: false;
@@ -1050,6 +1445,64 @@ export interface ApiMedicationMedication extends Schema.CollectionType {
           localized: true;
         };
       }>;
+    short_name: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    countries: Attribute.Relation<
+      'api::language.language',
+      'oneToMany',
+      'api::country.country'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::language.language',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::language.language',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    localizations: Attribute.Relation<
+      'api::language.language',
+      'oneToMany',
+      'api::language.language'
+    >;
+    locale: Attribute.String;
+  };
+}
+
+export interface ApiMedicationMedication extends Schema.CollectionType {
+  collectionName: 'medications';
+  info: {
+    singularName: 'medication';
+    pluralName: 'medications';
+    displayName: 'medication';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  pluginOptions: {
+    i18n: {
+      localized: true;
+    };
+  };
+  attributes: {
+    name: Attribute.String &
+      Attribute.Unique &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     specialty_profiles: Attribute.Relation<
       'api::medication.medication',
       'manyToMany',
@@ -1059,6 +1512,17 @@ export interface ApiMedicationMedication extends Schema.CollectionType {
       'api::medication.medication',
       'manyToMany',
       'api::treatment.treatment'
+    >;
+    laboratory: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    diagnostic: Attribute.Relation<
+      'api::medication.medication',
+      'manyToOne',
+      'api::diagnostic.diagnostic'
     >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
@@ -1083,6 +1547,71 @@ export interface ApiMedicationMedication extends Schema.CollectionType {
   };
 }
 
+export interface ApiMessageMessage extends Schema.CollectionType {
+  collectionName: 'messages';
+  info: {
+    singularName: 'message';
+    pluralName: 'messages';
+    displayName: 'message';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    user: Attribute.String;
+    message: Attribute.String;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::message.message',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::message.message',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiNotificationNotification extends Schema.CollectionType {
+  collectionName: 'notifications';
+  info: {
+    singularName: 'notification';
+    pluralName: 'notifications';
+    displayName: 'notification';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    payload: Attribute.JSON;
+    read: Attribute.Boolean & Attribute.DefaultTo<false>;
+    user: Attribute.Relation<
+      'api::notification.notification',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::notification.notification',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::notification.notification',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiPatientPatient extends Schema.CollectionType {
   collectionName: 'patients';
   info: {
@@ -1095,10 +1624,7 @@ export interface ApiPatientPatient extends Schema.CollectionType {
     draftAndPublish: false;
   };
   attributes: {
-    firstname: Attribute.String;
-    lastname: Attribute.String;
     identification_type: Attribute.Enumeration<['passport', 'id card', 'rut']>;
-    identification: Attribute.String;
     city: Attribute.String;
     province: Attribute.String;
     birth_date: Attribute.Date;
@@ -1119,12 +1645,20 @@ export interface ApiPatientPatient extends Schema.CollectionType {
       'oneToOne',
       'plugin::users-permissions.user'
     >;
-    uid: Attribute.UID<'api::patient.patient', 'identification'>;
-    phone: Attribute.String;
-    appointment: Attribute.Relation<
+    uid: Attribute.UID;
+    appointments: Attribute.Relation<
       'api::patient.patient',
-      'oneToOne',
+      'oneToMany',
       'api::appointment.appointment'
+    >;
+    firstname: Attribute.String;
+    lastname: Attribute.String;
+    identification: Attribute.String;
+    phone: Attribute.String;
+    favorite_doctors: Attribute.Relation<
+      'api::patient.patient',
+      'oneToMany',
+      'api::doctor.doctor'
     >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
@@ -1136,6 +1670,86 @@ export interface ApiPatientPatient extends Schema.CollectionType {
       Attribute.Private;
     updatedBy: Attribute.Relation<
       'api::patient.patient',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiPaymentPayment extends Schema.CollectionType {
+  collectionName: 'payments';
+  info: {
+    singularName: 'payment';
+    pluralName: 'payments';
+    displayName: 'payment';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    appointment: Attribute.Relation<
+      'api::payment.payment',
+      'oneToOne',
+      'api::appointment.appointment'
+    >;
+    amount: Attribute.Decimal;
+    timestamp: Attribute.Date;
+    order: Attribute.BigInteger & Attribute.Required & Attribute.Unique;
+    status: Attribute.String &
+      Attribute.Required &
+      Attribute.DefaultTo<'pending'>;
+    payment_data: Attribute.Relation<
+      'api::payment.payment',
+      'oneToOne',
+      'api::payment-webhook.payment-webhook'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::payment.payment',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::payment.payment',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiPaymentWebhookPaymentWebhook extends Schema.CollectionType {
+  collectionName: 'payment_webhooks';
+  info: {
+    singularName: 'payment-webhook';
+    pluralName: 'payment-webhooks';
+    displayName: 'payment webhook';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    notification: Attribute.JSON;
+    payment: Attribute.Relation<
+      'api::payment-webhook.payment-webhook',
+      'oneToOne',
+      'api::payment.payment'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::payment-webhook.payment-webhook',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::payment-webhook.payment-webhook',
       'oneToOne',
       'admin::user'
     > &
@@ -1161,10 +1775,13 @@ export interface ApiReviewReview extends Schema.CollectionType {
     >;
     rating: Attribute.Integer &
       Attribute.Required &
-      Attribute.SetMinMax<{
-        min: 1;
-        max: 5;
-      }> &
+      Attribute.SetMinMax<
+        {
+          min: 1;
+          max: 5;
+        },
+        number
+      > &
       Attribute.DefaultTo<5>;
     comment: Attribute.Text &
       Attribute.SetMinMaxLength<{
@@ -1185,6 +1802,92 @@ export interface ApiReviewReview extends Schema.CollectionType {
       Attribute.Private;
     updatedBy: Attribute.Relation<
       'api::review.review',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiServiceService extends Schema.CollectionType {
+  collectionName: 'services';
+  info: {
+    singularName: 'service';
+    pluralName: 'services';
+    displayName: 'service';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    name: Attribute.String;
+    doctor: Attribute.Relation<
+      'api::service.service',
+      'manyToOne',
+      'api::doctor.doctor'
+    >;
+    specialty_profile: Attribute.Relation<
+      'api::service.service',
+      'manyToOne',
+      'api::specialty-profile.specialty-profile'
+    >;
+    service_cost: Attribute.Decimal;
+    service_setting: Attribute.Relation<
+      'api::service.service',
+      'oneToOne',
+      'api::service-setting.service-setting'
+    >;
+    description: Attribute.Text;
+    reason: Attribute.Text;
+    extra: Attribute.Component<'service.extra-rates', true>;
+    default: Attribute.Boolean & Attribute.Required & Attribute.DefaultTo<true>;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::service.service',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::service.service',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
+export interface ApiServiceSettingServiceSetting extends Schema.CollectionType {
+  collectionName: 'service_settings';
+  info: {
+    singularName: 'service-setting';
+    pluralName: 'service-settings';
+    displayName: 'service settings';
+    description: '';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    predefined_messages: Attribute.Component<'profile.messages', true>;
+    account_preferences: Attribute.Component<'profile.account-settings'>;
+    service: Attribute.Relation<
+      'api::service-setting.service-setting',
+      'oneToOne',
+      'api::service.service'
+    >;
+    createdAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::service-setting.service-setting',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    updatedBy: Attribute.Relation<
+      'api::service-setting.service-setting',
       'oneToOne',
       'admin::user'
     > &
@@ -1284,6 +1987,11 @@ export interface ApiSpecialtyProfileSpecialtyProfile
       'manyToMany',
       'api::medication.medication'
     >;
+    services: Attribute.Relation<
+      'api::specialty-profile.specialty-profile',
+      'oneToMany',
+      'api::service.service'
+    >;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1324,18 +2032,6 @@ export interface ApiTreatmentTreatment extends Schema.CollectionType {
     };
   };
   attributes: {
-    name: Attribute.String &
-      Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
-    description: Attribute.Text &
-      Attribute.SetPluginOptions<{
-        i18n: {
-          localized: true;
-        };
-      }>;
     date: Attribute.Date &
       Attribute.SetPluginOptions<{
         i18n: {
@@ -1358,6 +2054,18 @@ export interface ApiTreatmentTreatment extends Schema.CollectionType {
       'manyToMany',
       'api::medication.medication'
     >;
+    name: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
+    description: Attribute.String &
+      Attribute.SetPluginOptions<{
+        i18n: {
+          localized: true;
+        };
+      }>;
     createdAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1439,6 +2147,8 @@ declare module '@strapi/types' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'plugin::upload.file': PluginUploadFile;
       'plugin::upload.folder': PluginUploadFolder;
+      'plugin::content-releases.release': PluginContentReleasesRelease;
+      'plugin::content-releases.release-action': PluginContentReleasesReleaseAction;
       'plugin::i18n.locale': PluginI18NLocale;
       'plugin::users-permissions.permission': PluginUsersPermissionsPermission;
       'plugin::users-permissions.role': PluginUsersPermissionsRole;
@@ -1447,12 +2157,23 @@ declare module '@strapi/types' {
       'plugin::graphs-builder.graph': PluginGraphsBuilderGraph;
       'api::agenda.agenda': ApiAgendaAgenda;
       'api::appointment.appointment': ApiAppointmentAppointment;
+      'api::cie-10-code.cie-10-code': ApiCie10CodeCie10Code;
       'api::clinical-record.clinical-record': ApiClinicalRecordClinicalRecord;
+      'api::connection.connection': ApiConnectionConnection;
       'api::country.country': ApiCountryCountry;
+      'api::diagnostic.diagnostic': ApiDiagnosticDiagnostic;
       'api::doctor.doctor': ApiDoctorDoctor;
+      'api::immediate-attention.immediate-attention': ApiImmediateAttentionImmediateAttention;
+      'api::language.language': ApiLanguageLanguage;
       'api::medication.medication': ApiMedicationMedication;
+      'api::message.message': ApiMessageMessage;
+      'api::notification.notification': ApiNotificationNotification;
       'api::patient.patient': ApiPatientPatient;
+      'api::payment.payment': ApiPaymentPayment;
+      'api::payment-webhook.payment-webhook': ApiPaymentWebhookPaymentWebhook;
       'api::review.review': ApiReviewReview;
+      'api::service.service': ApiServiceService;
+      'api::service-setting.service-setting': ApiServiceSettingServiceSetting;
       'api::signup-request.signup-request': ApiSignupRequestSignupRequest;
       'api::specialty-profile.specialty-profile': ApiSpecialtyProfileSpecialtyProfile;
       'api::treatment.treatment': ApiTreatmentTreatment;

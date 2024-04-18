@@ -1,0 +1,16 @@
+{
+  "collectionName": "components_agenda_time_slots",
+  "info": {
+    "displayName": "time slots",
+    "icon": "apps"
+  },
+  "options": {},
+  "attributes": {
+    "startDateTime": {
+      "type": "datetime"
+    },
+    "endDateTime": {
+      "type": "datetime"
+    }
+  }
+}

@@ -27,8 +27,30 @@
       "target": "api::specialty-profile.specialty-profile",
       "inversedBy": "services"
     },
-    "price": {
+    "service_cost": {
       "type": "decimal"
+    },
+    "service_setting": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::service-setting.service-setting",
+      "mappedBy": "service"
+    },
+    "description": {
+      "type": "text"
+    },
+    "reason": {
+      "type": "text"
+    },
+    "extra": {
+      "type": "component",
+      "repeatable": true,
+      "component": "service.extra-rates"
+    },
+    "default": {
+      "type": "boolean",
+      "default": true,
+      "required": true
     }
   }
 }

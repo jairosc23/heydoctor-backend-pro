@@ -18,17 +18,17 @@
       "repeatable": true,
       "component": "profile.messages"
     },
-    "doctor": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::doctor.doctor",
-      "inversedBy": "service_settings"
-    },
     "account_preferences": {
       "displayName": "accountSettings",
       "type": "component",
       "repeatable": false,
       "component": "profile.account-settings"
+    },
+    "service": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::service.service",
+      "inversedBy": "service_setting"
     }
   }
 }
