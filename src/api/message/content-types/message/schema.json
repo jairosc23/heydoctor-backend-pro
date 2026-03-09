@@ -12,10 +12,13 @@
   "pluginOptions": {},
   "attributes": {
     "user": {
-      "type": "string"
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
     },
     "message": {
-      "type": "string"
+      "type": "text",
+      "required": true
     }
   }
 }

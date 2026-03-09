@@ -14,12 +14,12 @@
   "attributes": {
     "doctor": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::doctor.doctor"
     },
     "patient": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::patient.patient"
     },
     "medications": {
@@ -30,7 +30,7 @@
     },
     "cie_10_code": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::cie-10-code.cie-10-code"
     },
     "clinical_record": {

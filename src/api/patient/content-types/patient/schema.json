@@ -27,7 +27,8 @@
       "type": "string"
     },
     "birth_date": {
-      "type": "date"
+      "type": "date",
+      "required": true
     },
     "gender": {
       "type": "enumeration",
@@ -73,13 +74,17 @@
       "mappedBy": "patient"
     },
     "firstname": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "lastname": {
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "identification": {
-      "type": "string"
+      "type": "string",
+      "required": true,
+      "unique": true
     },
     "phone": {
       "type": "string"

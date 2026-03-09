@@ -7,7 +7,7 @@
     "displayName": "signup request"
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "pluginOptions": {},
   "attributes": {
@@ -18,8 +18,14 @@
       "inversedBy": "signup_request"
     },
     "status": {
-      "type": "boolean",
-      "default": false
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "approved",
+        "rejected"
+      ],
+      "default": "pending",
+      "required": true
     },
     "doc1": {
       "allowedTypes": [

@@ -12,6 +12,7 @@ module.exports = ({ env }) => ({
         uploadStream: {},
         delete: {},
       },
+      sizeLimit: 10 * 1024 * 1024,
     },
   },
   graphql: {
@@ -19,15 +20,16 @@ module.exports = ({ env }) => ({
     config: {
       endpoint: "/graphql",
       shadowCRUD: true,
-      playgroundAlways: true,
-      depthLimit: 15,
+      playgroundAlways: false,
+      depthLimit: 8,
       amountLimit: 100,
       apolloServer: {
         tracing: false,
+        introspection: env("NODE_ENV") !== "production",
       },
     },
   },
-  'transformer': {
+  transformer: {
     enabled: true,
     config: {
       responseTransforms: {

@@ -19,10 +19,11 @@
       "inversedBy": "payment"
     },
     "amount": {
-      "type": "decimal"
+      "type": "decimal",
+      "required": true
     },
     "timestamp": {
-      "type": "date"
+      "type": "datetime"
     },
     "order": {
       "type": "biginteger",
@@ -30,7 +31,14 @@
       "unique": true
     },
     "status": {
-      "type": "string",
+      "type": "enumeration",
+      "enum": [
+        "pending",
+        "completed",
+        "failed",
+        "refunded",
+        "cancelled"
+      ],
       "required": true,
       "default": "pending"
     },

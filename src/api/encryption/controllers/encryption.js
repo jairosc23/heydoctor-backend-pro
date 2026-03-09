@@ -2,18 +2,19 @@
 
 module.exports = {
   getKeys(ctx) {
-    let clientPrivateKey = global.clientPrivateKey;
-    let clientPublicKey = global.clientPublicKey;
-    ctx.cookies.set("x-diffie-hellman-public-key", global.clientPublicKey, {
-      httpOnly: true, // Cookie is only accessible through the HTTP(S) protocol
-      maxAge: 24 * 60 * 60 * 1000, // Cookie will expire in 1 day
-      secure: false, // Set to true if your application is served over HTTPS
-      sameSite: "None", // Set the SameSite attribute to None if cross-origin
+    const clientPublicKey = global.clientPublicKey;
+
+    if (!clientPublicKey) {
+      return ctx.notFound("Encryption keys not initialized");
+    }
+
+    ctx.cookies.set("x-diffie-hellman-public-key", clientPublicKey, {
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "Strict" : "Lax",
     });
 
-    ctx.send({
-      clientPrivateKey,
-      clientPublicKey
-    })
-  }
+    ctx.send({ clientPublicKey });
+  },
 };

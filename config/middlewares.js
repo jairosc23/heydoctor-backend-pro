@@ -1,3 +1,5 @@
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS || "https://heydoctor.health,https://www.heydoctor.health").split(",").map(s => s.trim());
+
 module.exports = [
   "strapi::errors",
   {
@@ -6,7 +8,7 @@ module.exports = [
       contentSecurityPolicy: {
         useDefaults: true,
         directives: {
-          "connect-src": ["'self'", "https:"],
+          "connect-src": ["'self'", "https://heydoctor.health", "https://api.heydoctor.health"],
           "img-src": [
             "'self'",
             "data:",
@@ -23,8 +25,7 @@ module.exports = [
           ],
           upgradeInsecureRequests: null,
           "frame-src": [
-            "http://localhost:*",
-            "self",
+            "'self'",
             "sandbox.embed.apollographql.com",
           ],
         },
@@ -34,6 +35,7 @@ module.exports = [
   {
     name: "strapi::cors",
     config: {
+      origin: process.env.NODE_ENV === "production" ? ALLOWED_ORIGINS : ["http://localhost:3000", "http://localhost:1337"],
       credentials: true,
     },
   },

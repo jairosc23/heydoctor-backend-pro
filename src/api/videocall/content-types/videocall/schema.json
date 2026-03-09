@@ -14,12 +14,12 @@
   "attributes": {
     "doctor": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::doctor.doctor"
     },
     "patient": {
       "type": "relation",
-      "relation": "oneToOne",
+      "relation": "manyToOne",
       "target": "api::patient.patient"
     },
     "appointment": {

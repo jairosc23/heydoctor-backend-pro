@@ -17,7 +17,8 @@
       "default": 45
     },
     "date": {
-      "type": "datetime"
+      "type": "datetime",
+      "required": true
     },
     "specialty_profile": {
       "type": "relation",
@@ -80,6 +81,17 @@
     "active": {
       "type": "boolean",
       "default": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": [
+        "scheduled",
+        "in_progress",
+        "completed",
+        "cancelled",
+        "no_show"
+      ],
+      "default": "scheduled"
     }
   }
 }

@@ -114,8 +114,7 @@ build
 .strapi-updater.json
 
 ############################
-# Lock files
+# Lock files - keep package-lock.json for reproducible builds
 ############################
 
-*.lock
-package-lock.*
+yarn.lock

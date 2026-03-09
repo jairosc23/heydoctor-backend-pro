@@ -50,7 +50,8 @@
           "localized": true
         }
       },
-      "type": "string"
+      "type": "string",
+      "required": true
     },
     "description": {
       "pluginOptions": {
@@ -58,7 +59,7 @@
           "localized": true
         }
       },
-      "type": "string"
+      "type": "text"
     }
   }
 }

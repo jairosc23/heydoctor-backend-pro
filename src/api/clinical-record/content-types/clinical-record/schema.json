@@ -43,16 +43,16 @@
       "mappedBy": "clinical_record"
     },
     "observations": {
-      "type": "string"
+      "type": "text"
     },
     "personal_background": {
-      "type": "string"
+      "type": "text"
     },
     "family_background": {
-      "type": "string"
+      "type": "text"
     },
     "clinical_judgement": {
-      "type": "string"
+      "type": "text"
     },
     "habits": {
       "type": "text"
@@ -61,7 +61,7 @@
       "type": "text"
     },
     "allergies": {
-      "type": "string"
+      "type": "text"
     }
   }
 }
