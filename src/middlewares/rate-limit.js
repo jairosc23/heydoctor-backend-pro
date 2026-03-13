@@ -13,6 +13,9 @@ const RATE_LIMITED_PATHS = [
   "/api/custom-auth/register",
   "/api/payment-webhooks",
 ];
+// GET requests rate limited (mayor límite: videollamadas pueden requerir varias fetches)
+const GET_RATE_LIMITED_PATHS = ["/api/webrtc/ice-servers"];
+const GET_RATE_LIMIT_MAX = 60;
 
 const store = new Map(); // ip -> { count, resetAt }
 
@@ -37,29 +40,33 @@ module.exports = (config, { strapi }) => {
 
   return async (ctx, next) => {
     const path = ctx.request.path;
-    const isLimited = RATE_LIMITED_PATHS.some((p) => path.startsWith(p));
-    if (!isLimited || ctx.request.method === "GET") {
+    const isGetLimited = ctx.request.method === "GET" && GET_RATE_LIMITED_PATHS.some((p) => path.startsWith(p));
+    const isPostLimited = RATE_LIMITED_PATHS.some((p) => path.startsWith(p)) && ctx.request.method !== "GET";
+
+    if (!isGetLimited && !isPostLimited) {
       return next();
     }
 
     const ip = getClientIp(ctx);
     const now = Date.now();
-    let entry = store.get(ip);
+    const limit = isGetLimited ? GET_RATE_LIMIT_MAX : RATE_LIMIT_MAX;
+    const storeKey = isGetLimited ? `get:${ip}` : ip;
+    let entry = store.get(storeKey);
 
     if (!entry || entry.resetAt < now) {
       entry = { count: 0, resetAt: now + RATE_LIMIT_WINDOW_MS };
-      store.set(ip, entry);
+      store.set(storeKey, entry);
     }
 
     entry.count += 1;
 
-    if (entry.count > RATE_LIMIT_MAX) {
+    if (entry.count > limit) {
       ctx.set("Retry-After", String(Math.ceil((entry.resetAt - now) / 1000)));
       return ctx.throw(429, "Demasiadas solicitudes. Intenta de nuevo más tarde.");
     }
 
-    ctx.set("X-RateLimit-Limit", String(RATE_LIMIT_MAX));
-    ctx.set("X-RateLimit-Remaining", String(Math.max(0, RATE_LIMIT_MAX - entry.count)));
+    ctx.set("X-RateLimit-Limit", String(limit));
+    ctx.set("X-RateLimit-Remaining", String(Math.max(0, limit - entry.count)));
     return next();
   };
 };
