@@ -92,6 +92,12 @@
         "no_show"
       ],
       "default": "scheduled"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic",
+      "inversedBy": "appointments"
     }
   }
 }

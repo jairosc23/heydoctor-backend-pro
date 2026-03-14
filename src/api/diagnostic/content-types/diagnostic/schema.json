@@ -53,6 +53,11 @@
       "type": "text",
       "minLength": 20,
       "private": true
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
     }
   }
 }

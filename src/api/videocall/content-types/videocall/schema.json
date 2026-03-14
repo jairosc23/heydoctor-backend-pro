@@ -34,6 +34,11 @@
     "uid": {
       "type": "uid",
       "targetField": "room_id"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
     }
   }
 }

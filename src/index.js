@@ -2,6 +2,9 @@
 
 const { initialize } = require("../config/functions/websockets");
 const { initSentry } = require("../config/functions/sentry");
+const { registerAuditListeners } = require("../modules/audit/audit.events");
+const { registerMediaListeners } = require("../modules/media/media.events");
+const { registerClinicalListeners } = require("../modules/clinical/clinical.events");
 
 async function ensureDoctorApplicationPublicPermission(strapi) {
   try {
@@ -35,5 +38,8 @@ module.exports = {
     initSentry(strapi);
     await initialize(strapi);
     await ensureDoctorApplicationPublicPermission(strapi);
+    registerAuditListeners(strapi);
+    registerMediaListeners(strapi);
+    registerClinicalListeners(strapi);
   },
 };

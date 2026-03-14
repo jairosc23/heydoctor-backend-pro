@@ -62,6 +62,12 @@
     },
     "allergies": {
       "type": "text"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic",
+      "inversedBy": "clinical_records"
     }
   }
 }

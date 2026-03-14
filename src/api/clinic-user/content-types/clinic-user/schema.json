@@ -1,0 +1,34 @@
+{
+  "kind": "collectionType",
+  "collectionName": "clinic_users",
+  "info": {
+    "singularName": "clinic-user",
+    "pluralName": "clinic-users",
+    "displayName": "Clinic User",
+    "description": "Links users to clinics with roles for multi-tenant isolation"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic",
+      "inversedBy": "clinic_users",
+      "required": true
+    },
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true
+    },
+    "role": {
+      "type": "enumeration",
+      "enum": ["owner", "admin", "doctor", "assistant"],
+      "required": true
+    }
+  }
+}

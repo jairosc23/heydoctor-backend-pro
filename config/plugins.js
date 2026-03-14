@@ -1,7 +1,7 @@
 module.exports = ({ env }) => ({
   upload: {
     config: {
-      provider: "cloudinary",
+      provider: require.resolve("../src/providers/upload-encrypted-cloudinary"),
       providerOptions: {
         cloud_name: env("CLOUDINARY_NAME"),
         api_key: env("CLOUDINARY_KEY"),

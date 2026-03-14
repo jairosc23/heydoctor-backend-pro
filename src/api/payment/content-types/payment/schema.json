@@ -47,6 +47,11 @@
       "relation": "oneToOne",
       "target": "api::payment-webhook.payment-webhook",
       "inversedBy": "payment"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
     }
   }
 }
