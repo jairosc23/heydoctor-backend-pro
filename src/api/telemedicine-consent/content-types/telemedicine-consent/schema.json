@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "telemedicine_consents",
+  "info": {
+    "singularName": "telemedicine-consent",
+    "pluralName": "telemedicine-consents",
+    "displayName": "Telemedicine Consent",
+    "description": "Patient consent for telemedicine consultations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "patient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::patient.patient"
+    },
+    "appointment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::appointment.appointment"
+    },
+    "consented_at": {
+      "type": "datetime"
+    },
+    "ip_address": {
+      "type": "string"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
+    }
+  }
+}

@@ -4,9 +4,11 @@
   "version": "0.1.0",
   "description": "A Strapi application",
   "scripts": {
+    "setup": "test -f .env || cp .env.example .env",
     "migrate:default-clinic": "node scripts/migrateDefaultClinic.js",
     "develop": "strapi develop",
     "start": "strapi start",
+    "dev": "strapi develop",
     "build": "strapi build",
     "strapi": "strapi"
   },
@@ -22,7 +24,10 @@
     "@strapi/strapi": "4.22.1",
     "@surunnuage/strapi-plugin-expo-notifications": "^2.0.4",
     "axios": "^1.6.8",
+    "dotenv": "^16.6.1",
+    "into-stream": "^6.0.0",
     "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.3",
     "pg": "8.11.5",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
@@ -41,7 +46,7 @@
     "uuid": "a67ebc51-045c-4ac9-aad3-a5b33bb71173"
   },
   "engines": {
-    "node": ">=18.0.0 <=20.x.x",
+    "node": ">=18.0.0",
     "npm": ">=6.0.0"
   },
   "license": "MIT"

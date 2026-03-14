@@ -73,6 +73,8 @@ async function migrate() {
       { table: 'patients', col: 'clinic_id' },
       { table: 'appointments', col: 'clinic_id' },
       { table: 'clinical_records', col: 'clinic_id' },
+      { table: 'clinical_documents', col: 'clinic_id' },
+      { table: 'telemedicine_consents', col: 'clinic_id' },
       { table: 'diagnostics', col: 'clinic_id' },
       { table: 'videocalls', col: 'clinic_id' },
       { table: 'payments', col: 'clinic_id' },

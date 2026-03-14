@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "clinical_documents",
+  "info": {
+    "singularName": "clinical-document",
+    "pluralName": "clinical-documents",
+    "displayName": "Clinical Document",
+    "description": "Clinical documents (PDFs, reports) linked to patients or consultations"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "patient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::patient.patient"
+    },
+    "appointment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::appointment.appointment"
+    },
+    "document_type": {
+      "type": "string"
+    },
+    "file": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images", "files"]
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
+    }
+  }
+}
