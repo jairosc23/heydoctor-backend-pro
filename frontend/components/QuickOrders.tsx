@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { SmartDiagnosisPicker } from './SmartDiagnosisPicker';
 import { AutoTreatmentSuggestions } from './AutoTreatmentSuggestions';
+import { FavoriteOrdersPanel } from './FavoriteOrdersPanel';
+import type { FavoriteOrderItem } from '../lib/api-stickiness';
 
 type QuickOrderType = 'diagnostic' | 'treatment' | 'test' | 'prescription';
 
@@ -36,15 +38,18 @@ export function QuickOrders({
   const [testInput, setTestInput] = useState('');
   const [prescriptionItems, setPrescriptionItems] = useState<string[]>([]);
   const [prescriptionInput, setPrescriptionInput] = useState('');
+  const [currentOrderItems, setCurrentOrderItems] = useState<FavoriteOrderItem[]>([]);
 
   const addDiagnostic = (item: { code: string; description: string }) => {
     onAddDiagnostic?.(item);
     setSelectedDiagnosis(`${item.code} - ${item.description}`);
+    setCurrentOrderItems((prev) => [...prev, { type: 'diagnostic', value: `${item.code} - ${item.description}` }]);
   };
 
   const addTreatment = (name: string) => {
     onAddTreatment?.(name);
     setTreatmentInput('');
+    setCurrentOrderItems((prev) => [...prev, { type: 'treatment', value: name }]);
   };
 
   const addTest = () => {
@@ -64,7 +69,21 @@ export function QuickOrders({
   const createPrescription = () => {
     if (prescriptionItems.length > 0) {
       onCreatePrescription?.(prescriptionItems);
+      setCurrentOrderItems((prev) => [...prev, ...prescriptionItems.map((v) => ({ type: 'prescription' as const, value: v }))]);
       setPrescriptionItems([]);
+    }
+  };
+
+  const applyFavoriteItems = (items: FavoriteOrderItem[]) => {
+    for (const it of items) {
+      if (it.type === 'diagnostic') {
+        const [code, ...rest] = it.value.split(' - ');
+        onAddDiagnostic?.({ code: code ?? it.value, description: rest.join(' - ') || it.value });
+      } else if (it.type === 'treatment') {
+        onAddTreatment?.(it.value);
+      } else if (it.type === 'prescription') {
+        onCreatePrescription?.([it.value]);
+      }
     }
   };
 
@@ -78,6 +97,11 @@ export function QuickOrders({
   return (
     <div className={`rounded-lg border border-gray-200 p-3 ${className}`}>
       <h3 className="text-sm font-semibold text-gray-700 mb-2">Órdenes rápidas</h3>
+      <FavoriteOrdersPanel
+        onApply={applyFavoriteItems}
+        currentItems={currentOrderItems}
+        className="mb-3 pb-3 border-b border-gray-100"
+      />
       <div className="flex gap-1 mb-3">
         {tabs.map((t) => (
           <button

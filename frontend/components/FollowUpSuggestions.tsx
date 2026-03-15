@@ -16,7 +16,11 @@ interface FollowUpSuggestionsProps {
   /** Diagnósticos confirmados */
   diagnoses?: string[];
   clinicId?: number | null;
+  /** ID del paciente para crear recordatorio */
+  patientId?: number | string | null;
   onSelect?: (suggestion: FollowUpSuggestion) => void;
+  /** Crear recordatorio al seleccionar (requiere patientId) */
+  onCreateReminder?: (message: string, dueDate: string) => void;
   className?: string;
 }
 
@@ -29,7 +33,9 @@ export function FollowUpSuggestions({
   symptoms,
   diagnoses = [],
   clinicId,
+  patientId,
   onSelect,
+  onCreateReminder,
   className = '',
 }: FollowUpSuggestionsProps) {
   const [suggestions, setSuggestions] = useState<FollowUpSuggestion[]>([]);
@@ -79,15 +85,30 @@ export function FollowUpSuggestions({
       <h4 className="text-sm font-medium text-indigo-800 mb-2">Sugerencias de seguimiento</h4>
       <ul className="space-y-1">
         {suggestions.map((s, i) => (
-          <li key={i}>
+          <li key={i} className="flex justify-between items-start gap-2">
             <button
               type="button"
               onClick={() => onSelect?.(s)}
-              className="text-sm text-indigo-700 hover:underline text-left"
+              className="text-sm text-indigo-700 hover:underline text-left flex-1"
             >
               {s.recommendation}
               {s.timeframe && <span className="text-indigo-600 ml-1">({s.timeframe})</span>}
             </button>
+            {patientId && onCreateReminder && (
+              <button
+                type="button"
+                onClick={() => {
+                  const due = new Date();
+                  if (s.timeframe?.includes('2') && s.timeframe?.includes('semana')) due.setDate(due.getDate() + 14);
+                  else if (s.timeframe?.includes('1') && s.timeframe?.includes('mes')) due.setMonth(due.getMonth() + 1);
+                  else due.setDate(due.getDate() + 14);
+                  onCreateReminder(s.recommendation, due.toISOString().slice(0, 10));
+                }}
+                className="text-xs text-green-600 hover:underline shrink-0"
+              >
+                Crear recordatorio
+              </button>
+            )}
           </li>
         ))}
       </ul>

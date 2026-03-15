@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "patient_reminders",
+  "info": {
+    "singularName": "patient-reminder",
+    "pluralName": "patient-reminders",
+    "displayName": "Patient Reminder",
+    "description": "Recordatorios para pacientes"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "patient": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::patient.patient",
+      "required": true
+    },
+    "reminder_type": {
+      "type": "string",
+      "default": "follow_up"
+    },
+    "message": {
+      "type": "text",
+      "required": true
+    },
+    "due_date": {
+      "type": "date",
+      "required": true
+    },
+    "status": {
+      "type": "enumeration",
+      "enum": ["pending", "sent", "completed", "cancelled"],
+      "default": "pending"
+    },
+    "created_by": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::doctor.doctor"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
+    },
+    "appointment": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::appointment.appointment"
+    }
+  }
+}

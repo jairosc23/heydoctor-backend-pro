@@ -12,3 +12,7 @@ export { AutoTreatmentSuggestions } from './AutoTreatmentSuggestions';
 export { PatientTimeline } from './PatientTimeline';
 export { FollowUpSuggestions } from './FollowUpSuggestions';
 export { QuickOrders } from './QuickOrders';
+export { ConsultationTemplates } from './ConsultationTemplates';
+export { FavoriteOrdersPanel } from './FavoriteOrdersPanel';
+export { PatientReminders } from './PatientReminders';
+export { TemplateSelector } from './TemplateSelector';

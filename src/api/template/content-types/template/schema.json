@@ -1,0 +1,45 @@
+{
+  "kind": "collectionType",
+  "collectionName": "templates",
+  "info": {
+    "singularName": "template",
+    "pluralName": "templates",
+    "displayName": "Consultation Template",
+    "description": "Plantillas de consulta para el médico"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "default_symptoms": {
+      "type": "json",
+      "default": []
+    },
+    "recommended_diagnostics": {
+      "type": "json",
+      "default": []
+    },
+    "suggested_treatments": {
+      "type": "json",
+      "default": []
+    },
+    "clinical_note_template": {
+      "type": "text"
+    },
+    "doctor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::doctor.doctor"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
+    }
+  }
+}

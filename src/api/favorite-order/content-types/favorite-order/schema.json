@@ -1,0 +1,37 @@
+{
+  "kind": "collectionType",
+  "collectionName": "favorite_orders",
+  "info": {
+    "singularName": "favorite-order",
+    "pluralName": "favorite-orders",
+    "displayName": "Favorite Order",
+    "description": "Órdenes favoritas del médico"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {},
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "items": {
+      "type": "json",
+      "required": true
+    },
+    "diagnosis_code": {
+      "type": "string"
+    },
+    "doctor": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::doctor.doctor"
+    },
+    "clinic": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::clinic.clinic"
+    }
+  }
+}
