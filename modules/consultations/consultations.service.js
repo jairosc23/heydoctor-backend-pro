@@ -45,7 +45,11 @@ function createConsultationsService(strapi) {
 
     async delete(id) {
       validateConsultationId(id);
-      return strapi.entityService.delete('api::appointment.appointment', id);
+      const apt = await this.findById(id);
+      const clinicId = apt?.clinic?.id ?? apt?.clinic;
+      const result = await strapi.entityService.delete('api::appointment.appointment', id);
+      eventBus.emit('appointment_cancelled', { appointmentId: id, clinicId });
+      return result;
     },
 
     async startConsultation(id, doctorId, patientId) {
@@ -80,9 +84,18 @@ function createConsultationsService(strapi) {
         throw new Error('No tiene permiso para cambiar el estado');
       }
 
-      return strapi.entityService.update('api::appointment.appointment', id, {
+      const updated = await strapi.entityService.update('api::appointment.appointment', id, {
         data: { status: newStatus },
       });
+
+      const clinicId = apt.clinic?.id ?? apt.clinic;
+      if (newStatus === 'completed') {
+        eventBus.emit('consultation_ended', { consultationId: id, appointmentId: id, doctorId, patientId, clinicId });
+      } else if (newStatus === 'cancelled') {
+        eventBus.emit('appointment_cancelled', { appointmentId: id, clinicId, doctorId, patientId });
+      }
+
+      return updated;
     },
 
     async doctorJoin(id, doctorId) {

@@ -12,6 +12,8 @@ const { registerSlowQueryMonitor } = require("../modules/observability/db-monito
 const { registerPoolMonitor } = require("../modules/observability/db-pool-monitor");
 const { initReadReplica } = require("../modules/database");
 const { setupIndexes } = require("../modules/search/setup");
+const { registerAnalyticsListeners } = require("../modules/analytics/analytics.events");
+const { ensureTable: ensureAnalyticsTable } = require("../modules/analytics/clickhouse");
 
 async function ensureDoctorApplicationPublicPermission(strapi) {
   try {
@@ -82,5 +84,7 @@ module.exports = {
     initReadReplica(strapi);
     global.strapi = strapi;
     await setupIndexes(strapi);
+    registerAnalyticsListeners(strapi);
+    await ensureAnalyticsTable();
   },
 };

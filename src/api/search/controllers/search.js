@@ -1,6 +1,7 @@
 "use strict";
 
 const search = require("../../../../modules/search");
+const eventBus = require("../../../../modules/events/eventBus");
 
 async function searchPatientsSQL(strapi, q, clinicId) {
   const filters = {
@@ -121,6 +122,15 @@ module.exports = {
       else if (type === "doctor") hits = await searchDoctorsSQL(strapi, q, clinicId);
       else hits = await searchDiagnosticsSQL(strapi, q, clinicId);
     }
+
+    eventBus.emit("search_performed", {
+      clinicId,
+      userId: user?.id,
+      query: q,
+      type,
+      resultCount: hits?.length ?? 0,
+      source,
+    });
 
     return { data: hits, meta: { source } };
   },

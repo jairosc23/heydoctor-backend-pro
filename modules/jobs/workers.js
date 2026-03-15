@@ -2,6 +2,7 @@
 
 const jobs = require("./index");
 const { getPdfQueue, getEmailQueue, getImageQueue, getWebhookQueue } = require("./queues");
+const { insertEvent } = require("../analytics/clickhouse");
 
 async function processPdf(job) {
   const { appointmentId, patientId, format } = job.data;
@@ -38,7 +39,8 @@ function startWorkers(strapi) {
   jobs.createWorker("email", processEmail);
   jobs.createWorker("medical-image", processImage);
   jobs.createWorker("payment-webhook", processWebhook);
-  strapi?.log?.info("Jobs: workers started (pdf, email, image, webhook)");
+  jobs.createWorker("analytics-worker", processAnalytics);
+  strapi?.log?.info("Jobs: workers started (pdf, email, image, webhook, analytics)");
 }
 
-module.exports = { startWorkers, processPdf, processEmail, processImage, processWebhook };
+module.exports = { startWorkers, processPdf, processEmail, processImage, processWebhook, processAnalytics };

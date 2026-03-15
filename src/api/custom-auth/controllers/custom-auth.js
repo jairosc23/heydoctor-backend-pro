@@ -1,5 +1,7 @@
 "use strict";
 
+const eventBus = require("../../../../modules/events/eventBus");
+
 module.exports = {
   async login(ctx) {
     if (global.clientPublicKey) {
@@ -14,6 +16,14 @@ module.exports = {
     const result = await strapi.plugins[
       "users-permissions"
     ].controllers.auth.callback(ctx);
+
+    if (result?.jwt && ctx.state?.user) {
+      eventBus.emit("login", {
+        userId: ctx.state.user.id,
+        clinicId: ctx.state.clinicId,
+        success: true,
+      });
+    }
 
     return result;
   },

@@ -7,6 +7,7 @@ const QUEUE_NAMES = {
   EMAIL: "email",
   IMAGE: "medical-image",
   WEBHOOK: "payment-webhook",
+  ANALYTICS: "analytics-worker",
 };
 
 function getPdfQueue() {
@@ -23,6 +24,10 @@ function getImageQueue() {
 
 function getWebhookQueue() {
   return jobs.createQueue(QUEUE_NAMES.WEBHOOK);
+}
+
+function getAnalyticsQueue() {
+  return jobs.createQueue(QUEUE_NAMES.ANALYTICS);
 }
 
 async function enqueuePdf(data) {
@@ -45,14 +50,21 @@ async function enqueueWebhook(data) {
   return q.add("process", data);
 }
 
+async function enqueueAnalytics(data) {
+  const q = getAnalyticsQueue();
+  return q.add("track", data);
+}
+
 module.exports = {
   QUEUE_NAMES,
   getPdfQueue,
   getEmailQueue,
   getImageQueue,
   getWebhookQueue,
+  getAnalyticsQueue,
   enqueuePdf,
   enqueueEmail,
   enqueueImageProcessing,
   enqueueWebhook,
+  enqueueAnalytics,
 };
