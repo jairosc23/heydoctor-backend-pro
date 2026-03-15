@@ -7,6 +7,8 @@ const { registerMediaListeners } = require("../modules/media/media.events");
 const { registerClinicalListeners } = require("../modules/clinical/clinical.events");
 const { startWorkers } = require("../modules/jobs/workers");
 const { registerListeners: registerNotificationListeners } = require("../modules/notifications");
+const { up: runDbIndexMigration } = require("../database/migrations/20250315000000_add_performance_indexes");
+const { registerSlowQueryMonitor } = require("../modules/observability/db-monitor");
 
 async function ensureDoctorApplicationPublicPermission(strapi) {
   try {
@@ -45,5 +47,7 @@ module.exports = {
     registerClinicalListeners(strapi);
     startWorkers(strapi);
     registerNotificationListeners(strapi);
+    await runDbIndexMigration(strapi);
+    registerSlowQueryMonitor(strapi);
   },
 };

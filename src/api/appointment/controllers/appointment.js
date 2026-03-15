@@ -2,12 +2,19 @@
 
 const { createCoreController } = require('@strapi/strapi').factories;
 const { withClinicFilter, ensureClinicAccess } = require('../../../utils/tenant-scope');
+const cache = require('../../../../config/functions/redis-cache');
+
+const TTL_APPOINTMENTS_RECENT = 120; // 2 min para consultas recientes
 
 module.exports = createCoreController('api::appointment.appointment', ({ strapi }) => ({
   async find(ctx) {
     ctx.query = ctx.query || {};
     ctx.query.filters = withClinicFilter(ctx, ctx.query.filters || {});
-    return super.find(ctx);
+    const clinicId = ctx.state?.clinicId ?? 'public';
+    const cacheKey = `appointments:list:${clinicId}:${JSON.stringify(ctx.query || {})}`;
+    const parentFind = super.find.bind(this);
+    const data = await cache.getOrSetCache(cacheKey, TTL_APPOINTMENTS_RECENT, () => parentFind(ctx));
+    return data;
   },
   async findOne(ctx) {
     const { id } = ctx.params;

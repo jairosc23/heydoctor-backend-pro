@@ -113,9 +113,17 @@ async function getOrSet(key, fetcher, ttl) {
   return fresh;
 }
 
+/**
+ * Helper getOrSetCache(key, ttl, queryFn) - alias con firma (key, ttl, queryFn).
+ * Fallback automático cuando REDIS_URL no está definido (retorna datos frescos).
+ */
+async function getOrSetCache(key, ttl, queryFn) {
+  return getOrSet(key, queryFn, ttl);
+}
+
 function isAvailable() {
   const c = getClient();
   return !!c;
 }
 
-module.exports = { getClient, get, set, del, delPattern, getOrSet, isAvailable };
+module.exports = { getClient, get, set, del, delPattern, getOrSet, getOrSetCache, isAvailable };
