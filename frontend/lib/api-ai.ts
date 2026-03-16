@@ -104,6 +104,17 @@ export async function generateClinicalNote(params: {
   return res.json();
 }
 
+/** Clinical Apps: lista de apps disponibles para la clínica */
+export async function fetchClinicalApps(clinicId?: number | null) {
+  const base = getApiBase();
+  const q = clinicId != null ? `?clinicId=${clinicId}` : '';
+  const res = await fetch(`${base}/api/clinical-apps${q}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) throw new Error('Failed to fetch clinical apps');
+  return res.json();
+}
+
 /** Sugerencias de tratamiento por diagnóstico (CDSS + Predictive Medicine) */
 export async function fetchTreatmentSuggestions(
   diagnosisCodeOrDescription: string,

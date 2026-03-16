@@ -56,6 +56,10 @@
       "relation": "oneToMany",
       "target": "api::audit-log.audit-log",
       "mappedBy": "clinic"
+    },
+    "enabled_clinical_apps": {
+      "type": "json",
+      "description": "Apps clínicas activadas para esta clínica (ej: [\"lab-orders\", \"radiology\"])"
     }
   }
 }

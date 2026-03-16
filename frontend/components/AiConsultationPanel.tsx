@@ -4,6 +4,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { fetchCopilotSuggestions, evaluateCdss, fetchPredictiveRisk } from '../lib/api-ai';
 import { CopilotPanel } from './CopilotPanel';
 import { ClinicalAlertsPanel } from './ClinicalAlertsPanel';
+import { ClinicalAppsPanel } from './ClinicalAppsPanel';
 import { PredictiveInsightsPanel } from './PredictiveInsightsPanel';
 
 interface AiConsultationPanelProps {
@@ -25,6 +26,7 @@ export function AiConsultationPanel({
   symptoms = [],
   clinicId,
   pollInterval = 30000,
+  showClinicalApps = true,
   className = '',
 }: AiConsultationPanelProps) {
   const [copilotData, setCopilotData] = useState<any>(null);
@@ -100,6 +102,7 @@ export function AiConsultationPanel({
         preventive_actions={predictiveData?.preventive_actions}
         isLoading={loading.predictive}
       />
+      {showClinicalApps && <ClinicalAppsPanel clinicId={clinicId} />}
     </aside>
   );
 }

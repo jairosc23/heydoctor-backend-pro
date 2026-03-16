@@ -17,3 +17,4 @@ export { FavoriteOrdersPanel } from './FavoriteOrdersPanel';
 export { PatientReminders } from './PatientReminders';
 export { TemplateSelector } from './TemplateSelector';
 export { DoctorAnalyticsPanel } from './DoctorAnalyticsPanel';
+export { ClinicalAppsPanel } from './ClinicalAppsPanel';

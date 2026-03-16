@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { evaluateCdss } from '../lib/api-ai';
 import { fetchAppointments, fetchPatients } from '../lib/api-clinic';
 import { ClinicalAlertsPanel } from './ClinicalAlertsPanel';
+import { ClinicalAppsPanel } from './ClinicalAppsPanel';
 import { DoctorAnalyticsPanel } from './DoctorAnalyticsPanel';
 
 interface DoctorDashboardPanelsProps {
@@ -91,6 +92,10 @@ export function DoctorDashboardPanels({
 
       <section className="md:col-span-2">
         <ClinicalAlertsPanel alerts={cdssAlerts} isLoading={false} />
+      </section>
+
+      <section className="md:col-span-2 lg:col-span-4">
+        <ClinicalAppsPanel clinicId={clinicId} />
       </section>
 
       <section className="md:col-span-2 lg:col-span-4">
