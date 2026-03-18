@@ -1,69 +1,76 @@
 import { Injectable } from '@nestjs/common';
 import { OpenAIService } from '../../common/services/openai.service';
 
+export interface PredictiveRiskInput {
+  symptoms?: string[];
+  context?: Record<string, unknown>;
+}
+
+export interface PredictiveRiskResponse {
+  predicted_conditions: Array<{
+    condition: string;
+    probability: number;
+    timeframe?: string;
+  }>;
+  risk_scores: Array<{
+    condition: string;
+    score: number;
+    level: string;
+  }>;
+  preventive_actions: string[];
+}
+
 @Injectable()
 export class PredictiveMedicineService {
   constructor(private readonly openai: OpenAIService) {}
 
-  async assessRisk(data: {
-    patientId?: string;
-    conditions?: string[];
-    vitals?: Record<string, number>;
-    familyHistory?: string[];
-    lifestyleFactors?: string[];
-  }) {
+  async assessRisk(data: PredictiveRiskInput): Promise<PredictiveRiskResponse> {
+    const emptyResponse: PredictiveRiskResponse = {
+      predicted_conditions: [],
+      risk_scores: [],
+      preventive_actions: [],
+    };
+
     if (!this.openai.isAvailable) {
-      return {
-        data: {
-          risks: [],
-          recommendations: [],
-          message: 'OpenAI API key not configured',
-        },
-      };
+      return emptyResponse;
     }
 
     try {
-      const prompt = `Assess predictive health risks based on:
-- Conditions: ${(data.conditions || []).join(', ') || 'None'}
-- Vitals: ${JSON.stringify(data.vitals || {})}
-- Family history: ${(data.familyHistory || []).join(', ') || 'None'}
-- Lifestyle factors: ${(data.lifestyleFactors || []).join(', ') || 'None'}
+      const symptomsStr = (data.symptoms || []).join(', ') || 'No especificados';
+      const contextStr = JSON.stringify(data.context || {});
 
-Return JSON: { risks: [{ condition, level, probability, description }], recommendations: [strings] }`;
+      const systemPrompt = `Eres un sistema de medicina predictiva. Responde ÚNICAMENTE con un objeto JSON válido, sin texto adicional ni markdown.
+El JSON debe tener exactamente estas claves:
+- predicted_conditions: array de objetos { condition, probability (0-1), timeframe opcional }
+- risk_scores: array de objetos { condition, score (0-100), level: "low"|"medium"|"high" }
+- preventive_actions: array de strings (acciones preventivas recomendadas)`;
 
-      const response = await this.openai.complete(
-        prompt,
-        'You are a predictive medicine AI. Return only valid JSON.',
-      );
+      const userPrompt = `Evalúa el riesgo predictivo basado en:
 
-      let result = {
-        risks: [] as Array<{
-          condition: string;
-          level: string;
-          probability: number;
-          description: string;
-        }>,
-        recommendations: [] as string[],
-      };
+Síntomas: ${symptomsStr}
+Contexto: ${contextStr}
 
-      try {
-        const parsed = JSON.parse(response);
-        result = {
-          risks: parsed.risks || [],
-          recommendations: parsed.recommendations || [],
+Devuelve el JSON solicitado.`;
+
+      const response = await this.openai.complete(userPrompt, systemPrompt);
+      const parsed = this.openai.parseJsonResponse<PredictiveRiskResponse>(response);
+
+      if (parsed) {
+        return {
+          predicted_conditions: Array.isArray(parsed.predicted_conditions)
+            ? parsed.predicted_conditions
+            : emptyResponse.predicted_conditions,
+          risk_scores: Array.isArray(parsed.risk_scores)
+            ? parsed.risk_scores
+            : emptyResponse.risk_scores,
+          preventive_actions: Array.isArray(parsed.preventive_actions)
+            ? parsed.preventive_actions
+            : emptyResponse.preventive_actions,
         };
-      } catch {
-        // keep defaults
       }
-
-      return { data: result };
+      return emptyResponse;
     } catch {
-      return {
-        data: {
-          risks: [],
-          recommendations: [],
-        },
-      };
+      return emptyResponse;
     }
   }
 }

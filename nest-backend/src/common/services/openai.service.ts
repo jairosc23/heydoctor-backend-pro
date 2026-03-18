@@ -42,4 +42,20 @@ export class OpenAIService {
     messages.push({ role: 'user', content: prompt });
     return this.chatCompletion(messages);
   }
+
+  /**
+   * Parses JSON from OpenAI response, handling markdown code blocks.
+   */
+  parseJsonResponse<T>(response: string): T | null {
+    let cleaned = response.trim();
+    const jsonMatch = cleaned.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      cleaned = jsonMatch[1].trim();
+    }
+    try {
+      return JSON.parse(cleaned) as T;
+    } catch {
+      return null;
+    }
+  }
 }
