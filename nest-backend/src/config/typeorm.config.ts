@@ -5,10 +5,17 @@ const baseConfig: TypeOrmModuleOptions = {
   entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   synchronize: process.env.NODE_ENV !== 'production',
   logging: process.env.NODE_ENV === 'development',
+  extra: {
+    connectTimeout: 10000,
+  },
 };
 
-export const typeOrmConfig: TypeOrmModuleOptions = process.env.DATABASE_URL
-  ? { ...baseConfig, url: process.env.DATABASE_URL }
+// Railway: DATABASE_PRIVATE_URL (legacy) o DATABASE_URL; Heroku: DATABASE_URL
+const databaseUrl =
+  process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL;
+
+export const typeOrmConfig: TypeOrmModuleOptions = databaseUrl
+  ? { ...baseConfig, url: databaseUrl }
   : {
       ...baseConfig,
       host: process.env.DB_HOST || 'localhost',
