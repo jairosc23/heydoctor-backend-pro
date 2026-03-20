@@ -1,15 +1,16 @@
-# Build stage
+# Build stage - TypeScript compiled INSIDE container
 FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Evitar ERESOLVE: legacy-peer-deps + npm install (más resiliente que npm ci)
 ENV npm_config_legacy_peer_deps=true
 
-COPY package*.json .npmrc* ./
+COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+RUN rm -rf dist
 RUN npm run build
 
 # Production stage
