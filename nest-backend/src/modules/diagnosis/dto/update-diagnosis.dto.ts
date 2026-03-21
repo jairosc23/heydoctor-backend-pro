@@ -1,33 +1,6 @@
-import {
-  IsString,
-  IsOptional,
-  IsUUID,
-  IsDateString,
-  IsObject,
-  IsNumber,
-  IsArray,
-  ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsUUID, IsDateString } from 'class-validator';
 
-export class AiEnrichmentDto {
-  @IsOptional()
-  @IsNumber()
-  confidence?: number;
-
-  @IsOptional()
-  @IsString()
-  source?: string;
-
-  @IsOptional()
-  @IsArray()
-  suggested_codes?: Array<{ code: string; description?: string }>;
-
-  @IsOptional()
-  @IsObject()
-  raw_response?: Record<string, unknown>;
-}
-
+/** Matches Strapi api::diagnostic.diagnostic attributes. */
 export class UpdateDiagnosisDto {
   @IsOptional()
   @IsUUID()
@@ -38,24 +11,20 @@ export class UpdateDiagnosisDto {
   clinicalRecordId?: string;
 
   @IsOptional()
-  @IsString()
-  code?: string;
+  @IsUUID()
+  doctorId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  patientId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
 
   @IsOptional()
   @IsUUID()
   cie10CodeId?: string;
-
-  @IsOptional()
-  @IsString()
-  diagnosis_details?: string;
-
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  @IsOptional()
-  @IsString()
-  notes?: string;
 
   @IsOptional()
   @IsDateString()
@@ -63,10 +32,5 @@ export class UpdateDiagnosisDto {
 
   @IsOptional()
   @IsString()
-  type?: string;
-
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => AiEnrichmentDto)
-  ai_enrichment?: AiEnrichmentDto;
+  diagnosis_details?: string;
 }

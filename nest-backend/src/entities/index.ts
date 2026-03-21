@@ -10,7 +10,7 @@ export * from './patient-reminder.entity';
 export * from './lab-order.entity';
 export * from './prescription.entity';
 export * from './clinical-record.entity';
-export * from './diagnostic.entity';
+export * from './diagnosis.entity';
 export * from './treatment.entity';
 export * from './cie10-code.entity';
 export * from './medication.entity';

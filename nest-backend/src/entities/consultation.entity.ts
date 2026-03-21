@@ -13,7 +13,7 @@ import { Patient } from './patient.entity';
 import { Doctor } from './doctor.entity';
 import { Clinic } from './clinic.entity';
 import { ClinicalRecord } from './clinical-record.entity';
-import { Diagnostic } from './diagnostic.entity';
+import { Diagnosis } from './diagnosis.entity';
 import { LabOrder } from './lab-order.entity';
 import { Prescription } from './prescription.entity';
 
@@ -90,11 +90,11 @@ export class Consultation {
   @JoinColumn({ name: 'clinicalRecordId' })
   clinical_record: ClinicalRecord | null;
 
-  @OneToOne(() => Diagnostic, (d) => d.consultation, {
+  @OneToOne(() => Diagnosis, (d) => d.consultation, {
     onDelete: 'SET NULL',
     nullable: true,
   })
-  diagnostic: Diagnostic | null;
+  diagnostic: Diagnosis | null;
 
   @OneToMany(() => LabOrder, (l) => l.consultation)
   lab_orders: LabOrder[];

@@ -5,36 +5,60 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Diagnostic, Consultation } from '../../entities';
+import { Diagnosis, Consultation } from '../../entities';
 import { CreateDiagnosisDto } from './dto/create-diagnosis.dto';
 import { UpdateDiagnosisDto } from './dto/update-diagnosis.dto';
+import { DiagnosisFiltersDto } from './dto/diagnosis-filters.dto';
 
 @Injectable()
 export class DiagnosisService {
   constructor(
-    @InjectRepository(Diagnostic)
-    private readonly diagnosticRepo: Repository<Diagnostic>,
+    @InjectRepository(Diagnosis)
+    private readonly diagnosisRepo: Repository<Diagnosis>,
     @InjectRepository(Consultation)
     private readonly consultationRepo: Repository<Consultation>,
   ) {}
 
-  async findByConsultation(consultationId: string) {
-    const diagnostic = await this.diagnosticRepo.findOne({
-      where: { consultationId },
-      relations: ['consultation', 'cie10_code', 'clinicalRecord'],
-    });
-    return { data: diagnostic };
+  async findAll(filters?: DiagnosisFiltersDto) {
+    const qb = this.diagnosisRepo
+      .createQueryBuilder('d')
+      .leftJoinAndSelect('d.consultation', 'consultation')
+      .leftJoinAndSelect('d.cie_10_code', 'cie_10_code')
+      .leftJoinAndSelect('d.clinical_record', 'clinical_record');
+
+    if (filters?.consultationId) {
+      qb.andWhere('d.consultationId = :consultationId', {
+        consultationId: filters.consultationId,
+      });
+    }
+    if (filters?.clinicId) {
+      qb.andWhere('d.clinicId = :clinicId', { clinicId: filters.clinicId });
+    }
+    if (filters?.patientId) {
+      qb.andWhere('d.patientId = :patientId', { patientId: filters.patientId });
+    }
+    if (filters?.doctorId) {
+      qb.andWhere('d.doctorId = :doctorId', { doctorId: filters.doctorId });
+    }
+
+    const [items, total] = await qb
+      .orderBy('d.diagnostic_date', 'DESC')
+      .skip(filters?.offset ?? 0)
+      .take(filters?.limit ?? 20)
+      .getManyAndCount();
+
+    return { data: items, total };
   }
 
   async findOne(id: string) {
-    const diagnostic = await this.diagnosticRepo.findOne({
+    const diagnosis = await this.diagnosisRepo.findOne({
       where: { id },
-      relations: ['consultation', 'cie10_code', 'clinicalRecord'],
+      relations: ['consultation', 'cie_10_code', 'clinical_record'],
     });
-    if (!diagnostic) {
+    if (!diagnosis) {
       throw new NotFoundException(`Diagnosis with id ${id} not found`);
     }
-    return { data: diagnostic };
+    return { data: diagnosis };
   }
 
   async create(dto: CreateDiagnosisDto) {
@@ -47,7 +71,7 @@ export class DiagnosisService {
       );
     }
 
-    const existing = await this.diagnosticRepo.findOne({
+    const existing = await this.diagnosisRepo.findOne({
       where: { consultationId: dto.consultationId },
     });
     if (existing) {
@@ -56,36 +80,41 @@ export class DiagnosisService {
       );
     }
 
-    const diagnostic = this.diagnosticRepo.create({
-      ...dto,
+    const diagnosis = this.diagnosisRepo.create({
+      consultationId: dto.consultationId,
+      clinicalRecordId: dto.clinicalRecordId ?? consultation.clinicalRecordId,
+      doctorId: dto.doctorId ?? consultation.doctorId,
+      patientId: dto.patientId ?? consultation.patientId,
+      clinicId: dto.clinicId ?? consultation.clinicId,
+      cie10CodeId: dto.cie10CodeId,
+      diagnosis_details: dto.diagnosis_details,
       diagnostic_date: dto.diagnostic_date
         ? new Date(dto.diagnostic_date)
         : new Date(),
-      type: dto.type ?? 'principal',
     });
-    const saved = await this.diagnosticRepo.save(diagnostic);
+    const saved = await this.diagnosisRepo.save(diagnosis);
     return { data: saved };
   }
 
   async update(id: string, dto: UpdateDiagnosisDto) {
-    const diagnostic = await this.diagnosticRepo.findOne({ where: { id } });
-    if (!diagnostic) {
+    const diagnosis = await this.diagnosisRepo.findOne({ where: { id } });
+    if (!diagnosis) {
       throw new NotFoundException(`Diagnosis with id ${id} not found`);
     }
-    Object.assign(diagnostic, dto);
+    Object.assign(diagnosis, dto);
     if (dto.diagnostic_date) {
-      diagnostic.diagnostic_date = new Date(dto.diagnostic_date);
+      diagnosis.diagnostic_date = new Date(dto.diagnostic_date);
     }
-    const saved = await this.diagnosticRepo.save(diagnostic);
+    const saved = await this.diagnosisRepo.save(diagnosis);
     return { data: saved };
   }
 
   async remove(id: string) {
-    const diagnostic = await this.diagnosticRepo.findOne({ where: { id } });
-    if (!diagnostic) {
+    const diagnosis = await this.diagnosisRepo.findOne({ where: { id } });
+    if (!diagnosis) {
       throw new NotFoundException(`Diagnosis with id ${id} not found`);
     }
-    await this.diagnosticRepo.remove(diagnostic);
-    return { data: diagnostic };
+    await this.diagnosisRepo.remove(diagnosis);
+    return { data: diagnosis };
   }
 }

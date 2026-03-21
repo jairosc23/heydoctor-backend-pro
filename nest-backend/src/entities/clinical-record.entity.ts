@@ -11,7 +11,7 @@ import {
 import { Patient } from './patient.entity';
 import { Doctor } from './doctor.entity';
 import { Clinic } from './clinic.entity';
-import { Diagnostic } from './diagnostic.entity';
+import { Diagnosis } from './diagnosis.entity';
 import { Treatment } from './treatment.entity';
 import { Consultation } from './consultation.entity';
 
@@ -56,8 +56,8 @@ export class ClinicalRecord {
   @JoinColumn({ name: 'clinicId' })
   clinic: Clinic;
 
-  @OneToMany(() => Diagnostic, (d) => d.clinicalRecord)
-  diagnostics: Diagnostic[];
+  @OneToMany(() => Diagnosis, (d) => d.clinical_record)
+  diagnostics: Diagnosis[];
 
   @OneToMany(() => Treatment, (t) => t.clinicalRecord)
   treatments: Treatment[];

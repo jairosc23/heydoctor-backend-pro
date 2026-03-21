@@ -1,33 +1,6 @@
-import {
-  IsString,
-  IsOptional,
-  IsUUID,
-  IsDateString,
-  IsObject,
-  IsNumber,
-  IsArray,
-  ValidateNested,
-} from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsUUID, IsDateString } from 'class-validator';
 
-export class AiEnrichmentDto {
-  @IsOptional()
-  @IsNumber()
-  confidence?: number;
-
-  @IsOptional()
-  @IsString()
-  source?: string;
-
-  @IsOptional()
-  @IsArray()
-  suggested_codes?: Array<{ code: string; description?: string }>;
-
-  @IsOptional()
-  @IsObject()
-  raw_response?: Record<string, unknown>;
-}
-
+/** Matches Strapi api::diagnostic.diagnostic attributes. */
 export class CreateDiagnosisDto {
   @IsUUID()
   consultationId: string;
@@ -36,42 +9,27 @@ export class CreateDiagnosisDto {
   @IsUUID()
   clinicalRecordId?: string;
 
-  /** ICD/CIE-10 code (string). */
   @IsOptional()
-  @IsString()
-  code?: string;
+  @IsUUID()
+  doctorId?: string;
 
-  /** CIE10 catalog reference. */
+  @IsOptional()
+  @IsUUID()
+  patientId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  clinicId?: string;
+
   @IsOptional()
   @IsUUID()
   cie10CodeId?: string;
 
-  /** Clinical description of the diagnosis. */
+  @IsDateString()
+  diagnostic_date: string;
+
+  /** Clinical description (Strapi: diagnosis_details). */
   @IsOptional()
   @IsString()
   diagnosis_details?: string;
-
-  /** Short description. */
-  @IsOptional()
-  @IsString()
-  description?: string;
-
-  /** Clinician notes. */
-  @IsOptional()
-  @IsString()
-  notes?: string;
-
-  @IsOptional()
-  @IsDateString()
-  diagnostic_date?: string;
-
-  @IsOptional()
-  @IsString()
-  type?: string;
-
-  /** AI enrichment data. */
-  @IsOptional()
-  @ValidateNested()
-  @Type(() => AiEnrichmentDto)
-  ai_enrichment?: AiEnrichmentDto;
 }

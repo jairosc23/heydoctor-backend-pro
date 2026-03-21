@@ -6,18 +6,20 @@ import {
   Delete,
   Body,
   Param,
+  Query,
 } from '@nestjs/common';
 import { DiagnosisService } from './diagnosis.service';
 import { CreateDiagnosisDto } from './dto/create-diagnosis.dto';
 import { UpdateDiagnosisDto } from './dto/update-diagnosis.dto';
+import { DiagnosisFiltersDto } from './dto/diagnosis-filters.dto';
 
 @Controller('diagnosis')
 export class DiagnosisController {
   constructor(private readonly diagnosisService: DiagnosisService) {}
 
-  @Get('by-consultation/:consultationId')
-  async findByConsultation(@Param('consultationId') consultationId: string) {
-    return this.diagnosisService.findByConsultation(consultationId);
+  @Get()
+  async findAll(@Query() filters: DiagnosisFiltersDto) {
+    return this.diagnosisService.findAll(filters);
   }
 
   @Get(':id')
