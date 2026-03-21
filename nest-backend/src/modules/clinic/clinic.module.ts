@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import {
   Clinic,
   ClinicUser,
+  Doctor,
   Patient,
   Consultation,
   ClinicalRecord,
@@ -15,6 +16,7 @@ import { ClinicController, AppointmentsController } from './clinic.controller';
     TypeOrmModule.forFeature([
       Clinic,
       ClinicUser,
+      Doctor,
       Patient,
       Consultation,
       ClinicalRecord,

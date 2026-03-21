@@ -11,8 +11,8 @@ export class ClinicController {
 
   @Get('me')
   async getMe(@CurrentUser('userId') userId: string) {
-    const clinic = await this.clinicService.getClinicForUser(userId);
-    return { data: clinic };
+    const { clinic, doctor } = await this.clinicService.getClinicAndDoctorForUser(userId);
+    return { data: { clinic, doctor } };
   }
 }
 

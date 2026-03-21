@@ -26,6 +26,7 @@ import { ConsultationsModule } from './modules/consultations/consultations.modul
 import { DiagnosisModule } from './modules/diagnosis/diagnosis.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AiInsightsModule } from './modules/ai-insights/ai-insights.module';
+import { WebrtcModule } from './modules/webrtc/webrtc.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { AiInsightsModule } from './modules/ai-insights/ai-insights.module';
     PatientRemindersModule,
     AnalyticsModule,
     AiInsightsModule,
+    WebrtcModule,
   ],
   controllers: [AppController],
   providers: [

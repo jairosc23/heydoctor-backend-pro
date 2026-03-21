@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   Clinic,
+  Doctor,
   Patient,
   Consultation,
   ClinicalRecord,
@@ -18,6 +19,8 @@ export class ClinicService {
     private readonly clinicRepo: Repository<Clinic>,
     @InjectRepository(ClinicUser)
     private readonly clinicUserRepo: Repository<ClinicUser>,
+    @InjectRepository(Doctor)
+    private readonly doctorRepo: Repository<Doctor>,
     @InjectRepository(Patient)
     private readonly patientRepo: Repository<Patient>,
     @InjectRepository(Consultation)
@@ -35,6 +38,15 @@ export class ClinicService {
       throw new NotFoundException('Clinic not found for user');
     }
     return clinicUser.clinic;
+  }
+
+  async getClinicAndDoctorForUser(userId: string) {
+    const clinic = await this.getClinicForUser(userId);
+    const doctor = await this.doctorRepo.findOne({
+      where: { userId, clinicId: clinic.id },
+      relations: ['user'],
+    });
+    return { clinic, doctor };
   }
 
   async getPatients(clinicId: string, filters: PatientFiltersDto) {
