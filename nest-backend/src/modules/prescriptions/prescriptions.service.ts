@@ -9,7 +9,10 @@ import { Prescription, Medication } from '../../entities';
 import { CreatePrescriptionDto } from './dto/create-prescription.dto';
 import { UpdatePrescriptionDto } from './dto/update-prescription.dto';
 import { PrescriptionFiltersDto } from './dto/prescription-filters.dto';
-import { requireClinicId } from '../../common/utils/clinic-scope.util';
+import {
+  requireClinicId,
+  clampListPagination,
+} from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
 
@@ -41,6 +44,7 @@ export class PrescriptionsService {
       .andWhere('p.doctorId = :doctorId', { doctorId: doctor.id });
 
     if (filters?.patientId) {
+      await this.authz.assertPatientInClinic(filters.patientId, cid);
       qb.andWhere('p.patientId = :patientId', {
         patientId: filters.patientId,
       });
@@ -56,10 +60,15 @@ export class PrescriptionsService {
       });
     }
 
+    const { limit, offset } = clampListPagination(
+      filters?.limit,
+      filters?.offset,
+    );
+
     const [items, total] = await qb
       .orderBy('p.createdAt', 'DESC')
-      .skip(filters?.offset ?? 0)
-      .take(filters?.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
 
     return { data: items, total };

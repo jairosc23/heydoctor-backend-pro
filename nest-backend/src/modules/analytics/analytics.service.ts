@@ -20,8 +20,10 @@ export class AnalyticsService {
     const cid = requireClinicId(actor.clinicId);
     await this.authz.resolveDoctorForUser(actor.userId, cid);
 
+    const safeDays = Math.min(Math.max(1, days), 366);
+
     const fromDate = new Date();
-    fromDate.setDate(fromDate.getDate() - days);
+    fromDate.setDate(fromDate.getDate() - safeDays);
 
     const clinicUsers = await this.clinicUserRepo.find({
       where: { clinicId: cid },
@@ -50,7 +52,7 @@ export class AnalyticsService {
 
     return {
       data: {
-        period: { days, from: fromDate.toISOString() },
+        period: { days: safeDays, from: fromDate.toISOString() },
         adoption,
       },
     };

@@ -17,6 +17,7 @@ import { Diagnosis } from './diagnosis.entity';
 import { LabOrder } from './lab-order.entity';
 import { Prescription } from './prescription.entity';
 
+/** Ciclo clínico: draft → in_progress → completed → signed → locked (sin ediciones). */
 export type ConsultationStatus =
   | 'draft'
   | 'scheduled'

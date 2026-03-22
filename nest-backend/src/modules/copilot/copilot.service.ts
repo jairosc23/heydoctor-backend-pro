@@ -6,6 +6,7 @@ import { OpenAIService } from '../../common/services/openai.service';
 import { requireClinicId } from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
+import { sanitizeFreeTextForAi } from '../../common/utils/sanitize-ai-context.util';
 
 export interface CopilotSuggestionsResponse {
   symptoms_detected: string[];
@@ -72,12 +73,12 @@ export class CopilotService {
         { type: 'consultation', entity: consultation },
         actor,
       );
-      anonymizedContext = [
-        consultation.appointment_reason,
-        consultation.notes,
-      ]
-        .filter(Boolean)
-        .join('\n');
+      anonymizedContext = sanitizeFreeTextForAi(
+        [consultation.appointment_reason, consultation.notes]
+          .filter(Boolean)
+          .join('\n'),
+        6000,
+      );
     }
 
     try {
@@ -161,12 +162,22 @@ Genera sugerencias clínicas completas. Devuelve el JSON con las 6 claves solici
     }
 
     try {
-      const symptomsStr =
-        (consultationData.symptoms || []).join(', ') || 'No especificados';
-      const clinicalNotes = consultationData.clinical_notes || '';
-      const patientHistory = consultationData.patient_history || '';
+      const symptomsStr = sanitizeFreeTextForAi(
+        (consultationData.symptoms || []).join(', ') || 'No especificados',
+        4000,
+      );
+      const clinicalNotes = sanitizeFreeTextForAi(
+        consultationData.clinical_notes,
+        6000,
+      );
+      const patientHistory = sanitizeFreeTextForAi(
+        consultationData.patient_history,
+        6000,
+      );
       const messagesStr = (consultationData.messages || [])
-        .map((m) => `${m.role}: ${m.content}`)
+        .map((m) =>
+          `${m.role}: ${sanitizeFreeTextForAi(m.content, 2000)}`,
+        )
         .join('\n');
 
       const systemPrompt = `Eres un transcriptor médico. Genera una nota clínica en formato SOAP.

@@ -9,7 +9,10 @@ import { Diagnosis, Consultation } from '../../entities';
 import { CreateDiagnosisDto } from './dto/create-diagnosis.dto';
 import { UpdateDiagnosisDto } from './dto/update-diagnosis.dto';
 import { DiagnosisFiltersDto } from './dto/diagnosis-filters.dto';
-import { requireClinicId } from '../../common/utils/clinic-scope.util';
+import {
+  requireClinicId,
+  clampListPagination,
+} from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
 
@@ -44,13 +47,19 @@ export class DiagnosisService {
       });
     }
     if (filters?.patientId) {
+      await this.authz.assertPatientInClinic(filters.patientId, cid);
       qb.andWhere('d.patientId = :patientId', { patientId: filters.patientId });
     }
 
+    const { limit, offset } = clampListPagination(
+      filters?.limit,
+      filters?.offset,
+    );
+
     const [items, total] = await qb
       .orderBy('d.diagnostic_date', 'DESC')
-      .skip(filters?.offset ?? 0)
-      .take(filters?.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
 
     return { data: items, total };

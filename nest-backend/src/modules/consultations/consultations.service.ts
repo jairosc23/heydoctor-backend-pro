@@ -9,7 +9,10 @@ import { Consultation, Patient } from '../../entities';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { UpdateConsultationDto } from './dto/update-consultation.dto';
 import { ConsultationFiltersDto } from './dto/consultation-filters.dto';
-import { requireClinicId } from '../../common/utils/clinic-scope.util';
+import {
+  requireClinicId,
+  clampListPagination,
+} from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
 
@@ -53,10 +56,15 @@ export class ConsultationsService {
       qb.andWhere('c.date <= :to', { to: filters.to });
     }
 
+    const { limit, offset } = clampListPagination(
+      filters?.limit,
+      filters?.offset,
+    );
+
     const [items, total] = await qb
       .orderBy('c.date', 'DESC')
-      .skip(filters?.offset ?? 0)
-      .take(filters?.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
 
     return { data: items, total };
@@ -135,6 +143,12 @@ export class ConsultationsService {
       { type: 'consultation', entity: consultation },
       actor,
     );
+
+    if (consultation.status === 'locked') {
+      throw new ForbiddenException(
+        'Consultation is locked and cannot be modified',
+      );
+    }
 
     if (dto.patientId) {
       await this.authz.assertPatientInClinic(dto.patientId, cid);

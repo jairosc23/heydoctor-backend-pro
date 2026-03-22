@@ -9,7 +9,10 @@ import { LabOrder } from '../../entities';
 import { CreateLabOrderDto } from './dto/create-lab-order.dto';
 import { UpdateLabOrderDto } from './dto/update-lab-order.dto';
 import { LabOrderFiltersDto } from './dto/lab-order-filters.dto';
-import { requireClinicId } from '../../common/utils/clinic-scope.util';
+import {
+  requireClinicId,
+  clampListPagination,
+} from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
 
@@ -39,6 +42,7 @@ export class LabOrdersService {
       .andWhere('l.doctorId = :doctorId', { doctorId: doctor.id });
 
     if (filters?.patientId) {
+      await this.authz.assertPatientInClinic(filters.patientId, cid);
       qb.andWhere('l.patientId = :patientId', {
         patientId: filters.patientId,
       });
@@ -54,10 +58,15 @@ export class LabOrdersService {
       });
     }
 
+    const { limit, offset } = clampListPagination(
+      filters?.limit,
+      filters?.offset,
+    );
+
     const [items, total] = await qb
       .orderBy('l.createdAt', 'DESC')
-      .skip(filters?.offset ?? 0)
-      .take(filters?.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
 
     return { data: items, total };

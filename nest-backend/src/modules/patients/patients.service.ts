@@ -9,7 +9,10 @@ import { Patient } from '../../entities';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
 import { PatientFiltersDto } from '../clinic/dto/patient-filters.dto';
-import { requireClinicId } from '../../common/utils/clinic-scope.util';
+import {
+  requireClinicId,
+  clampListPagination,
+} from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
 
@@ -37,11 +40,16 @@ export class PatientsService {
         { search: `%${filters.search}%` },
       );
     }
+    const { limit, offset } = clampListPagination(
+      filters?.limit,
+      filters?.offset,
+    );
+
     const [items, total] = await qb
       .orderBy('p.lastname', 'ASC')
       .addOrderBy('p.firstname', 'ASC')
-      .skip(filters?.offset ?? 0)
-      .take(filters?.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
     return { data: items, total };
   }

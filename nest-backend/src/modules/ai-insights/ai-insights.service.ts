@@ -54,7 +54,7 @@ export class AiInsightsService {
     clinicId: string | undefined | null,
     limit: number,
     actor: AuthActor,
-  ): Promise<{ data: AiInsight[] }> {
+  ): Promise<{ data: AiInsight[]; disclaimer: string }> {
     const cid = requireClinicId(clinicId);
     await this.authz.resolveDoctorForUser(actor.userId, cid);
     await this.authz.assertPatientInClinic(patientId, cid);

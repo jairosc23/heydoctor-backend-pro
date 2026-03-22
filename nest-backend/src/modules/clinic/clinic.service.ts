@@ -1,5 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { requireClinicId } from '../../common/utils/clinic-scope.util';
+import {
+  requireClinicId,
+  clampListPagination,
+} from '../../common/utils/clinic-scope.util';
 import { AuthorizationService } from '../../common/services/authorization.service';
 import type { AuthActor } from '../../common/interfaces/auth-actor.interface';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -54,9 +57,15 @@ export class ClinicService {
   }
 
   async getPatients(clinicId: string, filters: PatientFiltersDto) {
+    const cid = requireClinicId(clinicId);
+    const { limit, offset } = clampListPagination(
+      filters.limit,
+      filters.offset,
+    );
+
     const qb = this.patientRepo
       .createQueryBuilder('p')
-      .where('p.clinicId = :clinicId', { clinicId });
+      .where('p.clinicId = :clinicId', { clinicId: cid });
 
     if (filters.search) {
       qb.andWhere(
@@ -68,8 +77,8 @@ export class ClinicService {
     const [items, total] = await qb
       .orderBy('p.lastname', 'ASC')
       .addOrderBy('p.firstname', 'ASC')
-      .skip(filters.offset ?? 0)
-      .take(filters.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
 
     return { data: items, total };
@@ -105,10 +114,15 @@ export class ClinicService {
       qb.andWhere('a.date <= :to', { to: filters.to });
     }
 
+    const { limit, offset } = clampListPagination(
+      filters.limit,
+      filters.offset,
+    );
+
     const [items, total] = await qb
       .orderBy('a.date', 'DESC')
-      .skip(filters.offset ?? 0)
-      .take(filters.limit ?? 20)
+      .skip(offset)
+      .take(limit)
       .getManyAndCount();
 
     return { data: items, total };

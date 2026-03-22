@@ -76,3 +76,17 @@ export function sanitizeContextJsonForAi(
     return '{}';
   }
 }
+
+/**
+ * Texto libre antes de enviarlo a un LLM: trunca y reduce fugas obvias (email, cadenas largas de dígitos).
+ */
+export function sanitizeFreeTextForAi(
+  input: string | undefined | null,
+  maxLen = 8000,
+): string {
+  let s = (input ?? '').slice(0, maxLen);
+  s = s.replace(/\b[\w.%+-]+@[\w.-]+\.[A-Za-z]{2,}\b/g, '[redacted]');
+  s = s.replace(/\b\+?\d[\d\s\-]{8,}\b/g, '[redacted]');
+  s = s.replace(/\b\d{6,}\b/g, '[redacted]');
+  return s;
+}
