@@ -1,8 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { User } from './user.entity';
+import { UserRole } from './user-role.enum';
+
+const BCRYPT_ROUNDS = 12;
 
 @Injectable()
 export class UsersService {
@@ -12,7 +15,9 @@ export class UsersService {
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email: email.toLowerCase() } });
+    return this.usersRepository.findOne({
+      where: { email: email.toLowerCase() },
+    });
   }
 
   async findById(id: string): Promise<User | null> {
@@ -20,14 +25,24 @@ export class UsersService {
   }
 
   /**
-   * Validates email + password for login. Email is normalized to lowercase.
+   * Loads user including password hash (for credential checks only).
    */
+  private async findByEmailWithPasswordHash(
+    email: string,
+  ): Promise<User | null> {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.passwordHash')
+      .where('user.email = :email', { email: email.toLowerCase() })
+      .getOne();
+  }
+
   async validateCredentials(
     email: string,
     plainPassword: string,
   ): Promise<User | null> {
-    const user = await this.findByEmail(email);
-    if (!user) {
+    const user = await this.findByEmailWithPasswordHash(email);
+    if (!user?.passwordHash) {
       return null;
     }
     const match = await bcrypt.compare(plainPassword, user.passwordHash);
@@ -35,14 +50,29 @@ export class UsersService {
   }
 
   /**
-   * Creates a user (e.g. seeding / admin tooling). Password is hashed with bcrypt.
+   * Creates a user with bcrypt-hashed password. Default role: doctor.
    */
-  async create(email: string, plainPassword: string): Promise<User> {
-    const passwordHash = await bcrypt.hash(plainPassword, 12);
+  async create(
+    email: string,
+    plainPassword: string,
+    role: UserRole = UserRole.DOCTOR,
+  ): Promise<User> {
+    const normalized = email.toLowerCase();
+    const existing = await this.findByEmail(normalized);
+    if (existing) {
+      throw new ConflictException('Email is already registered');
+    }
+    const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
     const entity = this.usersRepository.create({
-      email: email.toLowerCase(),
+      email: normalized,
       passwordHash,
+      role,
     });
-    return this.usersRepository.save(entity);
+    const saved = await this.usersRepository.save(entity);
+    const user = await this.findById(saved.id);
+    if (!user) {
+      throw new Error('Failed to load user after create');
+    }
+    return user;
   }
 }

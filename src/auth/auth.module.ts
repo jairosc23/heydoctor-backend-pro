@@ -5,6 +5,7 @@ import { PassportModule } from '@nestjs/passport';
 import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
@@ -14,22 +15,16 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const expiresRaw = config.get<string>('JWT_EXPIRES_IN');
-        const expiresIn = expiresRaw
-          ? Number.parseInt(expiresRaw, 10)
-          : 7 * 24 * 60 * 60;
-        return {
-          secret: config.getOrThrow<string>('JWT_SECRET'),
-          signOptions: {
-            expiresIn: Number.isFinite(expiresIn) ? expiresIn : 7 * 24 * 60 * 60,
-          },
-        };
-      },
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('JWT_SECRET'),
+        signOptions: {
+          expiresIn: '7d',
+        },
+      }),
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, JwtStrategy, JwtAuthGuard],
+  exports: [AuthService, JwtModule, JwtAuthGuard],
 })
 export class AuthModule {}

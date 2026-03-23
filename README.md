@@ -14,22 +14,15 @@ cp .env.example .env
 # Edita DATABASE_URL, JWT_SECRET y PORT (por defecto 3001)
 ```
 
-## Usuario inicial (login)
+## Autenticación
 
-No hay endpoint público de registro. Crea el primer usuario en base de datos:
+- **Registro:** `POST /api/auth/register` — `{ "email", "password" }` (mín. 6 caracteres). Rol por defecto: `doctor`.
+- **Login:** `POST /api/auth/login` — `{ "email", "password" }`.
+- Respuesta: `{ "access_token": "...", "user": { "id", "email", "role" } }`. El hash de contraseña **nunca** se devuelve.
+- JWT: expiración **7d**, secreto `JWT_SECRET`. Payload: `{ sub, email, role }`.
 
-1. Genera un hash bcrypt (cost 12) de tu contraseña, por ejemplo con Node:
-
-   ```bash
-   node -e "require('bcrypt').hash('TuPasswordSeguro123', 12).then(console.log)"
-   ```
-
-2. Inserta en PostgreSQL (ajusta el hash):
-
-   ```sql
-   INSERT INTO users (id, email, password_hash, created_at)
-   VALUES (gen_random_uuid(), 'admin@heydoctor.local', '<PEGAR_HASH_AQUI>', NOW());
-   ```
+Rutas protegidas (ej. `GET /api/consultations`): cabecera  
+`Authorization: Bearer <access_token>`.
 
 En desarrollo, con `NODE_ENV !== production`, TypeORM **sincroniza** el esquema automáticamente. En **producción** usa migraciones (`synchronize` está desactivado).
 
@@ -42,8 +35,7 @@ npm run start:dev
 
 - API: `http://localhost:3001/api`
 - Salud: `GET /api/health`
-- Login: `POST /api/auth/login` — body JSON `{ "email", "password" }`
-- Pacientes (PostgreSQL / TypeORM, sin JWT): `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
+- Pacientes: `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
 - Consultas (JWT): `GET /api/consultations`
 
 ## Variables de entorno
@@ -58,7 +50,7 @@ npm run start:dev
 
 ## Estructura
 
-- `src/auth` — login JWT
-- `src/users` — usuarios (credenciales)
+- `src/auth` — registro, login, JWT, `JwtAuthGuard`, `JwtStrategy`
+- `src/users` — entidad `User` (email, hash, rol)
 - `src/patients` — pacientes persistidos en PostgreSQL vía TypeORM
 - `src/consultations` — consultas (listado inicial)

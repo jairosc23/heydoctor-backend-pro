@@ -1,9 +1,11 @@
+import { Exclude } from 'class-transformer';
 import {
   Column,
   CreateDateColumn,
   Entity,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { UserRole } from './user-role.enum';
 
 @Entity('users')
 export class User {
@@ -13,8 +15,17 @@ export class User {
   @Column({ unique: true })
   email: string;
 
-  @Column({ name: 'password_hash' })
+  /** Never expose in API responses; omitted from default SELECT (see UsersService). */
+  @Exclude()
+  @Column({ name: 'password_hash', select: false })
   passwordHash: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.DOCTOR,
+  })
+  role: UserRole;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
