@@ -7,6 +7,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { Consultation } from './consultation.entity';
 import { ConsultationStatus } from './consultation-status.enum';
@@ -25,6 +26,7 @@ export class ConsultationsService {
     @InjectRepository(Consultation)
     private readonly consultationsRepository: Repository<Consultation>,
     private readonly authorizationService: AuthorizationService,
+    private readonly auditService: AuditService,
   ) {}
 
   async create(
@@ -137,6 +139,20 @@ export class ConsultationsService {
       this.logger.log(
         `Consultation ${saved.id} status changed from ${previousStatus} to ${dto.status} by user ${authUser.sub}`,
       );
+
+      void this.auditService.logSuccess({
+        userId: authUser.sub,
+        action: 'CONSULTATION_STATUS_CHANGE',
+        resource: 'consultation',
+        resourceId: saved.id,
+        clinicId: saved.clinicId ?? consultation.clinicId,
+        httpStatus: 200,
+        metadata: {
+          from: previousStatus,
+          to: dto.status,
+          type: 'status_transition',
+        },
+      });
     }
 
     return saved;
