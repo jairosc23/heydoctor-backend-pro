@@ -176,6 +176,8 @@ export class ConsultationsService {
 
     await this.consultationsRepository.remove(consultation);
 
+    const capturedAt = new Date().toISOString();
+
     void this.auditService.logSuccess({
       userId: authUser.sub,
       action: 'CONSULTATION_DELETE',
@@ -185,7 +187,13 @@ export class ConsultationsService {
       httpStatus: 200,
       metadata: {
         type: 'delete',
-        deletedSnapshot: snapshot,
+        deletedSnapshot: {
+          ...snapshot,
+          _meta: {
+            capturedAt,
+            capturedBy: authUser.sub,
+          },
+        },
       },
     });
   }
