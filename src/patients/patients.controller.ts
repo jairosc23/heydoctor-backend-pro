@@ -12,9 +12,18 @@ export class PatientsController {
 
   constructor(private readonly patientsService: PatientsService) {}
 
+  /** Emits DEBUG in non-production, LOG in production (less noisy default levels). */
+  private logRequest(message: string): void {
+    if (process.env.NODE_ENV === 'production') {
+      this.logger.log(message);
+    } else {
+      this.logger.debug(message);
+    }
+  }
+
   @Get()
   findAll(@CurrentUser() user: AuthenticatedUser) {
-    this.logger.debug(`findAll requested by user ${user.sub} (${user.email})`);
+    this.logRequest(`findAll requested by user ${user.sub} (${user.email})`);
     return this.patientsService.findAll();
   }
 
@@ -23,7 +32,7 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePatientDto,
   ) {
-    this.logger.debug(`create requested by user ${user.sub} (${user.email})`);
+    this.logRequest(`create requested by user ${user.sub} (${user.email})`);
     return this.patientsService.create(dto);
   }
 }
