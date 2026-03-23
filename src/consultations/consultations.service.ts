@@ -170,6 +170,21 @@ export class ConsultationsService {
       throw new ForbiddenException('Consultation is locked and cannot be deleted');
     }
 
+    const snapshot = { ...consultation };
+
     await this.consultationsRepository.remove(consultation);
+
+    void this.auditService.logSuccess({
+      userId: authUser.sub,
+      action: 'CONSULTATION_DELETE',
+      resource: 'consultation',
+      resourceId: snapshot.id,
+      clinicId: snapshot.clinicId,
+      httpStatus: 200,
+      metadata: {
+        type: 'delete',
+        deletedSnapshot: snapshot,
+      },
+    });
   }
 }
