@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ForbiddenException,
   Injectable,
   NotFoundException,
@@ -9,6 +10,7 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { Consultation } from './consultation.entity';
 import { ConsultationStatus } from './consultation-status.enum';
+import { isValidTransition } from './consultation-status.transitions';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { UpdateConsultationDto } from './dto/update-consultation.dto';
 
@@ -93,6 +95,14 @@ export class ConsultationsService {
 
     if (consultation.status === ConsultationStatus.LOCKED) {
       throw new ForbiddenException('Consultation is locked and cannot be modified');
+    }
+
+    if (dto.status !== undefined) {
+      if (!isValidTransition(consultation.status, dto.status)) {
+        throw new BadRequestException(
+          `Invalid status transition: cannot change from "${consultation.status}" to "${dto.status}"`,
+        );
+      }
     }
 
     if (dto.diagnosis !== undefined) {
