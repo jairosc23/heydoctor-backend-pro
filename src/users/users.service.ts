@@ -2,16 +2,24 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import { ClinicService } from '../clinic/clinic.service';
 import { User } from './user.entity';
 import { UserRole } from './user-role.enum';
 
 const BCRYPT_ROUNDS = 12;
+
+/** Clinic name for new registrations: use email (capped) per multi-tenant phase 1. */
+function clinicNameForNewUser(email: string): string {
+  const trimmed = email.trim();
+  return trimmed.length <= 200 ? trimmed : trimmed.slice(0, 200);
+}
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly clinicService: ClinicService,
   ) {}
 
   async findByEmail(email: string): Promise<User | null> {
@@ -50,7 +58,7 @@ export class UsersService {
   }
 
   /**
-   * Creates a user with bcrypt-hashed password. Default role: doctor.
+   * Creates a clinic, then a user with bcrypt-hashed password. Default role: doctor.
    */
   async create(
     email: string,
@@ -62,11 +70,17 @@ export class UsersService {
     if (existing) {
       throw new ConflictException('Email is already registered');
     }
+
+    const clinic = await this.clinicService.createClinic(
+      clinicNameForNewUser(normalized),
+    );
+
     const passwordHash = await bcrypt.hash(plainPassword, BCRYPT_ROUNDS);
     const entity = this.usersRepository.create({
       email: normalized,
       passwordHash,
       role,
+      clinic,
     });
     const saved = await this.usersRepository.save(entity);
     const user = await this.findById(saved.id);

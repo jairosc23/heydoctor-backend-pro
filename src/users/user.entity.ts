@@ -3,8 +3,12 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
+  RelationId,
 } from 'typeorm';
+import { Clinic } from '../clinic/clinic.entity';
 import { UserRole } from './user-role.enum';
 
 @Entity('users')
@@ -26,6 +30,14 @@ export class User {
     default: UserRole.DOCTOR,
   })
   role: UserRole;
+
+  @ManyToOne(() => Clinic, { nullable: false, onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'clinic_id' })
+  clinic: Clinic;
+
+  /** FK column `clinic_id` (read-only mirror for queries / future JWT). */
+  @RelationId((user: User) => user.clinic)
+  clinicId: string;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

@@ -16,7 +16,7 @@ cp .env.example .env
 
 ## Autenticación
 
-- **Registro:** `POST /api/auth/register` — `{ "email", "password" }` (mín. 6 caracteres). Rol por defecto: `doctor`.
+- **Registro:** `POST /api/auth/register` — `{ "email", "password" }` (mín. 6 caracteres). Rol por defecto: `doctor`. En cada registro se crea una **clínica** y el usuario queda asociado (`clinic_id`); el nombre de la clínica usa el email (máx. 200 caracteres).
 - **Login:** `POST /api/auth/login` — `{ "email", "password" }`.
 - Respuesta: `{ "access_token": "...", "user": { "id", "email", "role" } }`. El hash de contraseña **nunca** se devuelve.
 - JWT: expiración **7d**, secreto `JWT_SECRET`. Payload: `{ sub, email, role }`.
@@ -50,7 +50,8 @@ npm run start:dev
 
 ## Estructura
 
+- `src/clinic` — entidad `Clinic`, `ClinicService` (fase multi-tenant)
 - `src/auth` — registro, login, JWT, `JwtAuthGuard`, `JwtStrategy`
-- `src/users` — entidad `User` (email, hash, rol)
+- `src/users` — entidad `User` (email, hash, rol, clínica)
 - `src/patients` — pacientes persistidos en PostgreSQL vía TypeORM
 - `src/consultations` — consultas (listado inicial)
