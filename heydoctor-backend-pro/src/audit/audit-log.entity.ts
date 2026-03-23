@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import { AuditOutcome } from './audit-outcome.enum';
 
+@Index(['clinicId', 'createdAt'])
+@Index(['action', 'createdAt'])
 @Entity('audit_logs')
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
