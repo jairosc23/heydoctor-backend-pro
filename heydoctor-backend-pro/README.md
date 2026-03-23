@@ -50,6 +50,7 @@ npm run start:dev
 
 ## Estructura
 
+- `src/authorization` — `AuthorizationService` (aislamiento por `clinicId` y paciente)
 - `src/clinic` — entidad `Clinic`, `ClinicService` (fase multi-tenant)
 - `src/auth` — registro, login, JWT, `JwtAuthGuard`, `JwtStrategy`
 - `src/users` — entidad `User` (email, hash, rol, clínica)

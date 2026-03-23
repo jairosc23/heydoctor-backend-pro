@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { AuthorizationService } from '../authorization/authorization.service';
 import { UsersService } from '../users/users.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { Patient } from './patient.entity';
@@ -16,6 +17,7 @@ export class PatientsService {
     @InjectRepository(Patient)
     private readonly patientsRepository: Repository<Patient>,
     private readonly usersService: UsersService,
+    private readonly authorizationService: AuthorizationService,
   ) {}
 
   /**
@@ -43,6 +45,7 @@ export class PatientsService {
     authUser: AuthenticatedUser,
   ): Promise<Patient> {
     const clinicId = await this.resolveClinicId(authUser);
+    await this.authorizationService.assertUserInClinic(authUser, clinicId);
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.patientsRepository.findOne({
