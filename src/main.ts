@@ -1,6 +1,9 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { AuditInterceptor } from './audit/audit.interceptor';
+import { AuditService } from './audit/audit.service';
+import { AuthorizationService } from './authorization/authorization.service';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -8,6 +11,12 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api');
+
+  const auditService = app.get(AuditService);
+  const authorizationService = app.get(AuthorizationService);
+  app.useGlobalInterceptors(
+    new AuditInterceptor(auditService, authorizationService),
+  );
   app.enableCors({
     origin: config.get<string>('CORS_ORIGIN')?.split(',').map((s) => s.trim()) ?? true,
     credentials: true,
