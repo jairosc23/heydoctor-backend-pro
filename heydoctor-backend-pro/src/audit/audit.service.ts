@@ -5,18 +5,31 @@ import { AuditLog } from './audit-log.entity';
 import { AuditOutcome } from './audit-outcome.enum';
 import type { AuditLogErrorPayload, AuditLogSuccessPayload } from './audit.types';
 
-/** Sliding window for in-memory alert heuristics (no Redis). */
-const SHORT_WINDOW_MS = 5 * 60 * 1000;
-const MAX_403_PER_USER = 5;
-/** Fires when crossing this count (i.e. 6th 403 within the window). */
-const ABUSE_WARN_AT = MAX_403_PER_USER + 1;
-const MAX_STATUS_CHANGES_IN_WINDOW = 25;
-const STATUS_CHANGE_WARN_AT = MAX_STATUS_CHANGES_IN_WINDOW + 1;
+/** Tunables for in-memory alert heuristics (see handlers below). */
+const ALERT_CONFIG = {
+  SHORT_WINDOW_MS: 5 * 60 * 1000,
+  MAX_403_PER_USER: 5,
+  /** Global CONSULTATION_STATUS_CHANGE events allowed in window before warn. */
+  MAX_STATUS_CHANGES: 25,
+} as const;
+
+/** Warn when crossing strictly above MAX (e.g. 6th 403 when MAX is 5). */
+const abuseWarnAt = ALERT_CONFIG.MAX_403_PER_USER + 1;
+const statusChangeWarnAt = ALERT_CONFIG.MAX_STATUS_CHANGES + 1;
+
+/** Context passed to alert handlers after a persisted audit row. */
+export type AuditAlertLogContext = {
+  userId?: string | null;
+  httpStatus: number;
+  action: string;
+};
 
 @Injectable()
 export class AuditService {
   private readonly logger = new Logger(AuditService.name);
 
+  // TODO: Replace in-memory counters with Redis (or similar) for multi-instance environments
+  // so thresholds are shared across pods and survive process restarts.
   private readonly user403Timestamps = new Map<string, number[]>();
   private readonly statusChangeTimestamps: number[] = [];
 
@@ -39,11 +52,13 @@ export class AuditService {
         metadata: data.metadata ?? null,
       });
       await this.auditLogsRepository.save(row);
-      this.evaluateAlertsAfterSave({
+      const log: AuditAlertLogContext = {
         userId: data.userId,
         httpStatus: data.httpStatus,
         action: data.action,
-      });
+      };
+      this.handle403Alerts(log);
+      this.handleStatusChangeAlerts(log);
     } catch (err) {
       this.logger.error('AuditService.logSuccess failed', err);
     }
@@ -63,47 +78,58 @@ export class AuditService {
         metadata: data.metadata ?? null,
       });
       await this.auditLogsRepository.save(row);
-      this.evaluateAlertsAfterSave({
+      const log: AuditAlertLogContext = {
         userId: data.userId,
         httpStatus: data.httpStatus,
         action: data.action,
-      });
+      };
+      this.handle403Alerts(log);
+      this.handleStatusChangeAlerts(log);
     } catch (err) {
       this.logger.error('AuditService.logError failed', err);
     }
   }
 
   private pruneWindow(timestamps: number[]): number[] {
-    const cutoff = Date.now() - SHORT_WINDOW_MS;
+    const cutoff = Date.now() - ALERT_CONFIG.SHORT_WINDOW_MS;
     return timestamps.filter((t) => t >= cutoff);
   }
 
   /**
-   * Lightweight heuristics only (Logger.warn). Never blocks requests.
+   * Tracks HTTP 403 audit events per user in a sliding window.
+   * TODO: Swap Map + arrays for Redis INCR + EXPIRE or sorted sets for horizontal scale.
    */
-  private evaluateAlertsAfterSave(ctx: {
-    userId?: string | null;
-    httpStatus: number;
-    action: string;
-  }): void {
-    if (ctx.httpStatus === 403 && ctx.userId) {
-      const list = this.user403Timestamps.get(ctx.userId) ?? [];
-      list.push(Date.now());
-      const pruned = this.pruneWindow(list);
-      this.user403Timestamps.set(ctx.userId, pruned);
-      if (pruned.length === ABUSE_WARN_AT) {
-        this.logger.warn(`Potential abuse detected for user ${ctx.userId}`);
-      }
+  private handle403Alerts(log: AuditAlertLogContext): void {
+    if (log.httpStatus !== 403 || !log.userId) {
+      return;
     }
 
-    if (ctx.action === 'CONSULTATION_STATUS_CHANGE') {
-      this.statusChangeTimestamps.push(Date.now());
-      const pruned = this.pruneWindow(this.statusChangeTimestamps);
-      this.statusChangeTimestamps.length = 0;
-      this.statusChangeTimestamps.push(...pruned);
-      if (pruned.length === STATUS_CHANGE_WARN_AT) {
-        this.logger.warn('Unusual status changes activity');
-      }
+    const list = this.user403Timestamps.get(log.userId) ?? [];
+    list.push(Date.now());
+    const pruned = this.pruneWindow(list);
+    this.user403Timestamps.set(log.userId, pruned);
+
+    if (pruned.length === abuseWarnAt) {
+      this.logger.warn(`Potential abuse detected for user ${log.userId}`);
+    }
+  }
+
+  /**
+   * Tracks CONSULTATION_STATUS_CHANGE volume globally in a sliding window.
+   * TODO: Use Redis for cluster-wide rate detection; optionally scope by clinicId from log extensions.
+   */
+  private handleStatusChangeAlerts(log: AuditAlertLogContext): void {
+    if (log.action !== 'CONSULTATION_STATUS_CHANGE') {
+      return;
+    }
+
+    this.statusChangeTimestamps.push(Date.now());
+    const pruned = this.pruneWindow(this.statusChangeTimestamps);
+    this.statusChangeTimestamps.length = 0;
+    this.statusChangeTimestamps.push(...pruned);
+
+    if (pruned.length === statusChangeWarnAt) {
+      this.logger.warn('Unusual status changes activity');
     }
   }
 }
