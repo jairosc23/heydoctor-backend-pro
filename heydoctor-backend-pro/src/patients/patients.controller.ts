@@ -24,7 +24,7 @@ export class PatientsController {
   @Get()
   findAll(@CurrentUser() user: AuthenticatedUser) {
     this.logRequest(`findAll requested by user ${user.sub} (${user.email})`);
-    return this.patientsService.findAll();
+    return this.patientsService.findAll(user);
   }
 
   @Post()
@@ -33,6 +33,6 @@ export class PatientsController {
     @Body() dto: CreatePatientDto,
   ) {
     this.logRequest(`create requested by user ${user.sub} (${user.email})`);
-    return this.patientsService.create(dto);
+    return this.patientsService.create(dto, user);
   }
 }

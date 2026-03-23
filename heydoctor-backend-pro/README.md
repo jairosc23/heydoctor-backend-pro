@@ -35,7 +35,7 @@ npm run start:dev
 
 - API: `http://localhost:3001/api`
 - Salud: `GET /api/health`
-- Pacientes (**JWT**): `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
+- Pacientes (**JWT**, **por clínica**): `GET|POST /api/patients` — solo pacientes de la clínica del usuario; body `POST`: `{ "name", "email" }` (email único por clínica).
 - Consultas (JWT): `GET /api/consultations`
 
 ## Variables de entorno
