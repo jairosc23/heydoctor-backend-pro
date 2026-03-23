@@ -21,7 +21,7 @@ cp .env.example .env
 - Respuesta: `{ "access_token": "...", "user": { "id", "email", "role" } }`. El hash de contraseña **nunca** se devuelve.
 - JWT: expiración **7d**, secreto `JWT_SECRET`. Payload: `{ sub, email, role }`.
 
-Rutas protegidas (`GET|POST /api/patients`, `GET /api/consultations`, etc.): cabecera  
+Rutas protegidas (pacientes, consultas, etc.): cabecera  
 `Authorization: Bearer <access_token>`.
 
 En desarrollo, con `NODE_ENV !== production`, TypeORM **sincroniza** el esquema automáticamente. En **producción** usa migraciones (`synchronize` está desactivado).
@@ -36,7 +36,7 @@ npm run start:dev
 - API: `http://localhost:3001/api`
 - Salud: `GET /api/health`
 - Pacientes (**JWT**, **por clínica**): `GET|POST /api/patients` — solo pacientes de la clínica del usuario; body `POST`: `{ "name", "email" }` (email único por clínica).
-- Consultas (JWT): `GET /api/consultations`
+- Consultas clínicas (**JWT**, **por clínica**): `POST|GET /api/consultations`, `GET|PATCH|DELETE /api/consultations/:id` — `clinic_id` y paciente validados vía `AuthorizationService`; estado `locked` bloquea PATCH/DELETE. `POST` body: `{ "patientId", "reason" }`.
 
 ## Variables de entorno
 
@@ -55,4 +55,4 @@ npm run start:dev
 - `src/auth` — registro, login, JWT, `JwtAuthGuard`, `JwtStrategy`
 - `src/users` — entidad `User` (email, hash, rol, clínica)
 - `src/patients` — pacientes persistidos en PostgreSQL vía TypeORM
-- `src/consultations` — consultas (listado inicial)
+- `src/consultations` — expediente clínico (`Consultation`, estados `draft` → `locked`, multi-tenant)
