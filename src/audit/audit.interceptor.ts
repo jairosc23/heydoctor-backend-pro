@@ -88,6 +88,7 @@ export class AuditInterceptor implements NestInterceptor {
       path: normalizedPath,
       ip: req.ip ?? null,
       userAgent,
+      requestId: req.requestId ?? null,
     };
   }
 

@@ -4,10 +4,14 @@ import { NestFactory } from '@nestjs/core';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { AuditService } from './audit/audit.service';
 import { AuthorizationService } from './authorization/authorization.service';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  app.use(new RequestIdMiddleware().use);
+
   const config = app.get(ConfigService);
 
   app.setGlobalPrefix('api');
