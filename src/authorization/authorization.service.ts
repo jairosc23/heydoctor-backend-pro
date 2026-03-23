@@ -7,7 +7,13 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { Patient } from '../patients/patient.entity';
+import { User } from '../users/user.entity';
 import { UsersService } from '../users/users.service';
+
+export type UserWithClinicContext = {
+  user: User;
+  clinicId: string;
+};
 
 @Injectable()
 export class AuthorizationService {
@@ -18,16 +24,48 @@ export class AuthorizationService {
   ) {}
 
   /**
-   * Ensures the authenticated user (loaded from DB via sub) belongs to `clinicId`.
-   * Never trusts JWT for clinic membership.
+   * Single DB read: authenticated user + verified clinicId (never from JWT).
    */
+  async getUserWithClinic(
+    authUser: AuthenticatedUser,
+  ): Promise<UserWithClinicContext> {
+    const user = await this.usersService.findById(authUser.sub);
+    if (!user) {
+      throw new ForbiddenException('User has no clinic assigned');
+    }
+    if (!user.clinicId) {
+      throw new ForbiddenException('User has no clinic assigned');
+    }
+    return { user, clinicId: user.clinicId };
+  }
+
+  /**
+   * Ensures the authenticated user belongs to `clinicId`.
+   * Pass `loadedUser` to skip a duplicate findById when context was just resolved
+   * (e.g. after {@link getUserWithClinic}).
+   */
+  assertUserInClinic(
+    authUser: AuthenticatedUser,
+    clinicId: string,
+  ): Promise<void>;
+  assertUserInClinic(
+    authUser: AuthenticatedUser,
+    clinicId: string,
+    loadedUser: User,
+  ): Promise<void>;
   async assertUserInClinic(
     authUser: AuthenticatedUser,
     clinicId: string,
+    loadedUser?: User,
   ): Promise<void> {
-    const user = await this.usersService.findById(authUser.sub);
+    const user =
+      loadedUser ?? (await this.usersService.findById(authUser.sub));
+
     if (!user?.clinicId) {
       throw new ForbiddenException('User has no clinic assigned');
+    }
+    if (loadedUser && loadedUser.id !== authUser.sub) {
+      throw new ForbiddenException('Access denied for this clinic');
     }
     if (user.clinicId !== clinicId) {
       throw new ForbiddenException('Access denied for this clinic');
@@ -41,10 +79,7 @@ export class AuthorizationService {
     authUser: AuthenticatedUser,
     patientId: string,
   ): Promise<Patient> {
-    const user = await this.usersService.findById(authUser.sub);
-    if (!user?.clinicId) {
-      throw new ForbiddenException('User has no clinic assigned');
-    }
+    const { clinicId } = await this.getUserWithClinic(authUser);
 
     const patient = await this.patientsRepository.findOne({
       where: { id: patientId },
@@ -52,7 +87,7 @@ export class AuthorizationService {
     if (!patient) {
       throw new NotFoundException('Patient not found');
     }
-    if (patient.clinicId !== user.clinicId) {
+    if (patient.clinicId !== clinicId) {
       throw new ForbiddenException('Access denied for this patient');
     }
 
