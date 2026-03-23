@@ -1,47 +1,60 @@
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ConflictException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'crypto';
 import { CreatePatientDto } from './dto/create-patient.dto';
-import { Patient } from './patient.entity';
+
+/** Paciente almacenado en memoria (sin persistencia en BD). */
+export interface Patient {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: Date;
+}
 
 @Injectable()
 export class PatientsService {
-  constructor(
-    @InjectRepository(Patient)
-    private readonly patientsRepository: Repository<Patient>,
-  ) {}
+  private readonly patients: Patient[] = [
+    {
+      id: 'mock-001',
+      name: 'Ana García',
+      email: 'ana.garcia@example.com',
+      createdAt: new Date('2025-01-10T10:00:00.000Z'),
+    },
+    {
+      id: 'mock-002',
+      name: 'Carlos López',
+      email: 'carlos.lopez@example.com',
+      createdAt: new Date('2025-02-15T14:30:00.000Z'),
+    },
+    {
+      id: 'mock-003',
+      name: 'María Fernández',
+      email: 'maria.fernandez@example.com',
+      createdAt: new Date('2025-03-01T09:15:00.000Z'),
+    },
+  ];
 
-  async findAll(): Promise<Patient[]> {
-    return this.patientsRepository.find({
-      order: { createdAt: 'DESC' },
-    });
+  findAll(): Patient[] {
+    return [...this.patients].sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+    );
   }
 
-  async findOne(id: string): Promise<Patient> {
-    const patient = await this.patientsRepository.findOne({ where: { id } });
-    if (!patient) {
-      throw new NotFoundException(`Patient ${id} not found`);
-    }
-    return patient;
-  }
-
-  async create(dto: CreatePatientDto): Promise<Patient> {
-    const email = dto.email.toLowerCase();
-    const existing = await this.patientsRepository.findOne({
-      where: { email },
-    });
-    if (existing) {
+  create(dto: CreatePatientDto): Patient {
+    const email = dto.email.trim().toLowerCase();
+    const exists = this.patients.some(
+      (p) => p.email.toLowerCase() === email,
+    );
+    if (exists) {
       throw new ConflictException('A patient with this email already exists');
     }
-    const entity = this.patientsRepository.create({
+
+    const patient: Patient = {
+      id: randomUUID(),
       name: dto.name.trim(),
       email,
-      phone: dto.phone.trim(),
-    });
-    return this.patientsRepository.save(entity);
+      createdAt: new Date(),
+    };
+    this.patients.push(patient);
+    return patient;
   }
 }
