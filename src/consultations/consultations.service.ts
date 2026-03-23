@@ -12,6 +12,7 @@ export class ConsultationsService {
 
   async findAll(): Promise<Consultation[]> {
     return this.consultationsRepository.find({
+      relations: { patient: true },
       order: { createdAt: 'DESC' },
     });
   }

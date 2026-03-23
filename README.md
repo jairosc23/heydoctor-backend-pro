@@ -43,7 +43,7 @@ npm run start:dev
 - API: `http://localhost:3001/api`
 - Salud: `GET /api/health`
 - Login: `POST /api/auth/login` — body JSON `{ "email", "password" }`
-- Pacientes (en memoria, sin JWT): `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
+- Pacientes (PostgreSQL / TypeORM, sin JWT): `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
 - Consultas (JWT): `GET /api/consultations`
 
 ## Variables de entorno
@@ -60,5 +60,5 @@ npm run start:dev
 
 - `src/auth` — login JWT
 - `src/users` — usuarios (credenciales)
-- `src/patients` — pacientes (lista mock + array en memoria; sin TypeORM por ahora)
+- `src/patients` — pacientes persistidos en PostgreSQL vía TypeORM
 - `src/consultations` — consultas (listado inicial)
