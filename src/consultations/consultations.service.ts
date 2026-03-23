@@ -1,6 +1,7 @@
 import {
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,6 +19,8 @@ import { UpdateConsultationDto } from './dto/update-consultation.dto';
 
 @Injectable()
 export class ConsultationsService {
+  private readonly logger = new Logger(ConsultationsService.name);
+
   constructor(
     @InjectRepository(Consultation)
     private readonly consultationsRepository: Repository<Consultation>,
@@ -99,6 +102,9 @@ export class ConsultationsService {
       throw new ForbiddenException('Consultation is locked and cannot be modified');
     }
 
+    const previousStatus =
+      dto.status !== undefined ? consultation.status : undefined;
+
     if (dto.status !== undefined) {
       assertClinicalStatusTransition(consultation.status, dto.status);
       assertRoleForTransition(
@@ -121,7 +127,19 @@ export class ConsultationsService {
       consultation.status = dto.status;
     }
 
-    return this.consultationsRepository.save(consultation);
+    const saved = await this.consultationsRepository.save(consultation);
+
+    if (
+      dto.status !== undefined &&
+      previousStatus !== undefined &&
+      dto.status !== previousStatus
+    ) {
+      this.logger.log(
+        `Consultation ${saved.id} status changed from ${previousStatus} to ${dto.status} by user ${authUser.sub}`,
+      );
+    }
+
+    return saved;
   }
 
   async remove(id: string, authUser: AuthenticatedUser): Promise<void> {
