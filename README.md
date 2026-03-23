@@ -21,7 +21,7 @@ cp .env.example .env
 - Respuesta: `{ "access_token": "...", "user": { "id", "email", "role" } }`. El hash de contraseña **nunca** se devuelve.
 - JWT: expiración **7d**, secreto `JWT_SECRET`. Payload: `{ sub, email, role }`.
 
-Rutas protegidas (ej. `GET /api/consultations`): cabecera  
+Rutas protegidas (`GET|POST /api/patients`, `GET /api/consultations`, etc.): cabecera  
 `Authorization: Bearer <access_token>`.
 
 En desarrollo, con `NODE_ENV !== production`, TypeORM **sincroniza** el esquema automáticamente. En **producción** usa migraciones (`synchronize` está desactivado).
@@ -35,7 +35,7 @@ npm run start:dev
 
 - API: `http://localhost:3001/api`
 - Salud: `GET /api/health`
-- Pacientes: `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
+- Pacientes (**JWT**): `GET|POST /api/patients` — body `POST`: `{ "name", "email" }`
 - Consultas (JWT): `GET /api/consultations`
 
 ## Variables de entorno
