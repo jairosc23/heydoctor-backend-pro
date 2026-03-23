@@ -3,7 +3,9 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
+import { AuthorizationModule } from './authorization/authorization.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
@@ -29,7 +31,9 @@ import { UsersModule } from './users/users.module';
       },
     }),
     UsersModule,
+    AuthorizationModule,
     AuthModule,
+    AuditModule,
     PatientsModule,
     ConsultationsModule,
   ],

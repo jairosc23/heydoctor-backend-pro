@@ -50,6 +50,7 @@ npm run start:dev
 
 ## Estructura
 
+- `src/audit` — `AuditLog` (tabla `audit_logs`), `AuditService`, `AuditInterceptor` global en `main.ts`
 - `src/authorization` — `AuthorizationService` (aislamiento por `clinicId` y paciente)
 - `src/clinic` — entidad `Clinic`, `ClinicService` (fase multi-tenant)
 - `src/auth` — registro, login, JWT, `JwtAuthGuard`, `JwtStrategy`
