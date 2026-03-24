@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { AuthorizationModule } from '../authorization/authorization.module';
+import { AppLoggerService } from '../common/logger/app-logger.service';
 import { Consultation } from './consultation.entity';
 import { ConsultationsController } from './consultations.controller';
 import { ConsultationsService } from './consultations.service';
@@ -15,7 +16,13 @@ import { ConsultationsService } from './consultations.service';
     AuditModule,
   ],
   controllers: [ConsultationsController],
-  providers: [ConsultationsService],
+  providers: [
+    {
+      provide: AppLoggerService,
+      useFactory: () => new AppLoggerService(ConsultationsService.name),
+    },
+    ConsultationsService,
+  ],
   exports: [ConsultationsService, TypeOrmModule],
 })
 export class ConsultationsModule {}

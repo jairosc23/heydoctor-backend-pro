@@ -1,13 +1,13 @@
 import {
   ForbiddenException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
+import { AppLoggerService } from '../common/logger/app-logger.service';
 import { getCurrentRequestId } from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { Consultation } from './consultation.entity';
@@ -22,13 +22,12 @@ import { UpdateConsultationDto } from './dto/update-consultation.dto';
 
 @Injectable()
 export class ConsultationsService {
-  private readonly logger = new Logger(ConsultationsService.name);
-
   constructor(
     @InjectRepository(Consultation)
     private readonly consultationsRepository: Repository<Consultation>,
     private readonly authorizationService: AuthorizationService,
     private readonly auditService: AuditService,
+    private readonly logger: AppLoggerService,
   ) {}
 
   async create(
