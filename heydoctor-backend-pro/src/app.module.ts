@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -15,6 +16,16 @@ import { UsersModule } from './users/users.module';
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
+    }),
+    ThrottlerModule.forRoot({
+      throttlers: [
+        {
+          ttl: 60_000,
+          limit: 100,
+        },
+      ],
+      /** Rate limit bucket per client IP (see Express req.ip; set trust proxy if behind a load balancer). */
+      getTracker: (req) => String(req.ip ?? 'unknown'),
     }),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
@@ -38,6 +49,6 @@ import { UsersModule } from './users/users.module';
     ConsultationsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, ThrottlerGuard],
 })
 export class AppModule {}

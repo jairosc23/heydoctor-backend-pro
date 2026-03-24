@@ -1,6 +1,7 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
+import { ThrottlerGuard } from '@nestjs/throttler';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { AuditService } from './audit/audit.service';
 import { AuthorizationService } from './authorization/authorization.service';
@@ -9,6 +10,9 @@ import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  // ThrottlerGuard needs DI (storage + options); `new ThrottlerGuard()` would omit those.
+  app.useGlobalGuards(app.get(ThrottlerGuard));
 
   app.use(new RequestIdMiddleware().use);
 
