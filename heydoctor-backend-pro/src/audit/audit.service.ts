@@ -1,6 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { AppLoggerService } from '../common/logger/app-logger.service';
 import { AuditLog } from './audit-log.entity';
 import { AuditOutcome } from './audit-outcome.enum';
 import type { AuditLogErrorPayload, AuditLogSuccessPayload } from './audit.types';
@@ -26,8 +27,6 @@ export type AuditAlertLogContext = {
 
 @Injectable()
 export class AuditService {
-  private readonly logger = new Logger(AuditService.name);
-
   // TODO: Replace in-memory counters with Redis (or similar) for multi-instance environments
   // so thresholds are shared across pods and survive process restarts.
   private readonly user403Timestamps = new Map<string, number[]>();
@@ -36,6 +35,7 @@ export class AuditService {
   constructor(
     @InjectRepository(AuditLog)
     private readonly auditLogsRepository: Repository<AuditLog>,
+    private readonly logger: AppLoggerService,
   ) {}
 
   async logSuccess(data: AuditLogSuccessPayload): Promise<void> {
