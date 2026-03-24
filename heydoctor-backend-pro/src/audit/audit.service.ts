@@ -25,6 +25,14 @@ export type AuditAlertLogContext = {
   action: string;
 };
 
+/** Optional filters for compliance CSV export. */
+export type AuditExportFilters = {
+  clinicId?: string;
+  action?: string;
+  fromDate?: string;
+  toDate?: string;
+};
+
 @Injectable()
 export class AuditService {
   // TODO: Replace in-memory counters with Redis (or similar) for multi-instance environments
@@ -37,6 +45,45 @@ export class AuditService {
     private readonly auditLogsRepository: Repository<AuditLog>,
     private readonly logger: AppLoggerService,
   ) {}
+
+  /**
+   * Returns audit rows for reporting (ordered by time ascending).
+   * Large result sets are not paginated; consider adding limits in production.
+   */
+  async findLogsForExport(filters: AuditExportFilters): Promise<AuditLog[]> {
+    const qb = this.auditLogsRepository
+      .createQueryBuilder('log')
+      .select([
+        'log.userId',
+        'log.action',
+        'log.resource',
+        'log.resourceId',
+        'log.clinicId',
+        'log.status',
+        'log.httpStatus',
+        'log.createdAt',
+      ])
+      .orderBy('log.createdAt', 'ASC');
+
+    if (filters.clinicId !== undefined) {
+      qb.andWhere('log.clinicId = :clinicId', { clinicId: filters.clinicId });
+    }
+    if (filters.action !== undefined && filters.action !== '') {
+      qb.andWhere('log.action = :action', { action: filters.action });
+    }
+    if (filters.fromDate !== undefined) {
+      qb.andWhere('log.createdAt >= :fromDate', {
+        fromDate: new Date(filters.fromDate),
+      });
+    }
+    if (filters.toDate !== undefined) {
+      qb.andWhere('log.createdAt <= :toDate', {
+        toDate: new Date(filters.toDate),
+      });
+    }
+
+    return qb.getMany();
+  }
 
   async logSuccess(data: AuditLogSuccessPayload): Promise<void> {
     try {
