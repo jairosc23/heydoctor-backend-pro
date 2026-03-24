@@ -31,6 +31,7 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'CONSULTATION_DELETE',
     resource: 'consultation',
   },
+  'GET /api/audit/export': { action: 'AUDIT_EXPORT', resource: 'audit' },
 };
 
 const FALLBACK_RESOURCE = 'unknown';
