@@ -45,6 +45,22 @@ export class Consultation {
   @RelationId((c: Consultation) => c.consent)
   consentId: string | null;
 
+  /**
+   * Copia inmutable de los datos del consentimiento en el momento de crear la consulta.
+   * Permite prueba legal aunque el registro en `telemedicine_consents` cambie o el FK quede en null.
+   */
+  @Column({ name: 'consent_version', type: 'varchar', length: 32, nullable: true })
+  consentVersion: string | null;
+
+  @Column({ name: 'consent_given_at', type: 'timestamptz', nullable: true })
+  consentGivenAt: Date | null;
+
+  @Column({ name: 'consent_ip', type: 'varchar', length: 64, nullable: true })
+  consentIp: string | null;
+
+  @Column({ name: 'consent_user_agent', type: 'text', nullable: true })
+  consentUserAgent: string | null;
+
   @Column({ name: 'doctor_id', type: 'uuid' })
   doctorId: string;
 
