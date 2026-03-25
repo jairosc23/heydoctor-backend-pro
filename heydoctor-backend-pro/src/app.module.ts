@@ -4,6 +4,7 @@ import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthorizationModule } from './authorization/authorization.module';
@@ -47,6 +48,7 @@ import { UsersModule } from './users/users.module';
     AuditModule,
     PatientsModule,
     ConsultationsModule,
+    AiModule,
   ],
   controllers: [AppController],
   providers: [AppService, ThrottlerGuard],
