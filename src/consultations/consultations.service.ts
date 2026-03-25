@@ -11,6 +11,7 @@ import { AuditService } from '../audit/audit.service';
 import { AppLoggerService } from '../common/logger/app-logger.service';
 import { getCurrentRequestId } from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { ConsentService } from '../consents/consent.service';
 import { Consultation } from './consultation.entity';
 import { ConsultationStatus } from './consultation-status.enum';
 import { logConsultationStatusChange } from './consultation-status-audit.helper';
@@ -28,6 +29,7 @@ export class ConsultationsService {
     @InjectRepository(Consultation)
     private readonly consultationsRepository: Repository<Consultation>,
     private readonly authorizationService: AuthorizationService,
+    private readonly consentService: ConsentService,
     private readonly auditService: AuditService,
     private readonly aiService: AiService,
     private readonly logger: AppLoggerService,
@@ -44,14 +46,36 @@ export class ConsultationsService {
       dto.patientId,
     );
 
+    const consent = await this.consentService.getLatestConsent(authUser.sub);
+    if (!consent) {
+      throw new ForbiddenException(
+        'Consent required before consultation',
+      );
+    }
+
     const entity = this.consultationsRepository.create({
       patient: { id: dto.patientId },
       clinic: { id: clinicId },
+      consent: { id: consent.id },
       doctorId: authUser.sub,
       reason: dto.reason.trim(),
       status: ConsultationStatus.DRAFT,
     });
-    return this.consultationsRepository.save(entity);
+    const saved = await this.consultationsRepository.save(entity);
+
+    void this.auditService.logSuccess({
+      userId: authUser.sub,
+      action: 'CONSULTATION_CREATED',
+      resource: 'consultation',
+      resourceId: saved.id,
+      clinicId,
+      httpStatus: 201,
+      metadata: {
+        consentId: consent.id,
+      },
+    });
+
+    return saved;
   }
 
   async findAll(authUser: AuthenticatedUser): Promise<Consultation[]> {

@@ -61,6 +61,21 @@ export class ConsentService {
    * Indica si existe registro de consentimiento para el usuario y la versión indicada.
    * La versión requerida la define el backend ({@link TELEMEDICINE_CONSENT_VERSION}).
    */
+  /**
+   * Último registro de consentimiento del usuario para la versión legal vigente
+   * ({@link TELEMEDICINE_CONSENT_VERSION}), por `createdAt` descendente.
+   * Con el índice único (userId, version) hay como máximo una fila por versión.
+   */
+  async getLatestConsent(userId: string): Promise<TelemedicineConsent | null> {
+    return this.consentsRepository.findOne({
+      where: {
+        userId,
+        version: TELEMEDICINE_CONSENT_VERSION,
+      },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   async hasValidConsent(userId: string, version: string): Promise<boolean> {
     const row = await this.consentsRepository.findOne({
       where: { userId, version },
