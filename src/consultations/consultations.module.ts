@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AiModule } from '../ai/ai.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { AuthorizationModule } from '../authorization/authorization.module';
@@ -14,6 +15,7 @@ import { ConsultationsService } from './consultations.service';
     AuthModule,
     AuthorizationModule,
     AuditModule,
+    AiModule,
   ],
   controllers: [ConsultationsController],
   providers: [

@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { AiService } from '../ai/ai.service';
 import { AuditService } from '../audit/audit.service';
 import { AppLoggerService } from '../common/logger/app-logger.service';
 import { getCurrentRequestId } from '../common/request-context.storage';
@@ -27,6 +28,7 @@ export class ConsultationsService {
     private readonly consultationsRepository: Repository<Consultation>,
     private readonly authorizationService: AuthorizationService,
     private readonly auditService: AuditService,
+    private readonly aiService: AiService,
     private readonly logger: AppLoggerService,
   ) {}
 
@@ -117,6 +119,10 @@ export class ConsultationsService {
       );
     }
 
+    const prevNotes = consultation.notes;
+    const prevDiagnosis = consultation.diagnosis;
+    const prevTreatment = consultation.treatment;
+
     if (dto.diagnosis !== undefined) {
       consultation.diagnosis = dto.diagnosis;
     }
@@ -131,6 +137,15 @@ export class ConsultationsService {
     }
 
     const saved = await this.consultationsRepository.save(consultation);
+
+    const clinicalDocumentationChanged =
+      saved.notes !== prevNotes ||
+      saved.diagnosis !== prevDiagnosis ||
+      saved.treatment !== prevTreatment;
+
+    if (clinicalDocumentationChanged) {
+      this.runAiClinicalSummaryInBackground(saved);
+    }
 
     if (
       dto.status !== undefined &&
@@ -150,6 +165,29 @@ export class ConsultationsService {
     }
 
     return saved;
+  }
+
+  /**
+   * Non-blocking AI assist: failures are swallowed so PATCH latency and success are unchanged.
+   */
+  private runAiClinicalSummaryInBackground(consultation: Consultation): void {
+    void (async () => {
+      try {
+        await this.aiService.generateClinicalSummary({
+          reason: consultation.reason,
+          notes: consultation.notes ?? '',
+          diagnosis: consultation.diagnosis ?? '',
+          treatment: consultation.treatment ?? '',
+        });
+        this.logger.log(
+          `AI summary generated for consultation ${consultation.id}`,
+        );
+      } catch {
+        this.logger.warn(
+          `AI summary skipped or failed for consultation ${consultation.id}`,
+        );
+      }
+    })();
   }
 
   async remove(id: string, authUser: AuthenticatedUser): Promise<void> {
