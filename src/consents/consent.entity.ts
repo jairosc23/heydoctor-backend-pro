@@ -1,0 +1,39 @@
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
+
+/** Versión del texto legal / flujo de consentimiento (auditoría). */
+export const TELEMEDICINE_CONSENT_VERSION = 'v1';
+
+@Entity('telemedicine_consents')
+@Index(['userId', 'version'], { unique: true })
+export class TelemedicineConsent {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ name: 'user_id', type: 'uuid' })
+  userId: string;
+
+  @Column({ name: 'clinic_id', type: 'uuid' })
+  clinicId: string;
+
+  /** Momento en que el usuario aceptó; fijado en servidor (no enviado por el cliente). */
+  @Column({ name: 'consent_given_at', type: 'timestamptz' })
+  consentGivenAt: Date;
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  ip: string | null;
+
+  @Column({ name: 'user_agent', type: 'text', nullable: true })
+  userAgent: string | null;
+
+  @Column({ type: 'varchar', length: 32 })
+  version: string;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
+}

@@ -8,6 +8,7 @@ import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthorizationModule } from './authorization/authorization.module';
+import { ConsentModule } from './consents/consent.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
@@ -48,6 +49,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
     AuthModule,
     AuditModule,
     PatientsModule,
+    ConsentModule,
     ConsultationsModule,
     AiModule,
     WebrtcModule,
