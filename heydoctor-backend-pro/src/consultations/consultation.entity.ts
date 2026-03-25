@@ -10,6 +10,7 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Clinic } from '../clinic/clinic.entity';
+import { TelemedicineConsent } from '../consents/consent.entity';
 import { Patient } from '../patients/patient.entity';
 import { ConsultationStatus } from './consultation-status.enum';
 
@@ -32,6 +33,17 @@ export class Consultation {
 
   @RelationId((c: Consultation) => c.clinic)
   clinicId: string;
+
+  /** Consentimiento de telemedicina vigente al crear la consulta (trazabilidad legal). */
+  @ManyToOne(() => TelemedicineConsent, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'consent_id' })
+  consent: TelemedicineConsent | null;
+
+  @RelationId((c: Consultation) => c.consent)
+  consentId: string | null;
 
   @Column({ name: 'doctor_id', type: 'uuid' })
   doctorId: string;
