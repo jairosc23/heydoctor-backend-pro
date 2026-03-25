@@ -49,9 +49,30 @@ export class AiService {
   }
 
   private buildUserContent(dto: GenerateAiDto): string {
-    return [
+    const lines: string[] = [
       'Use only the following clinical fields (may be empty).',
       '',
+    ];
+
+    const age = dto.patientAge?.trim();
+    const sex = dto.patientSex?.trim();
+    if (age || sex) {
+      lines.push('Patient demographics (optional; verify at point of care):');
+      lines.push(`Age: ${age || 'not provided'}`);
+      lines.push(`Sex / gender: ${sex || 'not provided'}`);
+      lines.push('');
+    }
+
+    const prior = dto.priorNotesExcerpt?.trim();
+    if (prior) {
+      lines.push(
+        'Recent documentation tail (last up to 300 characters; may overlap full notes):',
+      );
+      lines.push(prior);
+      lines.push('');
+    }
+
+    lines.push(
       `Reason for visit / chief complaint:\n${dto.reason || '(none)'}`,
       '',
       `Clinical notes:\n${dto.notes || '(none)'}`,
@@ -59,7 +80,9 @@ export class AiService {
       `Working diagnosis (clinician-entered, not verified by AI):\n${dto.diagnosis || '(none)'}`,
       '',
       `Treatment / plan documented:\n${dto.treatment || '(none)'}`,
-    ].join('\n');
+    );
+
+    return lines.join('\n');
   }
 
   private parseClinicalJson(raw: string): ClinicalSummaryResult {
