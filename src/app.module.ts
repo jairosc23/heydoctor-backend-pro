@@ -11,6 +11,7 @@ import { AuthorizationModule } from './authorization/authorization.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
+import { WebrtcModule } from './webrtc/webrtc.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { UsersModule } from './users/users.module';
     PatientsModule,
     ConsultationsModule,
     AiModule,
+    WebrtcModule,
   ],
   controllers: [AppController],
   providers: [AppService, ThrottlerGuard],
