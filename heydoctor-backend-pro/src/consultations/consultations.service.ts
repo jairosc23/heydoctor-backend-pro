@@ -85,6 +85,17 @@ export class ConsultationsService {
     return consultation;
   }
 
+  /**
+   * Same access as {@link findOne}: user’s clinic must own the consultation.
+   * Used by WebRTC signaling so only authorized staff join the room.
+   */
+  async verifySignalingAccess(
+    id: string,
+    authUser: AuthenticatedUser,
+  ): Promise<void> {
+    await this.findOne(id, authUser);
+  }
+
   async getConsultationAi(
     id: string,
     authUser: AuthenticatedUser,
