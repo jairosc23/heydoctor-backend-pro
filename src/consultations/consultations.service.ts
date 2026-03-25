@@ -18,6 +18,7 @@ import {
   assertClinicalStatusTransition,
   assertRoleForTransition,
 } from './consultation-status.transitions';
+import type { ConsultationAiSnapshot } from './consultation-ai-snapshot.type';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { UpdateConsultationDto } from './dto/update-consultation.dto';
 
@@ -82,6 +83,39 @@ export class ConsultationsService {
       user,
     );
     return consultation;
+  }
+
+  async getConsultationAi(
+    id: string,
+    authUser: AuthenticatedUser,
+  ): Promise<ConsultationAiSnapshot> {
+    const { clinicId, user } =
+      await this.authorizationService.getUserWithClinic(authUser);
+    const row = await this.consultationsRepository.findOne({
+      where: { id, clinicId },
+      select: {
+        id: true,
+        aiSummary: true,
+        aiSuggestedDiagnosis: true,
+        aiImprovedNotes: true,
+        aiGeneratedAt: true,
+        clinicId: true,
+      },
+    });
+    if (!row) {
+      throw new NotFoundException('Consultation not found');
+    }
+    await this.authorizationService.assertUserInClinic(
+      authUser,
+      row.clinicId,
+      user,
+    );
+    return {
+      summary: row.aiSummary ?? null,
+      suggestedDiagnosis: row.aiSuggestedDiagnosis ?? null,
+      improvedNotes: row.aiImprovedNotes ?? null,
+      generatedAt: row.aiGeneratedAt ?? null,
+    };
   }
 
   async update(
@@ -173,12 +207,21 @@ export class ConsultationsService {
   private runAiClinicalSummaryInBackground(consultation: Consultation): void {
     void (async () => {
       try {
-        await this.aiService.generateClinicalSummary({
+        const result = await this.aiService.generateClinicalSummary({
           reason: consultation.reason,
           notes: consultation.notes ?? '',
           diagnosis: consultation.diagnosis ?? '',
           treatment: consultation.treatment ?? '',
         });
+        await this.consultationsRepository.update(
+          { id: consultation.id },
+          {
+            aiSummary: result.summary,
+            aiSuggestedDiagnosis: result.suggestedDiagnosis,
+            aiImprovedNotes: result.improvedNotes,
+            aiGeneratedAt: new Date(),
+          },
+        );
         this.logger.log(
           `AI summary generated for consultation ${consultation.id}`,
         );

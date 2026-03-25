@@ -34,6 +34,14 @@ export class ConsultationsController {
     return this.consultationsService.findAll(user);
   }
 
+  @Get(':id/ai')
+  getConsultationAi(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    return this.consultationsService.getConsultationAi(id, user);
+  }
+
   @Get(':id')
   findOne(
     @CurrentUser() user: AuthenticatedUser,

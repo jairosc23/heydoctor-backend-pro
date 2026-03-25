@@ -55,6 +55,18 @@ export class Consultation {
   })
   status: ConsultationStatus;
 
+  @Column({ name: 'ai_summary', type: 'text', nullable: true })
+  aiSummary: string | null;
+
+  @Column({ name: 'ai_suggested_diagnosis', type: 'jsonb', nullable: true })
+  aiSuggestedDiagnosis: string[] | null;
+
+  @Column({ name: 'ai_improved_notes', type: 'text', nullable: true })
+  aiImprovedNotes: string | null;
+
+  @Column({ name: 'ai_generated_at', type: 'timestamptz', nullable: true })
+  aiGeneratedAt: Date | null;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
