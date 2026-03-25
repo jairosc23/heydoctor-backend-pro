@@ -32,6 +32,10 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     resource: 'consultation',
   },
   'GET /api/audit/export': { action: 'AUDIT_EXPORT', resource: 'audit' },
+  'POST /api/ai/consultation-summary': {
+    action: 'AI_CONSULTATION_SUMMARY',
+    resource: 'ai',
+  },
 };
 
 const FALLBACK_RESOURCE = 'unknown';
