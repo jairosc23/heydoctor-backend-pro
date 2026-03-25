@@ -9,6 +9,11 @@ import {
   TelemedicineConsent,
 } from './consent.entity';
 
+export type TelemedicineConsentStatusDto = {
+  hasConsent: boolean;
+  version: string;
+};
+
 /** Respuesta API: sin IP ni user-agent (solo persistidos en BD para auditoría). */
 export type TelemedicineConsentView = {
   id: string;
@@ -51,6 +56,29 @@ export class ConsentService {
     private readonly consentsRepository: Repository<TelemedicineConsent>,
     private readonly authorizationService: AuthorizationService,
   ) {}
+
+  /**
+   * Indica si existe registro de consentimiento para el usuario y la versión indicada.
+   * La versión requerida la define el backend ({@link TELEMEDICINE_CONSENT_VERSION}).
+   */
+  async hasValidConsent(userId: string, version: string): Promise<boolean> {
+    const row = await this.consentsRepository.findOne({
+      where: { userId, version },
+      select: ['id'],
+    });
+    return row != null;
+  }
+
+  /**
+   * Estado frente a la versión vigente del servidor (no acepta versión del cliente).
+   */
+  async getTelemedicineStatus(
+    authUser: AuthenticatedUser,
+  ): Promise<TelemedicineConsentStatusDto> {
+    const version = TELEMEDICINE_CONSENT_VERSION;
+    const hasConsent = await this.hasValidConsent(authUser.sub, version);
+    return { hasConsent, version };
+  }
 
   private toView(entity: TelemedicineConsent): TelemedicineConsentView {
     return {

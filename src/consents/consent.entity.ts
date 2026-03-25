@@ -6,7 +6,11 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-/** Versión del texto legal / flujo de consentimiento (auditoría). */
+/**
+ * Versión vigente del consentimiento de telemedicina que exige el backend.
+ * Al cambiar el texto legal, subir versión (p. ej. `v2`) para obligar a re-consentir;
+ * no usar versiones enviadas por el cliente.
+ */
 export const TELEMEDICINE_CONSENT_VERSION = 'v1';
 
 @Entity('telemedicine_consents')
