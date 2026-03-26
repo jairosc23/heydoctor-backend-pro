@@ -5,6 +5,7 @@ import { AuditService } from '../audit/audit.service';
 import { QueryFailedError, Repository } from 'typeorm';
 import {
   SubscriptionChangeSource,
+  SubscriptionChangeReasonCode,
   Subscription,
   SubscriptionPlan,
   SubscriptionStatus,
@@ -14,6 +15,12 @@ const PLAN_RANK: Record<SubscriptionPlan, number> = {
   [SubscriptionPlan.FREE]: 0,
   [SubscriptionPlan.PRO]: 1,
 };
+
+function sanitizeReason(reason?: string): string | undefined {
+  if (typeof reason !== 'string') return undefined;
+  const clean = reason.trim();
+  return clean.length > 0 ? clean : undefined;
+}
 
 @Injectable()
 export class SubscriptionsService {
@@ -76,6 +83,9 @@ export class SubscriptionsService {
     plan: SubscriptionPlan,
     authUser: AuthenticatedUser,
     source: SubscriptionChangeSource = SubscriptionChangeSource.ADMIN_PANEL,
+    reason?: string,
+    reasonCode?: SubscriptionChangeReasonCode,
+    reasonText?: string,
   ): Promise<Subscription> {
     const existing = await this.getOrCreateForUser(userId);
     const previousPlan = existing.plan;
@@ -86,6 +96,8 @@ export class SubscriptionsService {
 
     existing.plan = plan;
     const saved = await this.subscriptionsRepository.save(existing);
+    const auditReason = sanitizeReason(reason);
+    const auditReasonText = sanitizeReason(reasonText);
 
     // Audit is best-effort: failure should never break admin operation.
     void this.auditService.logSuccess({
@@ -101,6 +113,9 @@ export class SubscriptionsService {
         changedBy: authUser.sub,
         source,
         type: 'plan_change',
+        ...(auditReason ? { reason: auditReason } : {}),
+        ...(reasonCode ? { reasonCode } : {}),
+        ...(auditReasonText ? { reasonText: auditReasonText } : {}),
       },
     });
 

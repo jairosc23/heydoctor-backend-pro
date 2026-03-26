@@ -39,6 +39,9 @@ export class SubscriptionsController {
       dto.plan,
       authUser,
       SubscriptionChangeSource.ADMIN_PANEL,
+      dto.reason,
+      dto.reasonCode,
+      dto.reasonText,
     );
   }
 }

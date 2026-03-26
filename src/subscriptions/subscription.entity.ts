@@ -23,6 +23,15 @@ export enum SubscriptionChangeSource {
   SYSTEM = 'system',
 }
 
+export enum SubscriptionChangeReasonCode {
+  TRIAL = 'trial',
+  SUPPORT = 'support',
+  SALES = 'sales',
+  REFUND = 'refund',
+  MANUAL = 'manual',
+  SYSTEM = 'system',
+}
+
 @Entity('subscriptions')
 @Index(['userId'], { unique: true })
 export class Subscription {
