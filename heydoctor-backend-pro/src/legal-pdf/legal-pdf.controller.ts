@@ -11,12 +11,16 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
+import { FeatureGuard } from '../subscriptions/guards/feature.guard';
+import { SubscriptionPlan } from '../subscriptions/subscription.entity';
 import { UserRole } from '../users/user-role.enum';
 import { LegalPdfService } from './legal-pdf.service';
 
 @Controller('legal')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureGuard)
 @Roles(UserRole.ADMIN, UserRole.DOCTOR)
+@RequirePlan(SubscriptionPlan.PRO)
 export class LegalPdfController {
   constructor(private readonly legalPdfService: LegalPdfService) {}
 
