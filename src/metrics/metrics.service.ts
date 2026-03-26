@@ -2,9 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
 import { AuditLog } from '../audit/audit-log.entity';
 import { DailyMetric } from './daily-metric.entity';
+import type { RollingMetricsDto } from './metrics-rolling.dto';
 
 type DailyMetricsTotals = {
   upgradesTotal: number;
@@ -82,6 +84,51 @@ export class MetricsService {
     });
 
     return saved;
+  }
+
+  async getRollingMetrics(
+    authUser: AuthenticatedUser,
+  ): Promise<RollingMetricsDto> {
+    const [row] = await this.dailyMetricsRepository.query(`
+      SELECT
+        COALESCE(SUM(upgrades_total) FILTER (WHERE date >= CURRENT_DATE - INTERVAL '7 days'), 0)  AS upgrades_7d,
+        COALESCE(SUM(upgrades_total) FILTER (WHERE date >= CURRENT_DATE - INTERVAL '30 days'), 0) AS upgrades_30d,
+        COALESCE(SUM(upgrades_sales) FILTER (WHERE date >= CURRENT_DATE - INTERVAL '30 days'), 0) AS sales_30d,
+        COALESCE(SUM(upgrades_support) FILTER (WHERE date >= CURRENT_DATE - INTERVAL '30 days'), 0) AS support_30d
+      FROM daily_metrics
+    `);
+
+    const upgrades7d = Number(row?.upgrades_7d ?? 0);
+    const upgrades30d = Number(row?.upgrades_30d ?? 0);
+    const sales30d = Number(row?.sales_30d ?? 0);
+    const support30d = Number(row?.support_30d ?? 0);
+
+    const conversionRate =
+      upgrades30d > 0
+        ? Math.round((sales30d / upgrades30d) * 10000) / 10000
+        : 0;
+
+    const result: RollingMetricsDto = {
+      upgrades7d,
+      upgrades30d,
+      sales30d,
+      support30d,
+      conversionRate,
+    };
+
+    void this.auditService.logSuccess({
+      userId: authUser.sub,
+      action: 'METRICS_ROLLING_READ',
+      resource: 'metrics',
+      resourceId: null,
+      clinicId: null,
+      httpStatus: 200,
+      metadata: {
+        period: '7d_30d',
+      },
+    });
+
+    return result;
   }
 
   @Cron('0 1 * * *')

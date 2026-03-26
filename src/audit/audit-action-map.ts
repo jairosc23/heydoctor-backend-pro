@@ -56,6 +56,10 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'LEGAL_CONSULTATION_PDF_EXPORT',
     resource: 'legal',
   },
+  'GET /api/metrics/rolling': {
+    action: 'METRICS_ROLLING_READ',
+    resource: 'metrics',
+  },
   'POST /api/ai/consultation-summary': {
     action: 'AI_CONSULTATION_SUMMARY',
     resource: 'ai',
