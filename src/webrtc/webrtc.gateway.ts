@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Logger, UseGuards } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { SkipThrottle } from '@nestjs/throttler';
 import {
@@ -15,6 +15,10 @@ import type { Server, Socket } from 'socket.io';
 import type { JwtPayload } from '../auth/types/jwt-payload.interface';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { ConsultationsService } from '../consultations/consultations.service';
+import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
+import { FeatureGuard } from '../subscriptions/guards/feature.guard';
+import { SubscriptionPlan } from '../subscriptions/subscription.entity';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { UsersService } from '../users/users.service';
 
 const UUID_V4 =
@@ -40,6 +44,8 @@ type IceCandidatePayload = SignalingPayload & {
     credentials: true,
   },
 })
+@UseGuards(FeatureGuard)
+@RequirePlan(SubscriptionPlan.PRO)
 export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server!: Server;
@@ -50,6 +56,7 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private readonly jwtService: JwtService,
     private readonly usersService: UsersService,
     private readonly consultationsService: ConsultationsService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   async handleConnection(client: Socket): Promise<void> {
@@ -75,6 +82,15 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
         email: user.email,
         role: user.role,
       };
+      const canUseWebrtc = await this.subscriptionsService.hasRequiredPlan(
+        authUser.sub,
+        SubscriptionPlan.PRO,
+      );
+      if (!canUseWebrtc) {
+        this.logger.warn(`WS disconnect: plan free (${client.id})`);
+        client.disconnect(true);
+        return;
+      }
       (client.data as { user?: AuthenticatedUser }).user = authUser;
     } catch {
       client.disconnect(true);

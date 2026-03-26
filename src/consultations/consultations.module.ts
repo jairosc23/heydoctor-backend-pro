@@ -6,6 +6,7 @@ import { AuthModule } from '../auth/auth.module';
 import { AuthorizationModule } from '../authorization/authorization.module';
 import { ConsentModule } from '../consents/consent.module';
 import { AppLoggerService } from '../common/logger/app-logger.service';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { Consultation } from './consultation.entity';
 import { ConsultationsController } from './consultations.controller';
 import { ConsultationsService } from './consultations.service';
@@ -16,6 +17,7 @@ import { ConsultationsService } from './consultations.service';
     AuthModule,
     AuthorizationModule,
     ConsentModule,
+    SubscriptionsModule,
     AuditModule,
     AiModule,
   ],

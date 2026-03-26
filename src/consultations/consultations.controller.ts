@@ -12,6 +12,9 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
+import { FeatureGuard } from '../subscriptions/guards/feature.guard';
+import { SubscriptionPlan } from '../subscriptions/subscription.entity';
 import { ConsultationsService } from './consultations.service';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { SignConsultationDto } from './dto/sign-consultation.dto';
@@ -36,6 +39,8 @@ export class ConsultationsController {
   }
 
   @Get(':id/ai')
+  @UseGuards(FeatureGuard)
+  @RequirePlan(SubscriptionPlan.PRO)
   getConsultationAi(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

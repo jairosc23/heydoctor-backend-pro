@@ -4,6 +4,7 @@ import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { AuthorizationModule } from '../authorization/authorization.module';
 import { Consultation } from '../consultations/consultation.entity';
+import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { LegalController } from './legal.controller';
 import { LegalService } from './legal.service';
 
@@ -13,6 +14,7 @@ import { LegalService } from './legal.service';
     AuthorizationModule,
     AuditModule,
     AuthModule,
+    SubscriptionsModule,
   ],
   controllers: [LegalController],
   providers: [LegalService],
