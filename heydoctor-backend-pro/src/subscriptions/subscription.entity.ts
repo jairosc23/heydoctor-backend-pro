@@ -16,6 +16,13 @@ export enum SubscriptionStatus {
   INACTIVE = 'inactive',
 }
 
+export enum SubscriptionChangeSource {
+  ADMIN_PANEL = 'admin_panel',
+  STRIPE = 'stripe',
+  WEBHOOK = 'webhook',
+  SYSTEM = 'system',
+}
+
 @Entity('subscriptions')
 @Index(['userId'], { unique: true })
 export class Subscription {

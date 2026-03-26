@@ -13,7 +13,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { UserRole } from '../users/user-role.enum';
-import { Subscription } from './subscription.entity';
+import { Subscription, SubscriptionChangeSource } from './subscription.entity';
 import { UpdateSubscriptionPlanDto } from './dto/update-subscription-plan.dto';
 import { SubscriptionsService } from './subscriptions.service';
 
@@ -34,6 +34,11 @@ export class SubscriptionsController {
     @Body() dto: UpdateSubscriptionPlanDto,
     @CurrentUser() authUser: AuthenticatedUser,
   ): Promise<Subscription> {
-    return this.subscriptionsService.updatePlan(userId, dto.plan, authUser);
+    return this.subscriptionsService.updatePlan(
+      userId,
+      dto.plan,
+      authUser,
+      SubscriptionChangeSource.ADMIN_PANEL,
+    );
   }
 }
