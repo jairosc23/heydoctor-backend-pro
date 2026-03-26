@@ -20,6 +20,14 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
   'POST /api/auth/login': { action: 'AUTH_LOGIN', resource: 'auth' },
   'GET /api/patients': { action: 'PATIENT_LIST', resource: 'patient' },
   'POST /api/patients': { action: 'PATIENT_CREATE', resource: 'patient' },
+  'GET /api/subscriptions': {
+    action: 'SUBSCRIPTIONS_LIST',
+    resource: 'subscription',
+  },
+  'PATCH /api/subscriptions/:id': {
+    action: 'SUBSCRIPTION_UPDATE_PLAN',
+    resource: 'subscription',
+  },
   'GET /api/consultations': { action: 'CONSULTATION_LIST', resource: 'consultation' },
   'POST /api/consultations': { action: 'CONSULTATION_CREATE', resource: 'consultation' },
   'GET /api/consultations/:id': { action: 'CONSULTATION_READ', resource: 'consultation' },

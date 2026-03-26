@@ -60,4 +60,19 @@ export class SubscriptionsService {
     }
     return PLAN_RANK[subscription.plan] >= PLAN_RANK[requiredPlan];
   }
+
+  async listAll(): Promise<Subscription[]> {
+    return this.subscriptionsRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async updatePlan(
+    userId: string,
+    plan: SubscriptionPlan,
+  ): Promise<Subscription> {
+    const subscription = await this.getOrCreateForUser(userId);
+    subscription.plan = plan;
+    return this.subscriptionsRepository.save(subscription);
+  }
 }
