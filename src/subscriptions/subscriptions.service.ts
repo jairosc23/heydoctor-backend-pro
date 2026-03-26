@@ -10,6 +10,7 @@ import {
   SubscriptionPlan,
   SubscriptionStatus,
 } from './subscription.entity';
+import { normalizeReasonCode } from './reason-normalizer';
 
 const PLAN_RANK: Record<SubscriptionPlan, number> = {
   [SubscriptionPlan.FREE]: 0,
@@ -98,6 +99,8 @@ export class SubscriptionsService {
     const saved = await this.subscriptionsRepository.save(existing);
     const auditReason = sanitizeReason(reason);
     const auditReasonText = sanitizeReason(reasonText);
+    const effectiveReasonCode =
+      reasonCode ?? normalizeReasonCode(auditReasonText);
 
     // Audit is best-effort: failure should never break admin operation.
     void this.auditService.logSuccess({
@@ -114,7 +117,7 @@ export class SubscriptionsService {
         source,
         type: 'plan_change',
         ...(auditReason ? { reason: auditReason } : {}),
-        ...(reasonCode ? { reasonCode } : {}),
+        ...(effectiveReasonCode ? { reasonCode: effectiveReasonCode } : {}),
         ...(auditReasonText ? { reasonText: auditReasonText } : {}),
       },
     });

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
@@ -12,6 +13,7 @@ import { ConsentModule } from './consents/consent.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { LegalPdfModule } from './legal-pdf/legal-pdf.module';
 import { LegalModule } from './legal/legal.module';
+import { MetricsModule } from './metrics/metrics.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
@@ -22,6 +24,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
     }),
+    ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
       throttlers: [
         {
@@ -55,6 +58,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
     ConsultationsModule,
     LegalPdfModule,
     LegalModule,
+    MetricsModule,
     AiModule,
     WebrtcModule,
   ],
