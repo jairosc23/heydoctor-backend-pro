@@ -4,6 +4,7 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
 import { QueryFailedError, Repository } from 'typeorm';
 import {
+  SubscriptionChangeSource,
   Subscription,
   SubscriptionPlan,
   SubscriptionStatus,
@@ -74,6 +75,7 @@ export class SubscriptionsService {
     userId: string,
     plan: SubscriptionPlan,
     authUser: AuthenticatedUser,
+    source: SubscriptionChangeSource = SubscriptionChangeSource.ADMIN_PANEL,
   ): Promise<Subscription> {
     const existing = await this.getOrCreateForUser(userId);
     const previousPlan = existing.plan;
@@ -97,6 +99,7 @@ export class SubscriptionsService {
         from: previousPlan,
         to: plan,
         changedBy: authUser.sub,
+        source,
         type: 'plan_change',
       },
     });
