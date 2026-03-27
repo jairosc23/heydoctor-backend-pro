@@ -1,5 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import {
+  Subscription,
+  SubscriptionPlan,
+} from '../subscriptions/subscription.entity';
 import { User } from '../users/user.entity';
 import { UserRole } from '../users/user-role.enum';
 import { UsersService } from '../users/users.service';
@@ -13,11 +19,21 @@ export type AuthUserView = {
   role: UserRole;
 };
 
+export type MeResponse = {
+  id: string;
+  email: string;
+  role: UserRole;
+  clinicId: string;
+  plan: SubscriptionPlan;
+};
+
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    @InjectRepository(Subscription)
+    private readonly subscriptionRepository: Repository<Subscription>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -51,6 +67,25 @@ export class AuthService {
     return {
       access_token,
       user: publicUser,
+    };
+  }
+
+  async getMe(userId: string): Promise<MeResponse> {
+    const user = await this.usersService.findById(userId);
+    if (!user) {
+      throw new UnauthorizedException();
+    }
+
+    const subscription = await this.subscriptionRepository.findOne({
+      where: { userId },
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      clinicId: user.clinicId,
+      plan: subscription?.plan ?? SubscriptionPlan.FREE,
     };
   }
 
