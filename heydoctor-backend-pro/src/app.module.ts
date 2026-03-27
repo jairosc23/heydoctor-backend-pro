@@ -17,6 +17,7 @@ import { MetricsModule } from './metrics/metrics.module';
 import { PaykuModule } from './payku/payku.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PatientsModule } from './patients/patients.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 
@@ -60,6 +61,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
     MetricsModule,
     PaykuModule,
     PaymentsModule,
+    SubscriptionsModule,
     AiModule,
     WebrtcModule,
   ],
