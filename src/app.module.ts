@@ -40,16 +40,14 @@ import { WebrtcModule } from './webrtc/webrtc.module';
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const isProd = config.get<string>('NODE_ENV') === 'production';
-        return {
-          type: 'postgres' as const,
-          url: config.getOrThrow<string>('DATABASE_URL'),
-          autoLoadEntities: true,
-          synchronize: true,
-          logging: config.get<string>('NODE_ENV') === 'development',
-        };
-      },
+      useFactory: (config: ConfigService) => ({
+        type: 'postgres' as const,
+        url: config.getOrThrow<string>('DATABASE_URL'),
+        autoLoadEntities: true,
+        synchronize: true,
+        logging: config.get<string>('NODE_ENV') === 'development',
+        ssl: { rejectUnauthorized: false },
+      }),
     }),
     UsersModule,
     AuthorizationModule,
