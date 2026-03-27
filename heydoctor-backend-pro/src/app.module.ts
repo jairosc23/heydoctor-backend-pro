@@ -42,7 +42,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         type: 'postgres' as const,
-        url: config.getOrThrow<string>('DATABASE_URL'),
+        url: config.get<string>('DATABASE_PUBLIC_URL') || config.getOrThrow<string>('DATABASE_URL'),
         autoLoadEntities: true,
         synchronize: true,
         logging: true,
