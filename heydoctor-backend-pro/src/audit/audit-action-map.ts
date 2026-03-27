@@ -57,6 +57,10 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'LEGAL_CONSULTATION_PDF_EXPORT',
     resource: 'legal',
   },
+  'POST /api/payku/webhook': {
+    action: 'PAYKU_WEBHOOK_RECEIVED',
+    resource: 'payment',
+  },
   'POST /api/payments/create-checkout-session': {
     action: 'STRIPE_CHECKOUT_CREATED',
     resource: 'payment',

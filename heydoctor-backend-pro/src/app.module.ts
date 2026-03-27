@@ -14,6 +14,7 @@ import { ConsultationsModule } from './consultations/consultations.module';
 import { LegalPdfModule } from './legal-pdf/legal-pdf.module';
 import { LegalModule } from './legal/legal.module';
 import { MetricsModule } from './metrics/metrics.module';
+import { PaykuModule } from './payku/payku.module';
 import { PaymentsModule } from './payments/payments.module';
 import { PatientsModule } from './patients/patients.module';
 import { UsersModule } from './users/users.module';
@@ -60,6 +61,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
     LegalPdfModule,
     LegalModule,
     MetricsModule,
+    PaykuModule,
     PaymentsModule,
     AiModule,
     WebrtcModule,
