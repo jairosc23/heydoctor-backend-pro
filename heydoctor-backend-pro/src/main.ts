@@ -10,7 +10,7 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { rawBody: true });
   app.useWebSocketAdapter(new IoAdapter(app));
 
   // ThrottlerGuard needs DI (storage + options); `new ThrottlerGuard()` would omit those.
