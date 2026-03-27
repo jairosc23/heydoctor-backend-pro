@@ -46,7 +46,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
           type: 'postgres' as const,
           url: config.getOrThrow<string>('DATABASE_URL'),
           autoLoadEntities: true,
-          synchronize: !isProd,
+          synchronize: true,
           logging: config.get<string>('NODE_ENV') === 'development',
         };
       },
