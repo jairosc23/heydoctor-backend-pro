@@ -56,6 +56,14 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'LEGAL_CONSULTATION_PDF_EXPORT',
     resource: 'legal',
   },
+  'POST /api/payments/create-checkout-session': {
+    action: 'STRIPE_CHECKOUT_CREATED',
+    resource: 'payment',
+  },
+  'POST /api/payments/webhook': {
+    action: 'STRIPE_WEBHOOK_RECEIVED',
+    resource: 'payment',
+  },
   'GET /api/metrics/rolling': {
     action: 'METRICS_ROLLING_READ',
     resource: 'metrics',
