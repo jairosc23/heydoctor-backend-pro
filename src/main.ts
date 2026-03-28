@@ -1,3 +1,5 @@
+console.log('>>> MAIN.TS LOADED');
+
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -10,12 +12,13 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  console.log('>>> BOOTSTRAP START');
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
+  console.log('>>> NestFactory.create DONE');
+
   app.useWebSocketAdapter(new IoAdapter(app));
-
-  // ThrottlerGuard needs DI (storage + options); `new ThrottlerGuard()` would omit those.
   app.useGlobalGuards(app.get(ThrottlerGuard));
-
   app.use(new RequestIdMiddleware().use);
 
   const config = app.get(ConfigService);
@@ -46,5 +49,6 @@ async function bootstrap() {
     10,
   );
   await app.listen(port);
+  console.log(`>>> APP LISTENING ON PORT ${port}`);
 }
 void bootstrap();
