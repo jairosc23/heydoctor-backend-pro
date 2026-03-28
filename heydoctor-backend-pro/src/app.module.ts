@@ -40,14 +40,27 @@ import { WebrtcModule } from './webrtc/webrtc.module';
     }),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres' as const,
-        url: config.get<string>('DATABASE_PUBLIC_URL') || config.getOrThrow<string>('DATABASE_URL'),
-        autoLoadEntities: true,
-        synchronize: true,
-        logging: true,
-        ssl: { rejectUnauthorized: false },
-      }),
+      useFactory: (config: ConfigService) => {
+        const dbUrl =
+          config.get<string>('DATABASE_PUBLIC_URL') ||
+          config.getOrThrow<string>('DATABASE_URL');
+
+        const masked = dbUrl.replace(/:([^@]+)@/, ':***@');
+        console.log('[TypeORM] Connecting to:', masked);
+
+        return {
+          type: 'postgres' as const,
+          url: dbUrl,
+          autoLoadEntities: true,
+          synchronize: true,
+          logging: ['error', 'warn', 'query'],
+          logger: 'advanced-console',
+          retryAttempts: 1,
+          retryDelay: 0,
+          keepConnectionAlive: false,
+          ssl: { rejectUnauthorized: false },
+        };
+      },
     }),
     UsersModule,
     AuthorizationModule,
