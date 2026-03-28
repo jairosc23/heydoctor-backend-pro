@@ -25,6 +25,14 @@ console.log('[DB URL]', dbUrl);
 
 @Module({
   imports: [
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      url: dbUrl,
+      ssl: { rejectUnauthorized: false },
+      autoLoadEntities: true,
+      synchronize: true,
+      logging: true,
+    }),
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: ['.env.local', '.env'],
@@ -38,14 +46,6 @@ console.log('[DB URL]', dbUrl);
         },
       ],
       getTracker: (req) => String(req.ip ?? 'unknown'),
-    }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: dbUrl,
-      ssl: { rejectUnauthorized: false },
-      autoLoadEntities: true,
-      synchronize: true,
-      logging: true,
     }),
     UsersModule,
     AuthorizationModule,
