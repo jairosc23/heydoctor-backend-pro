@@ -61,14 +61,6 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'PAYKU_WEBHOOK_RECEIVED',
     resource: 'payment',
   },
-  'POST /api/payments/create-checkout-session': {
-    action: 'STRIPE_CHECKOUT_CREATED',
-    resource: 'payment',
-  },
-  'POST /api/payments/webhook': {
-    action: 'STRIPE_WEBHOOK_RECEIVED',
-    resource: 'payment',
-  },
   'GET /api/metrics/rolling': {
     action: 'METRICS_ROLLING_READ',
     resource: 'metrics',

@@ -18,7 +18,7 @@ export enum SubscriptionStatus {
 
 export enum SubscriptionChangeSource {
   ADMIN_PANEL = 'admin_panel',
-  STRIPE = 'stripe',
+  PAYKU = 'payku',
   WEBHOOK = 'webhook',
   SYSTEM = 'system',
 }
