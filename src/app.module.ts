@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
+import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -20,6 +20,9 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 
+const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+console.log('[DB URL]', dbUrl);
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -34,38 +37,15 @@ import { WebrtcModule } from './webrtc/webrtc.module';
           limit: 100,
         },
       ],
-      /** Rate limit bucket per client IP (see Express req.ip; set trust proxy if behind a load balancer). */
       getTracker: (req) => String(req.ip ?? 'unknown'),
     }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const publicUrl = config.get<string>('DATABASE_PUBLIC_URL');
-        const privateUrl = config.get<string>('DATABASE_URL');
-        console.log('[ENV] DATABASE_PUBLIC_URL:', publicUrl ? 'SET' : 'MISSING');
-        console.log('[ENV] DATABASE_URL:', privateUrl ? 'SET' : 'MISSING');
-        const dbUrl = publicUrl || privateUrl || '';
-
-        if (!dbUrl) {
-          console.error('[FATAL] No database URL configured!');
-        }
-
-        const masked = dbUrl ? dbUrl.replace(/:([^@]+)@/, ':***@') : 'NONE';
-        console.log('[TypeORM] Connecting to:', masked);
-
-        return {
-          type: 'postgres' as const,
-          url: dbUrl,
-          autoLoadEntities: true,
-          synchronize: true,
-          logging: ['error', 'warn', 'query'],
-          logger: 'advanced-console',
-          retryAttempts: 1,
-          retryDelay: 0,
-          keepConnectionAlive: false,
-          ssl: { rejectUnauthorized: false },
-        };
-      },
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      url: dbUrl,
+      ssl: { rejectUnauthorized: false },
+      autoLoadEntities: true,
+      synchronize: true,
+      logging: true,
     }),
     UsersModule,
     AuthorizationModule,
