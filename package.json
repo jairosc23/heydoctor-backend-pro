@@ -1,11 +1,12 @@
 {
   "name": "heydoctor-backend-pro",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "",
   "author": "",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "prebuild": "rm -rf dist && echo '>>> DIST CLEANED'",
     "build": "nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
