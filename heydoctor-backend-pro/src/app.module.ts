@@ -30,6 +30,11 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 
 @Module({
   imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+    }),
+    LoggerModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: dbUrl,
@@ -38,11 +43,6 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
       synchronize: true,
       logging: true,
     }),
-    ConfigModule.forRoot({
-      isGlobal: true,
-      envFilePath: ['.env.local', '.env'],
-    }),
-    LoggerModule,
     ScheduleModule.forRoot(),
     ThrottlerModule.forRoot({
       throttlers: [

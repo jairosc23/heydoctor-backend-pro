@@ -9,6 +9,7 @@ import { Observable, tap } from 'rxjs';
 import type { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
 import { AppLoggerService } from '../common/logger/app-logger.service';
+import { APP_LOGGER } from '../common/logger/logger.tokens';
 import {
   ComplianceConfig,
   COMPLIANCE_CONFIG_TOKEN,
@@ -38,6 +39,7 @@ export class PhiAccessLogInterceptor implements NestInterceptor {
     @Inject(COMPLIANCE_CONFIG_TOKEN)
     private readonly config: ComplianceConfig,
     private readonly auditService: AuditService,
+    @Inject(APP_LOGGER)
     private readonly logger: AppLoggerService,
   ) {}
 

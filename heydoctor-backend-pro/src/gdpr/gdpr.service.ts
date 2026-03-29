@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -14,6 +15,7 @@ import { Patient } from '../patients/patient.entity';
 import { RefreshToken } from '../auth/entities/refresh-token.entity';
 import { User } from '../users/user.entity';
 import { AppLoggerService } from '../common/logger/app-logger.service';
+import { APP_LOGGER } from '../common/logger/logger.tokens';
 import {
   DeletionStatus,
   GdprDeletionRequest,
@@ -39,6 +41,7 @@ export class GdprService {
     @InjectRepository(GdprDeletionRequest)
     private readonly deletionRepo: Repository<GdprDeletionRequest>,
     private readonly auditService: AuditService,
+    @Inject(APP_LOGGER)
     private readonly logger: AppLoggerService,
   ) {}
 

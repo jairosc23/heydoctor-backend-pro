@@ -1,7 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AppLoggerService } from '../common/logger/app-logger.service';
+import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { AuditLog } from './audit-log.entity';
 import { AuditOutcome } from './audit-outcome.enum';
 import type { AuditLogErrorPayload, AuditLogSuccessPayload } from './audit.types';
@@ -43,6 +44,7 @@ export class AuditService {
   constructor(
     @InjectRepository(AuditLog)
     private readonly auditLogsRepository: Repository<AuditLog>,
+    @Inject(APP_LOGGER)
     private readonly logger: AppLoggerService,
   ) {}
 

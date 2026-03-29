@@ -1,23 +1,22 @@
-import { Global, Module } from '@nestjs/common';
+import { Module } from '@nestjs/common';
 import { AppLoggerService } from './app-logger.service';
+import { APP_LOGGER } from './logger.tokens';
 
-/** Application-wide logger context (shown as Nest Logger prefix). */
+/** Application-wide logger context (Nest Logger prefix). */
 export const APP_LOGGER_CONTEXT = 'HeyDoctor';
 
 /**
- * Central logging infrastructure.
- * Single registration of {@link AppLoggerService} for the whole app — avoids
- * duplicate providers and DI ambiguity. Correlation IDs still come from
- * {@link getCurrentRequestId} inside the service.
+ * Single registration of the structured logger. Consumers must:
+ * - `imports: [LoggerModule]` in their feature module
+ * - inject with `@Inject(APP_LOGGER) private readonly logger: AppLoggerService`
  */
-@Global()
 @Module({
   providers: [
     {
-      provide: AppLoggerService,
+      provide: APP_LOGGER,
       useFactory: () => new AppLoggerService(APP_LOGGER_CONTEXT),
     },
   ],
-  exports: [AppLoggerService],
+  exports: [APP_LOGGER],
 })
 export class LoggerModule {}
