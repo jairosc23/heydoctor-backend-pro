@@ -21,6 +21,6 @@ import { AuditService } from './audit.service';
     },
     AuditService,
   ],
-  exports: [AuditService],
+  exports: [AuditService, AppLoggerService],
 })
 export class AuditModule {}
