@@ -9,6 +9,8 @@ import { AiModule } from './ai/ai.module';
 import { AuditModule } from './audit/audit.module';
 import { AuthModule } from './auth/auth.module';
 import { AuthorizationModule } from './authorization/authorization.module';
+import { ComplianceModule } from './compliance/compliance.module';
+import { EnvConfigModule } from './config/env-config.module';
 import { ConsentModule } from './consents/consent.module';
 import { ConsultationsModule } from './consultations/consultations.module';
 import { LegalPdfModule } from './legal-pdf/legal-pdf.module';
@@ -24,7 +26,6 @@ import { GdprModule } from './gdpr/gdpr.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
-console.log('[DB URL]', dbUrl);
 
 @Module({
   imports: [
@@ -55,6 +56,8 @@ console.log('[DB URL]', dbUrl);
     AuthModule,
     AuditModule,
     PatientsModule,
+    EnvConfigModule,
+    ComplianceModule,
     ConsentModule,
     ConsultationsModule,
     LegalPdfModule,

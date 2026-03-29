@@ -21,14 +21,10 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
-        const secret = config.get<string>('JWT_SECRET');
-        console.log('[ENV] JWT_SECRET:', secret ? 'SET' : 'MISSING');
-        return {
-          secret: secret || 'MISSING_JWT_SECRET_PLACEHOLDER',
-          signOptions: { expiresIn: '15m' },
-        };
-      },
+      useFactory: (config: ConfigService) => ({
+        secret: config.get<string>('JWT_SECRET') || 'dev-only-insecure-secret',
+        signOptions: { expiresIn: '15m' },
+      }),
     }),
   ],
   controllers: [AuthController],

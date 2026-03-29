@@ -115,6 +115,18 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'GDPR_DELETION_REQUEST',
     resource: 'user',
   },
+  'POST /api/gdpr/confirm-deletion': {
+    action: 'GDPR_DELETION_CONFIRMED',
+    resource: 'user',
+  },
+  'GET /api/gdpr/deletion-status': {
+    action: 'GDPR_DELETION_STATUS',
+    resource: 'user',
+  },
+  'PHI_ACCESS': {
+    action: 'PHI_ACCESS',
+    resource: 'phi',
+  },
 };
 
 const FALLBACK_RESOURCE = 'unknown';

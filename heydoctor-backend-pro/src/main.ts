@@ -1,5 +1,3 @@
-console.log('>>> MAIN.TS LOADED');
-
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
@@ -9,14 +7,14 @@ import cookieParser from 'cookie-parser';
 import { AuditInterceptor } from './audit/audit.interceptor';
 import { AuditService } from './audit/audit.service';
 import { AuthorizationService } from './authorization/authorization.service';
+import { PhiAccessLogInterceptor } from './compliance/phi-access-log.interceptor';
+import { validateAndLogEnv } from './config/env-startup-check';
+import { EnvConfig, ENV_CONFIG_TOKEN } from './config/env.config';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
-  console.log('>>> BOOTSTRAP START');
-
   const app = await NestFactory.create(AppModule, { rawBody: true });
-  console.log('>>> NestFactory.create DONE');
 
   app.use(cookieParser());
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
@@ -25,16 +23,25 @@ async function bootstrap() {
   app.use(new RequestIdMiddleware().use);
 
   const config = app.get(ConfigService);
+  const envConfig = app.get<EnvConfig>(ENV_CONFIG_TOKEN);
+  const missingVars = validateAndLogEnv(envConfig);
+  if (missingVars.length > 0 && envConfig.isProduction) {
+    throw new Error(
+      `Missing required env vars in production: ${missingVars.join(', ')}`,
+    );
+  }
 
   app.setGlobalPrefix('api');
 
   const auditService = app.get(AuditService);
   const authorizationService = app.get(AuthorizationService);
+  const phiInterceptor = app.get(PhiAccessLogInterceptor);
   app.useGlobalInterceptors(
     new AuditInterceptor(auditService, authorizationService),
+    phiInterceptor,
   );
   app.enableCors({
-    origin: config.get<string>('CORS_ORIGIN')?.split(',').map((s) => s.trim()) ?? true,
+    origin: envConfig.corsOrigin.length > 0 ? envConfig.corsOrigin : true,
     credentials: true,
   });
 
@@ -55,11 +62,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number.parseInt(
-    config.get<string>('PORT') ?? '3001',
-    10,
-  );
-  await app.listen(port);
-  console.log(`>>> APP LISTENING ON PORT ${port}`);
+  await app.listen(envConfig.port);
+  console.log(`[HeyDoctor] Listening on port ${envConfig.port} (${envConfig.nodeEnv})`);
 }
 void bootstrap();
