@@ -18,6 +18,8 @@ import { PaykuModule } from './payku/payku.module';
 import { PatientsModule } from './patients/patients.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
+import { DoctorApplicationsModule } from './doctor-applications/doctor-applications.module';
+import { DoctorProfilesModule } from './doctor-profiles/doctor-profiles.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
@@ -60,6 +62,8 @@ console.log('[DB URL]', dbUrl);
     PaykuModule,
     SubscriptionsModule,
     AiModule,
+    DoctorApplicationsModule,
+    DoctorProfilesModule,
     WebrtcModule,
   ],
   controllers: [AppController],

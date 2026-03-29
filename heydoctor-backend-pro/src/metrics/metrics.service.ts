@@ -13,6 +13,11 @@ type DailyMetricsTotals = {
   upgradesSales: number;
   upgradesSupport: number;
   downgradesRefund: number;
+  consultationsCreated: number;
+  consultationsPaid: number;
+  consultationsStarted: number;
+  consultationsCompleted: number;
+  doctorApplications: number;
 };
 
 @Injectable()
@@ -37,13 +42,17 @@ export class MetricsService {
     const [row] = await this.auditLogsRepository.query(
       `
       SELECT
-        COUNT(*) FILTER (WHERE metadata->>'to' = 'pro') AS upgrades_total,
-        COUNT(*) FILTER (WHERE metadata->>'reasonCode' = 'sales') AS upgrades_sales,
-        COUNT(*) FILTER (WHERE metadata->>'reasonCode' = 'support') AS upgrades_support,
-        COUNT(*) FILTER (WHERE metadata->>'reasonCode' = 'refund') AS downgrades_refund
+        COUNT(*) FILTER (WHERE action = 'SUBSCRIPTION_PLAN_CHANGED' AND metadata->>'to' = 'pro') AS upgrades_total,
+        COUNT(*) FILTER (WHERE action = 'SUBSCRIPTION_PLAN_CHANGED' AND metadata->>'reasonCode' = 'sales') AS upgrades_sales,
+        COUNT(*) FILTER (WHERE action = 'SUBSCRIPTION_PLAN_CHANGED' AND metadata->>'reasonCode' = 'support') AS upgrades_support,
+        COUNT(*) FILTER (WHERE action = 'SUBSCRIPTION_PLAN_CHANGED' AND metadata->>'reasonCode' = 'refund') AS downgrades_refund,
+        COUNT(*) FILTER (WHERE action = 'CONSULTATION_CREATED') AS consultations_created,
+        COUNT(*) FILTER (WHERE action = 'PAYMENT_STATUS_UPDATED' AND metadata->>'statusAfter' = 'paid') AS consultations_paid,
+        COUNT(*) FILTER (WHERE action = 'CONSULTATION_CALL_STARTED') AS consultations_started,
+        COUNT(*) FILTER (WHERE action = 'CONSULTATION_STATUS_CHANGE' AND metadata->>'nextStatus' = 'completed') AS consultations_completed,
+        COUNT(*) FILTER (WHERE action = 'DOCTOR_APPLICATION_CREATED') AS doctor_applications
       FROM audit_logs
-      WHERE action = 'SUBSCRIPTION_PLAN_CHANGED'
-        AND DATE(created_at) = DATE($1)
+      WHERE DATE(created_at) = DATE($1)
       `,
       [dateKey],
     );
@@ -53,6 +62,11 @@ export class MetricsService {
       upgradesSales: Number(row?.upgrades_sales ?? 0),
       upgradesSupport: Number(row?.upgrades_support ?? 0),
       downgradesRefund: Number(row?.downgrades_refund ?? 0),
+      consultationsCreated: Number(row?.consultations_created ?? 0),
+      consultationsPaid: Number(row?.consultations_paid ?? 0),
+      consultationsStarted: Number(row?.consultations_started ?? 0),
+      consultationsCompleted: Number(row?.consultations_completed ?? 0),
+      doctorApplications: Number(row?.doctor_applications ?? 0),
     };
 
     await this.dailyMetricsRepository.upsert(
@@ -62,6 +76,11 @@ export class MetricsService {
         upgradesSales: totals.upgradesSales,
         upgradesSupport: totals.upgradesSupport,
         downgradesRefund: totals.downgradesRefund,
+        consultationsCreated: totals.consultationsCreated,
+        consultationsPaid: totals.consultationsPaid,
+        consultationsStarted: totals.consultationsStarted,
+        consultationsCompleted: totals.consultationsCompleted,
+        doctorApplications: totals.doctorApplications,
       },
       ['date'],
     );

@@ -59,6 +59,26 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'LEGAL_CONSULTATION_PDF_EXPORT',
     resource: 'legal',
   },
+  'POST /api/doctor-applications': {
+    action: 'DOCTOR_APPLICATION_CREATED',
+    resource: 'doctor_application',
+  },
+  'GET /api/doctor-applications': {
+    action: 'DOCTOR_APPLICATIONS_LIST',
+    resource: 'doctor_application',
+  },
+  'PATCH /api/doctor-applications/:id/review': {
+    action: 'DOCTOR_APPLICATION_REVIEWED',
+    resource: 'doctor_application',
+  },
+  'GET /api/doctors': {
+    action: 'DOCTORS_LIST',
+    resource: 'doctor_profile',
+  },
+  'GET /api/doctors/:id': {
+    action: 'DOCTOR_PROFILE_READ',
+    resource: 'doctor_profile',
+  },
   'POST /api/consultations/:id/start-call': {
     action: 'CONSULTATION_CALL_STARTED',
     resource: 'consultation',
