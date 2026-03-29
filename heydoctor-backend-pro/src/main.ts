@@ -10,6 +10,13 @@ import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
+  // Temporal: verificar en logs de Railway que el despliegue es el commit esperado (p. ej. 60abc4a).
+  const deploySha = process.env.RAILWAY_GIT_COMMIT_SHA;
+  console.log(
+    'BOOT CLEAN V2',
+    deploySha ? deploySha.slice(0, 7) : 'local/no-RAILWAY_GIT_COMMIT_SHA',
+  );
+
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   app.use(cookieParser());
