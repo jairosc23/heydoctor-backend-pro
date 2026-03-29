@@ -1,3 +1,8 @@
+# Disables Nixpacks build cache (stale layers / old dist). Also set in Railway
+# as a build-time variable if your stack still caches: NIXPACKS_NO_CACHE=1
+[variables]
+NIXPACKS_NO_CACHE = "1"
+
 [phases.setup]
 nixPkgs = ["nodejs_20"]
 

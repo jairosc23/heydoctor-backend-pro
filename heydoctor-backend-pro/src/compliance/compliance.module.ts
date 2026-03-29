@@ -7,7 +7,7 @@ import {
   ComplianceConfig,
   COMPLIANCE_CONFIG_TOKEN,
 } from './compliance.config';
-import { PhiAccessLogInterceptor } from './phi-access-log.interceptor';
+import { PhiAccessLogInterceptorV2 } from './phi-access-log-v2.interceptor';
 
 /**
  * Compliance is @Global so COMPLIANCE_CONFIG_TOKEN is app-wide.
@@ -25,7 +25,7 @@ import { PhiAccessLogInterceptor } from './phi-access-log.interceptor';
     },
     {
       provide: APP_INTERCEPTOR,
-      useClass: PhiAccessLogInterceptor,
+      useClass: PhiAccessLogInterceptorV2,
     },
   ],
   exports: [COMPLIANCE_CONFIG_TOKEN],

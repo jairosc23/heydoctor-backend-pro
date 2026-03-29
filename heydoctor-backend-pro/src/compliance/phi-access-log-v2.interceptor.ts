@@ -24,6 +24,8 @@ import {
  * - GET /api/legal/consultation/:id/pdf
  *
  * Logs an audit event with extended metadata (IP, user-agent, resource accessed).
+ *
+ * Class/file V2: new Nest DI metadata + clean build paths (no stale reflect-metadata).
  */
 const PHI_ACCESS_PATTERNS = [
   /^\/api\/consultations\/[^/]+$/,
@@ -33,7 +35,7 @@ const PHI_ACCESS_PATTERNS = [
 ];
 
 @Injectable()
-export class PhiAccessLogInterceptor implements NestInterceptor {
+export class PhiAccessLogInterceptorV2 implements NestInterceptor {
   constructor(
     @Inject(COMPLIANCE_CONFIG_TOKEN)
     private readonly config: ComplianceConfig,
