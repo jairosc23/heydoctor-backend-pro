@@ -55,10 +55,12 @@ async function bootstrap() {
     }),
   );
 
-  const port = process.env.PORT || 3001;
+  const port = Number(process.env.PORT) || 3001;
+
   await app.listen(port, '0.0.0.0');
 
-  console.log(`[HeyDoctor] Running on port ${port}`);
+  console.log('[HeyDoctor] ENV PORT:', process.env.PORT);
+  console.log('[HeyDoctor] Final PORT:', port);
 }
 
 bootstrap();
