@@ -7,9 +7,17 @@ import { validateAndLogEnv } from './config/env-startup-check';
 import { EnvConfig, ENV_CONFIG_TOKEN } from './config/env.config';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
+import type { Request, Response } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const server = app.getHttpAdapter().getInstance();
+
+  // Healthcheck ultra rápido para Railway (Express; no controllers / guards / ORM en la petición)
+  server.get('/_health', (_req: Request, res: Response) => {
+    res.status(200).send('ok');
+  });
 
   app.use(cookieParser());
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
@@ -30,7 +38,6 @@ async function bootstrap() {
       { path: '/', method: RequestMethod.GET },
       { path: 'health', method: RequestMethod.GET },
       { path: 'healthz', method: RequestMethod.GET },
-      { path: '_health', method: RequestMethod.GET },
     ],
   });
 

@@ -9,11 +9,4 @@ export class HealthController {
   healthz() {
     return 'ok';
   }
-
-  @SkipThrottle()
-  @Header('Content-Type', 'text/plain; charset=utf-8')
-  @Get('/_health')
-  railwayHealth() {
-    return 'ok';
-  }
 }
