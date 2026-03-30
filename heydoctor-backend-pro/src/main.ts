@@ -60,7 +60,7 @@ async function bootstrap() {
     }),
   );
 
-  const port = Number.parseInt(process.env.PORT ?? '3001', 10);
+  const port = Number.parseInt(process.env.PORT || '3001', 10);
   await app.listen(port, '0.0.0.0');
   console.log(`[HeyDoctor] Running on port ${port}`);
 }
