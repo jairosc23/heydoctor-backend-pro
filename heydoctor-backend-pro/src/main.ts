@@ -19,6 +19,10 @@ async function bootstrap() {
 
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
+  app.getHttpAdapter().get('/healthz', (req, res) => {
+    res.status(200).send('ok');
+  });
+
   app.use(cookieParser());
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
   app.useWebSocketAdapter(new IoAdapter(app));
