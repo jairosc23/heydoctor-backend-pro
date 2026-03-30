@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { RequestMethod, ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
@@ -34,7 +34,9 @@ async function bootstrap() {
     );
   }
 
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api', {
+    exclude: [{ path: '_health', method: RequestMethod.GET }],
+  });
 
   app.enableCors({
     origin: envConfig.corsOrigin.length > 0 ? envConfig.corsOrigin : true,
@@ -58,7 +60,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(envConfig.port);
-  console.log(`[HeyDoctor] Listening on port ${envConfig.port} (${envConfig.nodeEnv})`);
+  const port = Number.parseInt(process.env.PORT ?? '3001', 10);
+  await app.listen(port, '0.0.0.0');
+  console.log(`[HeyDoctor] Running on port ${port}`);
 }
 void bootstrap();

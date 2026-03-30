@@ -1,4 +1,4 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { INestApplication, RequestMethod, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -23,7 +23,9 @@ describe('AppController (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix('api', {
+      exclude: [{ path: '_health', method: RequestMethod.GET }],
+    });
     app.useGlobalPipes(
       new ValidationPipe({
         whitelist: true,
@@ -48,5 +50,12 @@ describe('AppController (e2e)', () => {
           service: 'heydoctor-backend-pro',
         });
       });
+  });
+
+  it('/_health (GET)', () => {
+    return request(app.getHttpServer())
+      .get('/_health')
+      .expect(200)
+      .expect({ status: 'ok' });
   });
 });
