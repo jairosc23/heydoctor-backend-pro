@@ -1,0 +1,15 @@
+-- Fase 1.6 — Marcar migración baseline como ejecutada (sin correr DDL).
+-- Copiar a .sql o ejecutar: psql "$DATABASE_URL" -f scripts/mark-baseline-initial-schema.sql.example
+--
+-- Prerrequisito: tabla public.migrations (TypeORM 0.3: id SERIAL PK, timestamp BIGINT, name VARCHAR).
+-- Si no existe: un arranque con migrationsRun crea la tabla antes de aplicar migraciones pendientes.
+
+SELECT * FROM migrations ORDER BY id;
+
+INSERT INTO migrations (timestamp, name)
+SELECT 1743298123456, 'InitialSchema1743298123456'
+WHERE NOT EXISTS (
+  SELECT 1 FROM migrations WHERE name = 'InitialSchema1743298123456'
+);
+
+SELECT * FROM migrations ORDER BY id;

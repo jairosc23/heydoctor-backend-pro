@@ -3,6 +3,9 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 /**
  * Baseline schema for HeyDoctor (PostgreSQL).
  * Hand-authored from domain entities (fase 1.5); revisar tras cambios de modelo.
+ *
+ * Si la BD ya existía con synchronize, marcar como aplicada sin ejecutar:
+ * @see scripts/mark-baseline-initial-schema.sql.example
  */
 export class InitialSchema1743298123456 implements MigrationInterface {
   name = 'InitialSchema1743298123456';
