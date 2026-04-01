@@ -3,6 +3,7 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
@@ -12,11 +13,12 @@ import { Clinic } from '../clinic/clinic.entity';
 import { UserRole } from './user-role.enum';
 
 @Entity('users')
+@Index('users_email_clinic_unique', ['email', 'clinicId'], { unique: true })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true })
+  @Column()
   email: string;
 
   @Column({ type: 'varchar', length: 200, nullable: true })

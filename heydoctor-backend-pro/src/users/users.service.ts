@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -14,6 +15,8 @@ import { User } from './user.entity';
 import { UserRole } from './user-role.enum';
 
 const BCRYPT_ROUNDS = 12;
+/** Rounds for admin/testing user creation (POST /users). */
+const BCRYPT_ROUNDS_ADMIN_CREATE = 10;
 
 /** Clinic name for new registrations: use email (capped) per multi-tenant phase 1. */
 function clinicNameForNewUser(email: string): string {
@@ -23,6 +26,8 @@ function clinicNameForNewUser(email: string): string {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
+
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
@@ -40,6 +45,20 @@ export class UsersService {
   async findByEmail(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { email: email.toLowerCase() },
+    });
+  }
+
+  /** Email único por clínica (multi-tenant). */
+  async findByEmailAndClinic(
+    email: string,
+    clinicId: string,
+  ): Promise<User | null> {
+    const normalized = email.trim().toLowerCase();
+    return this.usersRepository.findOne({
+      where: {
+        email: normalized,
+        clinic: { id: clinicId },
+      },
     });
   }
 
@@ -117,6 +136,47 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * Crea usuario en una clínica existente (admin / Fase 4). Email único por clínica.
+   */
+  async createUserForClinic(
+    clinicId: string,
+    params: {
+      email: string;
+      password: string;
+      role: UserRole;
+    },
+  ): Promise<User> {
+    const normalized = params.email.trim().toLowerCase();
+    const existing = await this.findByEmailAndClinic(normalized, clinicId);
+    if (existing) {
+      throw new ConflictException('Email is already registered in this clinic');
+    }
+
+    const passwordHash = await bcrypt.hash(
+      params.password,
+      BCRYPT_ROUNDS_ADMIN_CREATE,
+    );
+
+    const entity = this.usersRepository.create({
+      email: normalized,
+      passwordHash,
+      role: params.role,
+      isActive: true,
+      clinic: { id: clinicId },
+    });
+    const saved = await this.usersRepository.save(entity);
+    const user = await this.findById(saved.id);
+    if (!user) {
+      throw new Error('Failed to load user after create');
+    }
+
+    this.logger.log(
+      `User created in clinic ${clinicId}: ${user.id} (${user.email}, ${user.role})`,
+    );
+    return user;
+  }
+
   async updateUser(userId: string, dto: UpdateUserDto): Promise<User> {
     const user = await this.usersRepository.findOne({ where: { id: userId } });
     if (!user) {
@@ -129,7 +189,7 @@ export class UsersService {
 
     if (dto.email !== undefined) {
       const normalized = dto.email.trim().toLowerCase();
-      const existing = await this.findByEmail(normalized);
+      const existing = await this.findByEmailAndClinic(normalized, user.clinicId);
       if (existing && existing.id !== userId) {
         throw new ConflictException('Email is already in use');
       }

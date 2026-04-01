@@ -7,6 +7,7 @@ import {
   Param,
   ParseUUIDPipe,
   Patch,
+  Post,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -14,6 +15,7 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { UpdateUserRoleDto } from './dto/update-user-role.dto';
 import { UpdateUserStatusDto } from './dto/update-user-status.dto';
@@ -29,6 +31,14 @@ export type UserResponse = {
   clinicId: string;
   isActive: boolean;
   createdAt: Date;
+};
+
+/** Respuesta POST /users (sin datos sensibles). */
+export type CreateUserResponse = {
+  id: string;
+  email: string;
+  role: UserRole;
+  isActive: boolean;
 };
 
 function toUserResponse(user: User): UserResponse {
@@ -47,6 +57,32 @@ function toUserResponse(user: User): UserResponse {
 @UseGuards(JwtAuthGuard)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
+
+  @Post()
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async createUser(
+    @Body() dto: CreateUserDto,
+    @CurrentUser() authUser: AuthenticatedUser,
+  ): Promise<CreateUserResponse> {
+    const actor = await this.usersService.findById(authUser.sub);
+    if (!actor?.clinicId) {
+      throw new ForbiddenException('User has no clinic assigned');
+    }
+
+    const user = await this.usersService.createUserForClinic(actor.clinicId, {
+      email: dto.email,
+      password: dto.password,
+      role: dto.role ?? UserRole.DOCTOR,
+    });
+
+    return {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive !== false,
+    };
+  }
 
   private async assertSelfOrAdminSameClinic(
     authUser: AuthenticatedUser,
