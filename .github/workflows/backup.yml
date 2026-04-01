@@ -1,3 +1,11 @@
+# Backup PostgreSQL → objeto (S3 / R2). Equivalente funcional a postgres-backup.yml.
+#
+# Railway:
+# - Secreto DATABASE_URL: copiar la URL pública del plugin PostgreSQL (incluye TLS).
+# - El script añade sslmode=require si la URL no trae sslmode (libpq / pg_dump).
+# - pg_dump se ejecuta desde GitHub Actions: la BD debe aceptar conexiones externas
+#   (comportamiento habitual en Railway; si no, este job fallará por red, no por el script).
+#
 name: PostgreSQL Daily Backup
 
 on:
@@ -13,6 +21,8 @@ env:
   AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
   AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
   BACKUP_RETENTION_DAYS: "30"
+  # Opcional: timeout de conexión libpq (segundos)
+  PGCONNECT_TIMEOUT: "30"
 
 jobs:
   backup:

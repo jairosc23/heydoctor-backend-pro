@@ -3,20 +3,40 @@ set -euo pipefail
 
 # ─────────────────────────────────────────────
 # HeyDoctor PostgreSQL Backup Script
-# Performs pg_dump, gzip, upload to S3, rotate
+# pg_dump → gzip → S3. Pensado para Railway / Postgres con TLS (libpq).
 # ─────────────────────────────────────────────
 
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 BACKUP_FILE="heydoctor_${TIMESTAMP}.sql.gz"
 TMP_DIR="${TMP_DIR:-/tmp}"
+TMP_PLAIN="${TMP_DIR}/heydoctor_${TIMESTAMP}.sql"
 BACKUP_PATH="${TMP_DIR}/${BACKUP_FILE}"
 RETENTION_DAYS="${BACKUP_RETENTION_DAYS:-30}"
 S3_PREFIX="s3://${BACKUP_BUCKET}/postgres"
 
 log() { echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*"; }
 
+# Si la URL no incluye sslmode, añadimos require (típico en Railway / gestionados).
+normalize_database_url() {
+  local url="$1"
+  url="${url#"${url%%[![:space:]]*}"}"
+  url="${url%"${url##*[![:space:]]}"}"
+  if [[ -z "${url}" ]]; then
+    echo ""
+    return
+  fi
+  if [[ "${url}" =~ sslmode= ]]; then
+    echo "${url}"
+    return
+  fi
+  case "${url}" in
+    *\?*) echo "${url}&sslmode=require" ;;
+    *)    echo "${url}?sslmode=require" ;;
+  esac
+}
+
 if [ -z "${DATABASE_URL:-}" ]; then
-  log "ERROR: DATABASE_URL is not set"
+  log "ERROR: DATABASE_URL is not set (secreto GitHub; usar la URL pública de Railway PostgreSQL)"
   exit 1
 fi
 
@@ -25,13 +45,36 @@ if [ -z "${BACKUP_BUCKET:-}" ]; then
   exit 1
 fi
 
+DATABASE_URL_EFFECTIVE="$(normalize_database_url "${DATABASE_URL}")"
+if [ -z "${DATABASE_URL_EFFECTIVE}" ]; then
+  log "ERROR: DATABASE_URL quedó vacía tras normalizar"
+  exit 1
+fi
+
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-30}"
+
 AWS_ARGS=""
 if [ -n "${AWS_ENDPOINT_URL:-}" ]; then
   AWS_ARGS="--endpoint-url ${AWS_ENDPOINT_URL}"
 fi
 
-log "Starting backup..."
-pg_dump "${DATABASE_URL}" --no-owner --no-privileges | gzip > "${BACKUP_PATH}"
+log "Starting backup (pg_dump --dbname, SSL según URL)..."
+if ! pg_dump \
+  --no-owner \
+  --no-privileges \
+  --dbname="${DATABASE_URL_EFFECTIVE}" \
+  --file="${TMP_PLAIN}"; then
+  log "ERROR: pg_dump falló. Revisa DATABASE_URL, sslmode, acceso de red GitHub→Railway y credenciales."
+  rm -f "${TMP_PLAIN}"
+  exit 1
+fi
+
+if ! gzip -c "${TMP_PLAIN}" > "${BACKUP_PATH}"; then
+  log "ERROR: gzip falló"
+  rm -f "${TMP_PLAIN}" "${BACKUP_PATH}"
+  exit 1
+fi
+rm -f "${TMP_PLAIN}"
 
 FILESIZE=$(du -h "${BACKUP_PATH}" | cut -f1)
 log "Backup created: ${BACKUP_FILE} (${FILESIZE})"
