@@ -8,6 +8,7 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { AppController } from './app.controller';
 import { AppCacheModule } from './cache/cache.module';
 import { AiModule } from './ai/ai.module';
+import { AppointmentsModule } from './appointments/appointments.module';
 import { AuditModule } from './audit/audit.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { AuthModule } from './auth/auth.module';
@@ -75,6 +76,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     AuthModule,
     AuditModule,
     PatientsModule,
+    AppointmentsModule,
     EnvConfigModule,
     ComplianceModule,
     ConsentModule,

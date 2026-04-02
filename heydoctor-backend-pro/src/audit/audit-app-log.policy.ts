@@ -23,6 +23,10 @@ export function isLowSignalAuditAction(action: string): boolean {
   ) {
     return true;
   }
+  /** Enlaces 1-click masivos (citas); el registro en audit_logs sigue existiendo. */
+  if (/_PUBLIC$/.test(action)) {
+    return true;
+  }
   return false;
 }
 
