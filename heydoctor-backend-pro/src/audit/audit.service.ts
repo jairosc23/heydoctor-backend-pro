@@ -5,6 +5,10 @@ import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { AuditLog } from './audit-log.entity';
 import { AuditOutcome } from './audit-outcome.enum';
 import type { AuditLogErrorPayload, AuditLogSuccessPayload } from './audit.types';
+import {
+  shouldEmitAuditPersistErrorLog,
+  shouldEmitAuditPersistSuccessLog,
+} from './audit-app-log.policy';
 
 /** Tunables for in-memory alert heuristics (see handlers below). */
 const ALERT_CONFIG = {
@@ -40,6 +44,9 @@ export class AuditService {
    * flush every N seconds via @nestjs/schedule + batch insert (TypeORM save(Array)), to reduce DB
    * write amplification under traffic spikes. On shutdown, flush remaining queue; size-cap the
    * buffer to avoid OOM. Trade-off: short window where logs are not yet queryable after a crash.
+   *
+   * TODO (scale): async app logging — ship structured lines to a worker/buffer so hot paths do not
+   * block on I/O; batch before send to stdout/OTel. Not implemented to keep behaviour predictable.
    */
 
   // TODO: Replace in-memory counters with Redis (or similar) for multi-instance environments
@@ -107,6 +114,13 @@ export class AuditService {
         metadata: data.metadata ?? null,
       });
       await this.auditLogsRepository.save(row);
+      if (shouldEmitAuditPersistSuccessLog(data.action)) {
+        this.logger.log('Audit log created', {
+          action: data.action,
+          userId: data.userId ?? undefined,
+          clinicId: data.clinicId ?? undefined,
+        });
+      }
       const log: AuditAlertLogContext = {
         userId: data.userId,
         httpStatus: data.httpStatus,
@@ -115,7 +129,12 @@ export class AuditService {
       this.handle403Alerts(log);
       this.handleStatusChangeAlerts(log);
     } catch (err) {
-      this.logger.error('AuditService.logSuccess failed', err);
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.logger.error('AuditService.logSuccess failed', error, {
+        action: data.action,
+        userId: data.userId,
+        clinicId: data.clinicId,
+      });
     }
   }
 
@@ -133,6 +152,13 @@ export class AuditService {
         metadata: data.metadata ?? null,
       });
       await this.auditLogsRepository.save(row);
+      if (shouldEmitAuditPersistErrorLog()) {
+        this.logger.log('Audit log created', {
+          action: data.action,
+          userId: data.userId ?? undefined,
+          clinicId: data.clinicId ?? undefined,
+        });
+      }
       const log: AuditAlertLogContext = {
         userId: data.userId,
         httpStatus: data.httpStatus,
@@ -141,7 +167,12 @@ export class AuditService {
       this.handle403Alerts(log);
       this.handleStatusChangeAlerts(log);
     } catch (err) {
-      this.logger.error('AuditService.logError failed', err);
+      const error = err instanceof Error ? err : new Error(String(err));
+      this.logger.error('AuditService.logError failed', error, {
+        action: data.action,
+        userId: data.userId,
+        clinicId: data.clinicId,
+      });
     }
   }
 
@@ -165,7 +196,9 @@ export class AuditService {
     this.user403Timestamps.set(log.userId, pruned);
 
     if (pruned.length === abuseWarnAt) {
-      this.logger.warn(`Potential abuse detected for user ${log.userId}`);
+      this.logger.warn('Potential abuse detected', {
+        userId: log.userId,
+      });
     }
   }
 
@@ -184,7 +217,10 @@ export class AuditService {
     this.statusChangeTimestamps.push(...pruned);
 
     if (pruned.length === statusChangeWarnAt) {
-      this.logger.warn('Unusual status changes activity');
+      this.logger.warn('Unusual consultation status change volume', {
+        action: 'CONSULTATION_STATUS_CHANGE',
+        windowEvents: pruned.length,
+      });
     }
   }
 }
