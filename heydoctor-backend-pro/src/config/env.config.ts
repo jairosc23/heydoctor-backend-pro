@@ -21,6 +21,10 @@ export class EnvConfig {
 
   // ── AUTH ──
   readonly jwtSecret: string;
+  /** TTL access JWT (p. ej. `15m`); ver `jwt-ttl.util.ts`. */
+  readonly jwtAccessTtl: string;
+  /** TTL refresh cookie + fila `refresh_tokens` (p. ej. `7d`). */
+  readonly jwtRefreshTtl: string;
 
   // ── CORS ──
   readonly corsOrigin: string[];
@@ -59,6 +63,10 @@ export class EnvConfig {
     this.databaseUrl = dbUrl;
 
     this.jwtSecret = config.get<string>('JWT_SECRET') ?? '';
+    this.jwtAccessTtl =
+      config.get<string>('JWT_ACCESS_TTL')?.trim() || '15m';
+    this.jwtRefreshTtl =
+      config.get<string>('JWT_REFRESH_TTL')?.trim() || '7d';
     this.corsOrigin = (config.get<string>('CORS_ORIGIN') ?? '')
       .split(',')
       .map((s) => s.trim())

@@ -26,6 +26,8 @@ export function validateAndLogEnv(env: EnvConfig): string[] {
     { name: 'PORT', status: 'SET', required: false, value: String(env.port) },
     { name: 'DATABASE_URL', status: env.databaseUrl ? 'SET' : 'MISSING', required: true },
     { name: 'JWT_SECRET', status: env.jwtSecret ? 'SET' : 'MISSING', required: true },
+    { name: 'JWT_ACCESS_TTL', status: 'SET', required: false, value: env.jwtAccessTtl },
+    { name: 'JWT_REFRESH_TTL', status: 'SET', required: false, value: env.jwtRefreshTtl },
     { name: 'CORS_ORIGIN', status: env.corsOrigin.length > 0 ? 'SET' : 'DEFAULT', required: false, value: env.corsOrigin.length > 0 ? `${env.corsOrigin.length} origins` : 'default localhost:3000' },
     { name: 'REDIS_URL', status: env.redisUrl ? 'SET' : 'DEFAULT', required: false, value: env.redisUrl ? 'set' : 'memory cache / in-memory throttle' },
     { name: 'PAYKU_API_URL', status: env.paykuApiUrl ? 'SET' : 'MISSING', required: false },

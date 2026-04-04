@@ -8,7 +8,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { ConfigService } from '@nestjs/config';
 import type { Request, Response } from 'express';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -20,9 +20,10 @@ import {
 import type { AuthenticatedUser } from './strategies/jwt.strategy';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { jwtTtlToMs } from './jwt-ttl.util';
 
-const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 const REFRESH_COOKIE = 'refresh_token';
+const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 function cookieOptions(
   isProduction: boolean,
@@ -40,50 +41,36 @@ function cookieOptions(
   };
 }
 
-function setRefreshCookie(res: Response, token: string): void {
-  const isProd = process.env.NODE_ENV === 'production';
-  res.cookie(REFRESH_COOKIE, token, {
-    ...cookieOptions(isProd),
-    maxAge: REFRESH_TOKEN_MAX_AGE_MS,
-  });
-}
-
-function clearRefreshCookie(res: Response): void {
-  const isProd = process.env.NODE_ENV === 'production';
-  res.clearCookie(REFRESH_COOKIE, cookieOptions(isProd));
-}
-
-function extractContext(req: Request): RequestContext {
-  const forwarded = req.headers['x-forwarded-for'];
-  const ip =
-    typeof forwarded === 'string'
-      ? forwarded.split(',')[0].trim()
-      : (req.ip ?? null);
-  const userAgent =
-    (req.headers['user-agent'] as string | undefined) ?? null;
-  return { ip, userAgent };
-}
-
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: ConfigService,
+  ) {}
 
-  /**
-   * Diagnóstico deploy/routing: si este log NO aparece en Railway ante GET /api/auth/me,
-   * la request no está llegando al controller (proxy, otra instancia o ruta distinta).
-   */
+  private refreshCookieMaxAgeMs(): number {
+    return jwtTtlToMs(
+      this.config.get<string>('JWT_REFRESH_TTL'),
+      DEFAULT_REFRESH_MS,
+    );
+  }
+
+  private setRefreshCookie(res: Response, token: string): void {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie(REFRESH_COOKIE, token, {
+      ...cookieOptions(isProd),
+      maxAge: this.refreshCookieMaxAgeMs(),
+    });
+  }
+
+  private clearRefreshCookie(res: Response): void {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie(REFRESH_COOKIE, cookieOptions(isProd));
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
-  getMe(
-    @CurrentUser() user: AuthenticatedUser,
-    @Req() req: Request,
-  ): Promise<MeResponse> {
-    // eslint-disable-next-line no-console -- visibilidad explícita en logs Railway
-    console.log('🔥 LLEGUÉ A /me', {
-      user: req.user,
-      path: req.path,
-      authHeaderPresent: Boolean(req.headers.authorization),
-    });
+  getMe(@CurrentUser() user: AuthenticatedUser): Promise<MeResponse> {
     return this.authService.getMe(user.sub);
   }
 
@@ -99,12 +86,11 @@ export class AuthController {
       result.user.id,
       ctx,
     );
-    setRefreshCookie(res, refreshToken);
+    this.setRefreshCookie(res, refreshToken);
     return { access_token: result.access_token, user: result.user };
   }
 
   @Post('login')
-  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   async login(
     @Body() dto: LoginDto,
     @Req() req: Request,
@@ -116,7 +102,7 @@ export class AuthController {
       result.user.id,
       ctx,
     );
-    setRefreshCookie(res, refreshToken);
+    this.setRefreshCookie(res, refreshToken);
     return { access_token: result.access_token, user: result.user };
   }
 
@@ -134,7 +120,7 @@ export class AuthController {
     const { accessToken, newRefreshToken } =
       await this.authService.validateAndRotateRefreshToken(rawToken, ctx);
 
-    setRefreshCookie(res, newRefreshToken);
+    this.setRefreshCookie(res, newRefreshToken);
     return { access_token: accessToken };
   }
 
@@ -143,11 +129,21 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
+    const ctx = extractContext(req);
     const rawToken = req.cookies?.[REFRESH_COOKIE];
-    if (rawToken) {
-      await this.authService.revokeRefreshToken(rawToken);
-    }
-    clearRefreshCookie(res);
+    await this.authService.performLogout(rawToken, ctx);
+    this.clearRefreshCookie(res);
     return { ok: true };
   }
+}
+
+function extractContext(req: Request): RequestContext {
+  const forwarded = req.headers['x-forwarded-for'];
+  const ip =
+    typeof forwarded === 'string'
+      ? forwarded.split(',')[0].trim()
+      : (req.ip ?? null);
+  const userAgent =
+    (req.headers['user-agent'] as string | undefined) ?? null;
+  return { ip, userAgent };
 }

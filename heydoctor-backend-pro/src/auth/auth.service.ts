@@ -1,8 +1,13 @@
-import { Inject, Injectable, UnauthorizedException, type LoggerService } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  UnauthorizedException,
+  type LoggerService,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
-import { IsNull, LessThan, MoreThan, Repository } from 'typeorm';
+import { IsNull, MoreThan, Repository } from 'typeorm';
 import { AuditLog } from '../audit/audit-log.entity';
 import { AuditOutcome } from '../audit/audit-outcome.enum';
 import {
@@ -12,14 +17,16 @@ import {
 import { User } from '../users/user.entity';
 import { UserRole } from '../users/user-role.enum';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
 import { UsersService } from '../users/users.service';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './types/jwt-payload.interface';
+import { jwtTtlToMs } from './jwt-ttl.util';
 
-const REFRESH_TOKEN_DAYS = 7;
 const MAX_ACTIVE_SESSIONS = 5;
+const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 function generateRawToken(): string {
   return randomBytes(32).toString('hex');
@@ -54,6 +61,8 @@ export class AuthService {
   constructor(
     @Inject(APP_LOGGER)
     private readonly logger: LoggerService,
+    @Inject(ENV_CONFIG_TOKEN)
+    private readonly env: EnvConfig,
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     @InjectRepository(Subscription)
@@ -81,18 +90,22 @@ export class AuthService {
       dto.password,
     );
     if (!user) {
-      await this.logSecurityEvent('AUTH_LOGIN_FAILED', null, ctx, {
-        email: dto.email,
+      await this.logSecurityEvent('LOGIN_FAILED', null, ctx, {
         reason: 'invalid_credentials',
       });
-      // App log: sin PII (email ya puede ir a audit DB vía logSecurityEvent si aplica)
       this.logger.warn('User login failed', {
         reason: 'invalid_credentials',
       });
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    await this.logSecurityEvent('AUTH_LOGIN_SUCCESS', user.id, ctx);
+    await this.logSecurityEvent(
+      'LOGIN_SUCCESS',
+      user.id,
+      ctx,
+      undefined,
+      user.clinicId,
+    );
     this.logger.log('User login success', {
       userId: user.id,
       clinicId: user.clinicId,
@@ -111,23 +124,30 @@ export class AuthService {
     return { access_token, user: publicUser };
   }
 
-  // ── Refresh Token Management ──────────────────────────────────
+  // ── Refresh Token Management (rotación en cada uso) ───────────
 
   async createRefreshToken(
     userId: string,
     ctx: RequestContext,
+    clinicId?: string | null,
   ): Promise<string> {
     await this.enforceSessionLimit(userId);
 
+    let resolvedClinicId = clinicId ?? null;
+    if (!resolvedClinicId) {
+      const u = await this.usersService.findById(userId);
+      resolvedClinicId = u?.clinicId ?? null;
+    }
+
     const raw = generateRawToken();
     const tokenHash = hashToken(raw);
-    const expiresAt = new Date(
-      Date.now() + REFRESH_TOKEN_DAYS * 24 * 60 * 60 * 1000,
-    );
+    const refreshMs = jwtTtlToMs(this.env.jwtRefreshTtl, DEFAULT_REFRESH_MS);
+    const expiresAt = new Date(Date.now() + refreshMs);
 
     const entity = this.refreshTokenRepository.create({
       tokenHash,
       userId,
+      clinicId: resolvedClinicId,
       expiresAt,
       ipAddress: ctx.ip,
       userAgent: ctx.userAgent ? ctx.userAgent.slice(0, 512) : null,
@@ -151,7 +171,6 @@ export class AuthService {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    // ── Reuse detection: revoked token used again → full revocation ──
     if (stored.revokedAt) {
       await this.revokeAllUserTokens(stored.userId);
       await this.logSecurityEvent(
@@ -159,10 +178,11 @@ export class AuthService {
         stored.userId,
         ctx,
         {
-          tokenId: stored.id,
+          sessionId: stored.id,
           originalRevokedAt: stored.revokedAt.toISOString(),
           severity: 'critical',
         },
+        stored.clinicId,
       );
       throw new UnauthorizedException('Refresh token reuse detected');
     }
@@ -171,7 +191,6 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    // Revoke current token (rotation)
     stored.revokedAt = new Date();
     stored.lastUsedAt = new Date();
     await this.refreshTokenRepository.save(stored);
@@ -187,13 +206,44 @@ export class AuthService {
       role: user.role,
     };
     const accessToken = await this.jwtService.signAsync(payload);
-    const newRefreshToken = await this.createRefreshToken(user.id, ctx);
+    const newRefreshToken = await this.createRefreshToken(user.id, ctx, user.clinicId);
 
-    await this.logSecurityEvent('AUTH_REFRESH_SUCCESS', user.id, ctx, {
-      previousTokenId: stored.id,
-    });
+    await this.logSecurityEvent(
+      'TOKEN_REFRESH',
+      user.id,
+      ctx,
+      { previousSessionId: stored.id },
+      user.clinicId,
+    );
 
     return { accessToken, newRefreshToken };
+  }
+
+  async performLogout(
+    rawToken: string | undefined,
+    ctx: RequestContext,
+  ): Promise<void> {
+    if (!rawToken) {
+      return;
+    }
+    const tokenHash = hashToken(rawToken);
+    const stored = await this.refreshTokenRepository.findOne({
+      where: { tokenHash },
+    });
+    if (!stored) {
+      return;
+    }
+    if (!stored.revokedAt) {
+      stored.revokedAt = new Date();
+      await this.refreshTokenRepository.save(stored);
+      await this.logSecurityEvent(
+        'LOGOUT',
+        stored.userId,
+        ctx,
+        { sessionId: stored.id },
+        stored.clinicId,
+      );
+    }
   }
 
   async revokeRefreshToken(rawToken: string): Promise<void> {
@@ -235,7 +285,6 @@ export class AuthService {
       await this.refreshTokenRepository.save(toRevoke);
     }
 
-    // Garbage-collect expired+revoked tokens older than 1 day
     await this.refreshTokenRepository
       .createQueryBuilder()
       .delete()
@@ -246,22 +295,25 @@ export class AuthService {
       .execute();
   }
 
-  // ── Security audit logging ────────────────────────────────────
+  // ── Security audit logging (sin PII en metadata) ───────────
 
   private async logSecurityEvent(
     action: string,
     userId: string | null,
     ctx: RequestContext,
     extra?: Record<string, unknown>,
+    clinicId?: string | null,
   ): Promise<void> {
     try {
       const row = this.auditLogRepository.create({
         userId,
+        clinicId: clinicId ?? null,
         action,
         resource: 'auth',
-        status: action.includes('FAIL') || action.includes('REUSE')
-          ? AuditOutcome.ERROR
-          : AuditOutcome.SUCCESS,
+        status:
+          action.includes('FAIL') || action.includes('REUSE')
+            ? AuditOutcome.ERROR
+            : AuditOutcome.SUCCESS,
         httpStatus: action.includes('FAIL') ? 401 : 200,
         metadata: {
           ip: ctx.ip,
@@ -271,8 +323,7 @@ export class AuthService {
       });
       await this.auditLogRepository.save(row);
     } catch (err) {
-      const error =
-        err instanceof Error ? err : new Error(String(err));
+      const error = err instanceof Error ? err : new Error(String(err));
       this.logger.error(
         'Unexpected error in AuthService.logSecurityEvent',
         error,

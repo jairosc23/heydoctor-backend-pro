@@ -1,5 +1,6 @@
 import { join } from 'path';
-import { Module } from '@nestjs/common';
+import { ExecutionContext, Module } from '@nestjs/common';
+import type { Request } from 'express';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -62,6 +63,35 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
               name: 'default',
               ttl: 60_000,
               limit: 120,
+            },
+            {
+              name: 'loginEmail',
+              ttl: 15 * 60_000,
+              limit: 8,
+              skipIf: (context: ExecutionContext) => {
+                const req = context.switchToHttp().getRequest<Request>();
+                if (req.method !== 'POST') {
+                  return true;
+                }
+                const path =
+                  req.originalUrl?.split('?')[0] ?? req.url ?? '';
+                return !path.includes('/auth/login');
+              },
+              getTracker: (
+                req: Record<string, unknown>,
+              ): Promise<string> | string => {
+                const r = req as unknown as Request;
+                const email = (r.body as { email?: string } | undefined)
+                  ?.email;
+                if (typeof email === 'string' && email.trim()) {
+                  return Promise.resolve(
+                    `login-email:${email.toLowerCase().trim()}`,
+                  );
+                }
+                return Promise.resolve(
+                  `login-email:ip:${String(r.ip ?? 'unknown')}`,
+                );
+              },
             },
           ],
           ...(redisUrl

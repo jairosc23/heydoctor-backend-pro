@@ -19,6 +19,11 @@ export class RefreshToken {
   @Column({ name: 'user_id', type: 'uuid' })
   userId: string;
 
+  /** Clínica al crear la sesión (auditoría / revoke por tenant). */
+  @Index()
+  @Column({ name: 'clinic_id', type: 'uuid', nullable: true })
+  clinicId: string | null;
+
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt: Date;
 

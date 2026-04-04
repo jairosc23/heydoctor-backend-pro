@@ -1,6 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import type { SignOptions } from 'jsonwebtoken';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuditLog } from '../audit/audit-log.entity';
@@ -12,6 +13,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { resolveJwtSecret } from './jwt-secret.util';
+import { normalizeJwtExpiresIn } from './jwt-ttl.util';
 import { JwtStrategy } from './strategies/jwt.strategy';
 
 @Module({
@@ -24,7 +26,12 @@ import { JwtStrategy } from './strategies/jwt.strategy';
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         secret: resolveJwtSecret(config),
-        signOptions: { expiresIn: '15m' },
+        signOptions: {
+          expiresIn: normalizeJwtExpiresIn(
+            config.get<string>('JWT_ACCESS_TTL'),
+            '15m',
+          ) as SignOptions['expiresIn'],
+        },
       }),
     }),
   ],
