@@ -7,7 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
-import { IsNull, MoreThan, Repository } from 'typeorm';
+import { Brackets, IsNull, MoreThan, Repository } from 'typeorm';
 import { AuditLog } from '../audit/audit-log.entity';
 import { AuditOutcome } from '../audit/audit-outcome.enum';
 import {
@@ -23,6 +23,11 @@ import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { JwtPayload } from './types/jwt-payload.interface';
+import {
+  computeDeviceHash,
+  formatDeviceLabel,
+  maskIpForSessionList,
+} from './device-fingerprint.util';
 import { jwtTtlToMs } from './jwt-ttl.util';
 
 const MAX_ACTIVE_SESSIONS = 5;
@@ -54,6 +59,14 @@ export type MeResponse = {
   role: UserRole;
   clinicId: string;
   plan: SubscriptionPlan;
+};
+
+export type ActiveSessionView = {
+  sessionId: string;
+  device: string;
+  ip: string;
+  createdAt: string;
+  lastUsedAt: string | null;
 };
 
 @Injectable()
@@ -144,13 +157,16 @@ export class AuthService {
     const refreshMs = jwtTtlToMs(this.env.jwtRefreshTtl, DEFAULT_REFRESH_MS);
     const expiresAt = new Date(Date.now() + refreshMs);
 
+    const rawUa = ctx.userAgent;
     const entity = this.refreshTokenRepository.create({
       tokenHash,
       userId,
       clinicId: resolvedClinicId,
       expiresAt,
       ipAddress: ctx.ip,
-      userAgent: ctx.userAgent ? ctx.userAgent.slice(0, 512) : null,
+      userAgent: rawUa ? rawUa.slice(0, 512) : null,
+      userAgentNormalized: formatDeviceLabel(rawUa),
+      deviceHash: computeDeviceHash(rawUa),
     });
     await this.refreshTokenRepository.save(entity);
 
@@ -173,6 +189,11 @@ export class AuthService {
 
     if (stored.revokedAt) {
       await this.revokeAllUserTokens(stored.userId);
+      this.logger.error('SECURITY_ALERT', {
+        type: 'TOKEN_REUSE_DETECTED',
+        userId: stored.userId,
+        clinicId: stored.clinicId ?? null,
+      });
       await this.logSecurityEvent(
         'TOKEN_REUSE_DETECTED',
         stored.userId,
@@ -264,6 +285,74 @@ export class AuthService {
     );
   }
 
+  /**
+   * Revoca todos los refresh activos del usuario en su clínica (+ filas legacy sin clinic_id).
+   */
+  async revokeAllSessionsForCurrentUser(
+    userId: string,
+    ctx: RequestContext,
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!user || user.isActive === false) {
+      throw new UnauthorizedException();
+    }
+
+    await this.refreshTokenRepository
+      .createQueryBuilder()
+      .update(RefreshToken)
+      .set({ revokedAt: new Date() })
+      .where('user_id = :userId', { userId })
+      .andWhere('revoked_at IS NULL')
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('clinic_id = :clinicId', {
+            clinicId: user.clinicId,
+          }).orWhere('clinic_id IS NULL');
+        }),
+      )
+      .execute();
+
+    await this.logSecurityEvent(
+      'LOGOUT',
+      userId,
+      ctx,
+      { scope: 'ALL_SESSIONS' },
+      user.clinicId,
+    );
+  }
+
+  async listActiveSessions(userId: string): Promise<ActiveSessionView[]> {
+    const user = await this.usersService.findById(userId);
+    if (!user || user.isActive === false) {
+      throw new UnauthorizedException();
+    }
+
+    const rows = await this.refreshTokenRepository
+      .createQueryBuilder('rt')
+      .where('rt.user_id = :userId', { userId })
+      .andWhere('rt.revoked_at IS NULL')
+      .andWhere('rt.expires_at > :now', { now: new Date() })
+      .andWhere(
+        new Brackets((qb) => {
+          qb.where('rt.clinic_id = :clinicId', {
+            clinicId: user.clinicId,
+          }).orWhere('rt.clinic_id IS NULL');
+        }),
+      )
+      .orderBy('rt.last_used_at', 'DESC', 'NULLS LAST')
+      .addOrderBy('rt.created_at', 'DESC')
+      .getMany();
+
+    return rows.map((r) => ({
+      sessionId: r.id,
+      device:
+        r.userAgentNormalized?.trim() || formatDeviceLabel(r.userAgent),
+      ip: maskIpForSessionList(r.ipAddress),
+      createdAt: r.createdAt.toISOString(),
+      lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
+    }));
+  }
+
   // ── Session limit enforcement ─────────────────────────────────
 
   private async enforceSessionLimit(userId: string): Promise<void> {
@@ -284,15 +373,6 @@ export class AuthService {
       }
       await this.refreshTokenRepository.save(toRevoke);
     }
-
-    await this.refreshTokenRepository
-      .createQueryBuilder()
-      .delete()
-      .where('expires_at < :cutoff', {
-        cutoff: new Date(Date.now() - 24 * 60 * 60 * 1000),
-      })
-      .andWhere('revoked_at IS NOT NULL')
-      .execute();
   }
 
   // ── Security audit logging (sin PII en metadata) ───────────

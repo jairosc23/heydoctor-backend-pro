@@ -14,6 +14,7 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import {
   AuthService,
+  type ActiveSessionView,
   type MeResponse,
   type RequestContext,
 } from './auth.service';
@@ -72,6 +73,27 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   getMe(@CurrentUser() user: AuthenticatedUser): Promise<MeResponse> {
     return this.authService.getMe(user.sub);
+  }
+
+  @Post('revoke-all')
+  @UseGuards(JwtAuthGuard)
+  async revokeAllSessions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ): Promise<{ success: true }> {
+    await this.authService.revokeAllSessionsForCurrentUser(
+      user.sub,
+      extractContext(req),
+    );
+    return { success: true };
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  listSessions(
+    @CurrentUser() user: AuthenticatedUser,
+  ): Promise<ActiveSessionView[]> {
+    return this.authService.listActiveSessions(user.sub);
   }
 
   @Post('register')

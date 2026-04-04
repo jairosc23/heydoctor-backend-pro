@@ -23,6 +23,8 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
   'POST /api/auth/login': { action: 'AUTH_LOGIN', resource: 'auth' },
   'POST /api/auth/refresh': { action: 'AUTH_REFRESH', resource: 'auth' },
   'POST /api/auth/logout': { action: 'AUTH_LOGOUT', resource: 'auth' },
+  'POST /api/auth/revoke-all': { action: 'AUTH_REVOKE_ALL_SESSIONS', resource: 'auth' },
+  'GET /api/auth/sessions': { action: 'AUTH_SESSIONS_LIST', resource: 'auth' },
   'GET /api/auth/me': { action: 'AUTH_ME', resource: 'auth' },
   'GET /api/patients': { action: 'PATIENT_LIST', resource: 'patient' },
   'POST /api/patients': { action: 'PATIENT_CREATE', resource: 'patient' },
