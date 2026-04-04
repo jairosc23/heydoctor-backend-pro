@@ -30,7 +30,6 @@ import {
 } from './device-fingerprint.util';
 import { jwtTtlToMs } from './jwt-ttl.util';
 
-const MAX_ACTIVE_SESSIONS = 5;
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
 function generateRawToken(): string {
@@ -355,24 +354,41 @@ export class AuthService {
 
   // ── Session limit enforcement ─────────────────────────────────
 
+  /**
+   * Mantiene como máximo N sesiones activas por usuario: revoca las más antiguas
+   * (created_at ASC) sin bloquear login ni refresh.
+   */
   private async enforceSessionLimit(userId: string): Promise<void> {
-    const active = await this.refreshTokenRepository.find({
+    const limit = this.env.authMaxActiveRefreshSessions;
+
+    const activeCount = await this.refreshTokenRepository.count({
       where: {
         userId,
         revokedAt: IsNull(),
         expiresAt: MoreThan(new Date()),
       },
-      order: { createdAt: 'DESC' },
     });
 
-    if (active.length >= MAX_ACTIVE_SESSIONS) {
-      const toRevoke = active.slice(MAX_ACTIVE_SESSIONS - 1);
-      const now = new Date();
-      for (const token of toRevoke) {
-        token.revokedAt = now;
-      }
-      await this.refreshTokenRepository.save(toRevoke);
+    if (activeCount < limit) {
+      return;
     }
+
+    const toRevokeCount = activeCount - limit + 1;
+    const oldest = await this.refreshTokenRepository.find({
+      where: {
+        userId,
+        revokedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
+      order: { createdAt: 'ASC' },
+      take: toRevokeCount,
+    });
+
+    const now = new Date();
+    for (const row of oldest) {
+      row.revokedAt = now;
+    }
+    await this.refreshTokenRepository.save(oldest);
   }
 
   // ── Security audit logging (sin PII en metadata) ───────────

@@ -10,6 +10,7 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthRefreshTokenCleanupService } from './auth-refresh-token-cleanup.service';
 import { AuthService } from './auth.service';
+import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -40,6 +41,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [
     AuthService,
     AuthRefreshTokenCleanupService,
+    RevokeAllRateLimitGuard,
     JwtStrategy,
     JwtAuthGuard,
     RolesGuard,

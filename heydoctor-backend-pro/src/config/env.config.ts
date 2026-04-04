@@ -25,6 +25,10 @@ export class EnvConfig {
   readonly jwtAccessTtl: string;
   /** TTL refresh cookie + fila `refresh_tokens` (p. ej. `7d`). */
   readonly jwtRefreshTtl: string;
+  /** Máximo de sesiones refresh activas por usuario (login/refresh); se revocan las más antiguas. */
+  readonly authMaxActiveRefreshSessions: number;
+  /** Límite de POST /auth/revoke-all por usuario por minuto (ventana fija 60s). */
+  readonly authRevokeAllPerMinute: number;
 
   // ── CORS ──
   readonly corsOrigin: string[];
@@ -67,6 +71,25 @@ export class EnvConfig {
       config.get<string>('JWT_ACCESS_TTL')?.trim() || '15m';
     this.jwtRefreshTtl =
       config.get<string>('JWT_REFRESH_TTL')?.trim() || '7d';
+
+    const maxSessionsRaw = Number(
+      config.get<string>('AUTH_MAX_ACTIVE_REFRESH_SESSIONS') ?? '8',
+    );
+    let maxSessions = Number.isFinite(maxSessionsRaw)
+      ? Math.floor(maxSessionsRaw)
+      : 8;
+    maxSessions = Math.min(20, Math.max(5, maxSessions));
+    this.authMaxActiveRefreshSessions = maxSessions;
+
+    const revokeAllRaw = Number(
+      config.get<string>('AUTH_REVOKE_ALL_PER_MINUTE') ?? '5',
+    );
+    let revokeAll = Number.isFinite(revokeAllRaw)
+      ? Math.floor(revokeAllRaw)
+      : 5;
+    revokeAll = Math.min(10, Math.max(3, revokeAll));
+    this.authRevokeAllPerMinute = revokeAll;
+
     this.corsOrigin = (config.get<string>('CORS_ORIGIN') ?? '')
       .split(',')
       .map((s) => s.trim())

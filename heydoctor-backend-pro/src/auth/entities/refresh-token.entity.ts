@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 
 @Entity('refresh_tokens')
+@Index('IDX_refresh_tokens_user_id_clinic_id', ['userId', 'clinicId'])
 export class RefreshToken {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -24,9 +25,11 @@ export class RefreshToken {
   @Column({ name: 'clinic_id', type: 'uuid', nullable: true })
   clinicId: string | null;
 
+  @Index('IDX_refresh_tokens_expires_at')
   @Column({ name: 'expires_at', type: 'timestamptz' })
   expiresAt: Date;
 
+  @Index('IDX_refresh_tokens_revoked_at')
   @Column({ name: 'revoked_at', type: 'timestamptz', nullable: true })
   revokedAt: Date | null;
 

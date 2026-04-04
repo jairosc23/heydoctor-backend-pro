@@ -22,6 +22,7 @@ import type { AuthenticatedUser } from './strategies/jwt.strategy';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
+import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 
 const REFRESH_COOKIE = 'refresh_token';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
@@ -76,7 +77,7 @@ export class AuthController {
   }
 
   @Post('revoke-all')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, RevokeAllRateLimitGuard)
   async revokeAllSessions(
     @CurrentUser() user: AuthenticatedUser,
     @Req() req: Request,
