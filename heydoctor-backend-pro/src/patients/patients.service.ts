@@ -52,6 +52,10 @@ export class PatientsService {
     return { data, total, page, limit };
   }
 
+  async findOne(id: string, authUser: AuthenticatedUser): Promise<Patient> {
+    return this.authorizationService.assertPatientInClinic(authUser, id);
+  }
+
   async create(
     dto: CreatePatientDto,
     authUser: AuthenticatedUser,

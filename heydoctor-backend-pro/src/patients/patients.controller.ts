@@ -1,4 +1,14 @@
-import { Body, Controller, Get, Logger, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Logger,
+  Param,
+  ParseUUIDPipe,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -29,6 +39,15 @@ export class PatientsController {
   ) {
     this.logRequest(`findAll requested by user ${user.sub} (${user.email})`);
     return this.patientsService.findAll(user, pagination);
+  }
+
+  @Get(':id')
+  findOne(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+  ) {
+    this.logRequest(`findOne ${id} requested by user ${user.sub} (${user.email})`);
+    return this.patientsService.findOne(id, user);
   }
 
   @Post()
