@@ -1,14 +1,20 @@
-import { BadGatewayException, Injectable } from '@nestjs/common';
+import { BadGatewayException, Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
 import type { GenerateAiDto } from './dto/generate-ai.dto';
 import type { ClinicalSummaryResult } from './ai.types';
 
 @Injectable()
 export class AiService {
   private readonly client: OpenAI;
+  private readonly logger = new Logger(AiService.name);
 
-  constructor(private readonly config: ConfigService) {
+  constructor(
+    private readonly config: ConfigService,
+    @Inject(ENV_CONFIG_TOKEN)
+    private readonly env: EnvConfig,
+  ) {
     const apiKey = this.config.get<string>('OPENAI_API_KEY');
     this.client = new OpenAI({
       apiKey: apiKey || 'sk-not-configured',
@@ -46,7 +52,13 @@ export class AiService {
       throw new BadGatewayException('Clinical assistant temporarily unavailable');
     }
 
-    return this.parseClinicalJson(raw);
+    const parsed = this.parseClinicalJson(raw);
+    if (!this.env.isProduction && !this.env.hipaaMode) {
+      this.logger.debug(
+        `consultation-summary ok model=${model} responseChars=${raw.length}`,
+      );
+    }
+    return parsed;
   }
 
   private buildUserContent(dto: GenerateAiDto): string {

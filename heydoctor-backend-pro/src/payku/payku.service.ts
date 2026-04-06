@@ -319,8 +319,8 @@ export class PaykuService {
       }
 
       if (!isTransitionAllowed(payment.status, incomingStatus)) {
-        this.logger.warn(
-          `Invalid transition ${payment.status} → ${incomingStatus} for ${paymentId}`,
+        this.logger.error(
+          `[PAYKU_ALERT] Invalid transition ${payment.status} → ${incomingStatus} for ${paymentId}`,
         );
         void this.auditService.logError({
           action: 'PAYMENT_STATUS_UPDATED',
@@ -336,7 +336,9 @@ export class PaykuService {
 
       if (incomingStatus === PaykuPaymentStatus.PAID) {
         if (incomingAmount == null) {
-          this.logger.warn(`Missing amount in paid webhook for ${paymentId}`);
+          this.logger.error(
+            `[PAYKU_ALERT] Missing amount in paid webhook for ${paymentId}`,
+          );
           void this.auditService.logError({
             action: 'PAYMENT_STATUS_UPDATED',
             resource: 'payment',
@@ -350,8 +352,8 @@ export class PaykuService {
         }
 
         if (incomingAmount !== payment.amount) {
-          this.logger.warn(
-            `Amount mismatch for ${paymentId}: expected ${payment.amount}, got ${incomingAmount}`,
+          this.logger.error(
+            `[PAYKU_ALERT] Amount mismatch for ${paymentId}: expected ${payment.amount}, got ${incomingAmount}`,
           );
           void this.auditService.logError({
             action: 'PAYMENT_STATUS_UPDATED',

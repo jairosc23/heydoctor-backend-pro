@@ -107,6 +107,11 @@ export function SmartDiagnosisPicker({
 
   return (
     <div className={`relative ${className}`}>
+      <p className="mb-2 text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+        Las sugerencias (búsqueda y asistencia por IA) son orientativas y no sustituyen el
+        juicio clínico ni la evaluación presencial. El profesional es responsable del
+        diagnóstico y del registro final.
+      </p>
       <input
         type="text"
         value={input}

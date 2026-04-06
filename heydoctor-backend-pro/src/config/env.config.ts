@@ -51,6 +51,11 @@ export class EnvConfig {
 
   // ── COMPLIANCE ──
   readonly hipaaMode: boolean;
+  /**
+   * Si es true, al pasar a completado/firmado/bloqueado se exige que el diagnóstico
+   * empiece por un prefijo con forma CIE-10 (no sustituye catálogo oficial).
+   */
+  readonly requireCie10PrefixForCompletion: boolean;
 
   // ── URLS ──
   readonly frontendUrl: string;
@@ -119,6 +124,9 @@ export class EnvConfig {
 
     this.hipaaMode =
       config.get<string>('HIPAA_MODE')?.toLowerCase() === 'true';
+
+    this.requireCie10PrefixForCompletion =
+      config.get<string>('REQUIRE_CIE10_PREFIX_FOR_COMPLETION') === 'true';
 
     this.frontendUrl =
       config.get<string>('FRONTEND_URL') ?? 'https://heydoctor.vercel.app';

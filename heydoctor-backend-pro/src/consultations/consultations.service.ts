@@ -17,6 +17,11 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { ConsentService } from '../consents/consent.service';
+import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
+import {
+  diagnosisHasLeadingCie10Prefix,
+  diagnosisHasValidLeadingCie10IfPresent,
+} from '../common/validation/cie10-diagnosis.util';
 import { UserRole } from '../users/user-role.enum';
 import { Consultation } from './consultation.entity';
 import { ConsultationStatus } from './consultation-status.enum';
@@ -52,6 +57,8 @@ export class ConsultationsService {
     private readonly aiService: AiService,
     @Inject(APP_LOGGER)
     private readonly logger: LoggerService,
+    @Inject(ENV_CONFIG_TOKEN)
+    private readonly env: EnvConfig,
   ) {}
 
   async create(
@@ -297,6 +304,8 @@ export class ConsultationsService {
       );
     }
 
+    this.assertDiagnosisAllowedForClosing(consultation.diagnosis);
+
     const previousStatus = consultation.status;
     consultation.doctorSignature = normalizeSignature(dto.signature);
     consultation.signedAt = new Date();
@@ -369,6 +378,20 @@ export class ConsultationsService {
       );
     }
 
+    if (
+      dto.status !== undefined &&
+      dto.status !== consultation.status &&
+      (dto.status === ConsultationStatus.COMPLETED ||
+        dto.status === ConsultationStatus.SIGNED ||
+        dto.status === ConsultationStatus.LOCKED)
+    ) {
+      const nextDiagnosis =
+        dto.diagnosis !== undefined
+          ? dto.diagnosis
+          : (consultation.diagnosis ?? '');
+      this.assertDiagnosisAllowedForClosing(nextDiagnosis);
+    }
+
     const prevNotes = consultation.notes;
     const prevDiagnosis = consultation.diagnosis;
     const prevTreatment = consultation.treatment;
@@ -433,6 +456,30 @@ export class ConsultationsService {
     }
 
     return saved;
+  }
+
+  private assertDiagnosisAllowedForClosing(
+    diagnosis: string | null | undefined,
+  ): void {
+    const d = (diagnosis ?? '').trim();
+    if (!d) {
+      throw new BadRequestException(
+        'Diagnosis is required before completing, signing or locking the consultation',
+      );
+    }
+    if (!diagnosisHasValidLeadingCie10IfPresent(d)) {
+      throw new BadRequestException(
+        'Diagnosis begins with an invalid CIE-10/ICD-10 code prefix',
+      );
+    }
+    if (
+      this.env.requireCie10PrefixForCompletion &&
+      !diagnosisHasLeadingCie10Prefix(d)
+    ) {
+      throw new BadRequestException(
+        'A CIE-10/ICD-10 code at the start of the diagnosis is required in this environment',
+      );
+    }
   }
 
   /**

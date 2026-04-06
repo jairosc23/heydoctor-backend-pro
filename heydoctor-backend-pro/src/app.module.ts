@@ -1,5 +1,6 @@
 import { join } from 'path';
 import { ExecutionContext, Module } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
 import type { Request } from 'express';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -31,6 +32,7 @@ import { DoctorProfilesModule } from './doctor-profiles/doctor-profiles.module';
 import { GdprModule } from './gdpr/gdpr.module';
 import { HealthApiController, HealthController } from './health/health.controller';
 import { WebrtcModule } from './webrtc/webrtc.module';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 
@@ -123,6 +125,9 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     WebrtcModule,
   ],
   controllers: [AppController, HealthController, HealthApiController],
-  providers: [ThrottlerGuard],
+  providers: [
+    ThrottlerGuard,
+    { provide: APP_FILTER, useClass: GlobalExceptionFilter },
+  ],
 })
 export class AppModule {}
