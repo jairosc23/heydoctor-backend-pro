@@ -8,5 +8,5 @@ export class CreateConsultationDto {
   @IsNotEmpty()
   @MinLength(1)
   @MaxLength(20000)
-  reason: string;
+  chiefComplaint: string;
 }

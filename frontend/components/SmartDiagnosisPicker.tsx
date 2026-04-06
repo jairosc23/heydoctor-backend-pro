@@ -18,6 +18,7 @@ interface SmartDiagnosisPickerProps {
   placeholder?: string;
   debounceMs?: number;
   className?: string;
+  disabled?: boolean;
 }
 
 /**
@@ -32,11 +33,16 @@ export function SmartDiagnosisPicker({
   placeholder = 'Buscar diagnóstico (CIE-10)...',
   debounceMs = 300,
   className = '',
+  disabled = false,
 }: SmartDiagnosisPickerProps) {
   const [input, setInput] = useState(value);
   const [suggestions, setSuggestions] = useState<DiagnosisSuggestion[]>([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
+
+  useEffect(() => {
+    setInput(value);
+  }, [value]);
 
   const fetchSuggestions = useCallback(async (q: string) => {
     if (!q.trim()) {
@@ -115,14 +121,15 @@ export function SmartDiagnosisPicker({
       <input
         type="text"
         value={input}
+        disabled={disabled}
         onChange={(e) => {
           setInput(e.target.value);
           setOpen(true);
         }}
-        onFocus={() => setOpen(true)}
+        onFocus={() => !disabled && setOpen(true)}
         onBlur={() => setTimeout(() => setOpen(false), 150)}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm disabled:bg-gray-100 disabled:cursor-not-allowed"
       />
       {open && (suggestions.length > 0 || loading) && (
         <ul className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-y-auto">

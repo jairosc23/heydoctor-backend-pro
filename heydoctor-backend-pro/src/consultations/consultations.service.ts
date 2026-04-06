@@ -88,7 +88,7 @@ export class ConsultationsService {
       consentIp: consent.ip,
       consentUserAgent: consent.userAgent,
       doctorId: authUser.sub,
-      reason: dto.reason.trim(),
+      chiefComplaint: dto.chiefComplaint.trim(),
       status: ConsultationStatus.DRAFT,
     });
     const saved = await this.consultationsRepository.save(entity);
@@ -392,15 +392,23 @@ export class ConsultationsService {
       this.assertDiagnosisAllowedForClosing(nextDiagnosis);
     }
 
+    const prevChiefComplaint = consultation.chiefComplaint;
+    const prevSymptoms = consultation.symptoms;
     const prevNotes = consultation.notes;
     const prevDiagnosis = consultation.diagnosis;
-    const prevTreatment = consultation.treatment;
+    const prevTreatmentPlan = consultation.treatmentPlan;
 
+    if (dto.chiefComplaint !== undefined) {
+      consultation.chiefComplaint = dto.chiefComplaint.trim();
+    }
+    if (dto.symptoms !== undefined) {
+      consultation.symptoms = dto.symptoms.trim() || null;
+    }
     if (dto.diagnosis !== undefined) {
       consultation.diagnosis = dto.diagnosis;
     }
-    if (dto.treatment !== undefined) {
-      consultation.treatment = dto.treatment;
+    if (dto.treatmentPlan !== undefined) {
+      consultation.treatmentPlan = dto.treatmentPlan;
     }
     if (dto.notes !== undefined) {
       consultation.notes = dto.notes;
@@ -412,9 +420,11 @@ export class ConsultationsService {
     const saved = await this.consultationsRepository.save(consultation);
 
     const clinicalDocumentationChanged =
+      saved.chiefComplaint !== prevChiefComplaint ||
+      saved.symptoms !== prevSymptoms ||
       saved.notes !== prevNotes ||
       saved.diagnosis !== prevDiagnosis ||
-      saved.treatment !== prevTreatment;
+      saved.treatmentPlan !== prevTreatmentPlan;
 
     if (clinicalDocumentationChanged) {
       this.runAiClinicalSummaryInBackground(saved);
@@ -428,9 +438,13 @@ export class ConsultationsService {
         httpStatus: 200,
         metadata: {
           fieldsChanged: [
+            saved.chiefComplaint !== prevChiefComplaint
+              ? 'chiefComplaint'
+              : null,
+            saved.symptoms !== prevSymptoms ? 'symptoms' : null,
             saved.notes !== prevNotes ? 'notes' : null,
             saved.diagnosis !== prevDiagnosis ? 'diagnosis' : null,
-            saved.treatment !== prevTreatment ? 'treatment' : null,
+            saved.treatmentPlan !== prevTreatmentPlan ? 'treatmentPlan' : null,
           ].filter(Boolean),
         },
       });
@@ -489,10 +503,11 @@ export class ConsultationsService {
     void (async () => {
       try {
         const result = await this.aiService.generateClinicalSummary({
-          reason: consultation.reason,
+          chiefComplaint: consultation.chiefComplaint ?? '',
+          symptoms: consultation.symptoms ?? '',
           notes: consultation.notes ?? '',
           diagnosis: consultation.diagnosis ?? '',
-          treatment: consultation.treatment ?? '',
+          treatmentPlan: consultation.treatmentPlan ?? '',
         });
         await this.consultationsRepository.update(
           { id: consultation.id },

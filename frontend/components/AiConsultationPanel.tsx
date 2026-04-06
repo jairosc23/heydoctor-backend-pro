@@ -18,6 +18,7 @@ interface AiConsultationPanelProps {
   diagnosisCode?: string;
   /** Intervalo de polling en ms (default: 30000) */
   pollInterval?: number;
+  showClinicalApps?: boolean;
   className?: string;
 }
 

@@ -11,9 +11,10 @@ import { User } from '../users/user.entity';
 type FullConsultationPdf = {
   id: string;
   status: string;
-  reason: string;
+  chiefComplaint: string;
+  symptoms: string | null;
   diagnosis: string | null;
-  treatment: string | null;
+  treatmentPlan: string | null;
   notes: string | null;
   createdAt: Date;
   signedAt: Date | null;
@@ -79,9 +80,10 @@ export class LegalPdfService {
       consultation: {
         id: row.id,
         status: row.status,
-        reason: row.reason,
+        chiefComplaint: row.chiefComplaint,
+        symptoms: row.symptoms,
         diagnosis: row.diagnosis,
-        treatment: row.treatment,
+        treatmentPlan: row.treatmentPlan,
         notes: row.notes,
         createdAt: row.createdAt,
         signedAt: row.signedAt,
@@ -136,7 +138,10 @@ export class LegalPdfService {
       this.pdfRow(doc, 'ID Consulta', c.id);
       this.pdfRow(doc, 'Estado', c.status.toUpperCase());
       this.pdfRow(doc, 'Fecha de creación', val(c.createdAt));
-      this.pdfRow(doc, 'Motivo', c.reason);
+      this.pdfRow(doc, 'Motivo de consulta', val(c.chiefComplaint));
+      if (c.symptoms) {
+        this.pdfRow(doc, 'Síntomas', val(c.symptoms));
+      }
       doc.moveDown(0.6);
 
       this.pdfSection(doc, 'PACIENTE');
@@ -152,7 +157,7 @@ export class LegalPdfService {
 
       this.pdfSection(doc, 'DATOS CLÍNICOS');
       this.pdfRow(doc, 'Diagnóstico', val(c.diagnosis));
-      this.pdfRow(doc, 'Tratamiento', val(c.treatment));
+      this.pdfRow(doc, 'Plan de tratamiento', val(c.treatmentPlan));
       if (c.notes) {
         doc.font('Helvetica-Bold').fontSize(10).fillColor('#334155').text('Notas:');
         doc.font('Helvetica').fontSize(10).fillColor('#475569').text(c.notes, { indent: 10 });

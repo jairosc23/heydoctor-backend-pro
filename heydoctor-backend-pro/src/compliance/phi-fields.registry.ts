@@ -41,9 +41,10 @@ export const PHI_FIELDS_REGISTRY: PhiFieldDescriptor[] = [
   { entity: 'Patient', table: 'patients', column: 'email', classification: PhiClassification.DIRECT_IDENTIFIER, anonymizationStrategy: 'replace' },
 
   // --- consultations ---
-  { entity: 'Consultation', table: 'consultations', column: 'reason', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
+  { entity: 'Consultation', table: 'consultations', column: 'chief_complaint', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
+  { entity: 'Consultation', table: 'consultations', column: 'symptoms', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
   { entity: 'Consultation', table: 'consultations', column: 'diagnosis', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
-  { entity: 'Consultation', table: 'consultations', column: 'treatment', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
+  { entity: 'Consultation', table: 'consultations', column: 'treatment_plan', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
   { entity: 'Consultation', table: 'consultations', column: 'notes', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
   { entity: 'Consultation', table: 'consultations', column: 'ai_summary', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },
   { entity: 'Consultation', table: 'consultations', column: 'ai_improved_notes', classification: PhiClassification.CLINICAL, anonymizationStrategy: 'replace' },

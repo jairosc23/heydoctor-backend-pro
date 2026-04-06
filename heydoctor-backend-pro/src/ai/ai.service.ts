@@ -85,14 +85,19 @@ export class AiService {
       lines.push('');
     }
 
+    const sx = dto.symptoms?.trim();
+    if (sx) {
+      lines.push(`Symptoms / síntomas:\n${sx}`, '');
+    }
+
     lines.push(
-      `Reason for visit / chief complaint:\n${dto.reason || '(none)'}`,
+      `Chief complaint / motivo de consulta:\n${dto.chiefComplaint || '(none)'}`,
       '',
-      `Clinical notes:\n${dto.notes || '(none)'}`,
+      `Evolution / clinical notes:\n${dto.notes || '(none)'}`,
       '',
       `Working diagnosis (clinician-entered, not verified by AI):\n${dto.diagnosis || '(none)'}`,
       '',
-      `Treatment / plan documented:\n${dto.treatment || '(none)'}`,
+      `Treatment plan:\n${dto.treatmentPlan || '(none)'}`,
     );
 
     return lines.join('\n');

@@ -2,7 +2,12 @@ import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class GenerateAiDto {
   @IsString()
-  reason: string;
+  chiefComplaint: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  symptoms?: string;
 
   @IsString()
   notes: string;
@@ -11,7 +16,7 @@ export class GenerateAiDto {
   diagnosis: string;
 
   @IsString()
-  treatment: string;
+  treatmentPlan: string;
 
   @IsOptional()
   @IsString()

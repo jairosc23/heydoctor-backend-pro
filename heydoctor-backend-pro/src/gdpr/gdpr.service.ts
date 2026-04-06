@@ -302,9 +302,10 @@ export class GdprService {
     });
     for (const c of consultations) {
       await this.consultationsRepo.update(c.id, {
-        reason: ANONYMIZED_TEXT,
+        chiefComplaint: ANONYMIZED_TEXT,
+        symptoms: c.symptoms ? ANONYMIZED_TEXT : null,
         diagnosis: c.diagnosis ? ANONYMIZED_TEXT : null,
-        treatment: c.treatment ? ANONYMIZED_TEXT : null,
+        treatmentPlan: c.treatmentPlan ? ANONYMIZED_TEXT : null,
         notes: c.notes ? ANONYMIZED_TEXT : null,
         aiSummary: c.aiSummary ? ANONYMIZED_TEXT : null,
         aiImprovedNotes: c.aiImprovedNotes ? ANONYMIZED_TEXT : null,
@@ -315,7 +316,11 @@ export class GdprService {
     }
     if (consultations.length > 0) {
       fields['consultations'] = [
-        'reason', 'diagnosis', 'treatment', 'notes',
+        'chief_complaint',
+        'symptoms',
+        'diagnosis',
+        'treatment_plan',
+        'notes',
         'ai_summary', 'ai_improved_notes', 'ai_suggested_diagnosis',
         'doctor_signature', 'patient_signature',
       ];

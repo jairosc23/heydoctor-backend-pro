@@ -12,13 +12,23 @@ export class UpdateConsultationDto {
   @IsOptional()
   @IsString()
   @MaxLength(20000)
+  chiefComplaint?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
+  symptoms?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20000)
   @Validate(IsDiagnosisCie10OkConstraint)
   diagnosis?: string;
 
   @IsOptional()
   @IsString()
   @MaxLength(20000)
-  treatment?: string;
+  treatmentPlan?: string;
 
   @IsOptional()
   @IsString()

@@ -73,14 +73,18 @@ export class Consultation {
   @Column({ name: 'doctor_id', type: 'uuid' })
   doctorId: string;
 
-  @Column({ type: 'text' })
-  reason: string;
+  /** Motivo de consulta / chief complaint (obligatorio al crear). */
+  @Column({ name: 'chief_complaint', type: 'text' })
+  chiefComplaint: string;
+
+  @Column({ type: 'text', nullable: true })
+  symptoms: string | null;
 
   @Column({ type: 'text', nullable: true })
   diagnosis: string | null;
 
-  @Column({ type: 'text', nullable: true })
-  treatment: string | null;
+  @Column({ name: 'treatment_plan', type: 'text', nullable: true })
+  treatmentPlan: string | null;
 
   @Column({ type: 'text', nullable: true })
   notes: string | null;

@@ -21,3 +21,4 @@ export { ClinicalAppsPanel } from './ClinicalAppsPanel';
 export { LabOrdersPanel } from './LabOrdersPanel';
 export { PrescriptionPanel } from './PrescriptionPanel';
 export { ClinicalInsightsPanel } from './ClinicalInsightsPanel';
+export { ClinicalConsultationForm } from './ClinicalConsultationForm';
