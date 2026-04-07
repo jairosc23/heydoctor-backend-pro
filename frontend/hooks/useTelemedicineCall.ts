@@ -1,7 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  deriveConnectionQuality,
+  type ConnectionQuality,
+} from '../lib/webrtc-connection-quality';
 import { fetchWebrtcIceServers } from '../lib/fetch-webrtc-ice-servers';
+import { requestRecordingStart, requestRecordingStop } from '../lib/webrtc-recording-api';
+import { sendCallMetrics } from '../lib/send-webrtc-metrics';
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
 
@@ -103,6 +109,7 @@ export type NetworkStatsSample = {
   jitter: number;
   roundTripTime?: number;
   availableOutgoingBitrate?: number;
+  bytesSent?: number;
 };
 
 function parseOutboundVideoStats(
@@ -111,14 +118,19 @@ function parseOutboundVideoStats(
   let packetsLost = 0;
   let packetsSent = 0;
   let jitter = 0;
+  let bytesSent = 0;
   let outboundVideoId: string | undefined;
 
   report.forEach((s) => {
     if (s.type === 'outbound-rtp' && 'kind' in s && s.kind === 'video') {
       outboundVideoId = s.id;
-      const o = s as RTCOutboundRtpStreamStats & { packetsSent?: number };
+      const o = s as RTCOutboundRtpStreamStats & {
+        packetsSent?: number;
+        bytesSent?: number;
+      };
       if (typeof o.packetsLost === 'number') packetsLost = o.packetsLost;
       if (typeof o.packetsSent === 'number') packetsSent = o.packetsSent;
+      if (typeof o.bytesSent === 'number') bytesSent = o.bytesSent;
       if ('jitter' in o && typeof o.jitter === 'number') jitter = o.jitter;
     }
   });
@@ -168,6 +180,7 @@ function parseOutboundVideoStats(
     jitter,
     roundTripTime,
     availableOutgoingBitrate,
+    bytesSent,
   };
 }
 
@@ -181,6 +194,10 @@ export function createAdaptiveVideoMonitor(
   options?: {
     intervalMs?: number;
     onTierChange?: (tier: AdaptationTier) => void;
+    onStatsSample?: (payload: {
+      snap: NetworkStatsSample & { outboundBitrateBps?: number };
+      lossRatio: number;
+    }) => void | Promise<void>;
   },
 ): () => void {
   const intervalMs = options?.intervalMs ?? 2500;
@@ -188,6 +205,7 @@ export function createAdaptiveVideoMonitor(
   let prevLost = 0;
   let stableCycles = 0;
   let timer: ReturnType<typeof setInterval> | null = null;
+  let bitrateAcc = { lastBytes: 0, lastTs: 0 };
 
   const tick = async () => {
     try {
@@ -198,11 +216,36 @@ export function createAdaptiveVideoMonitor(
       const deltaLost = lost - prevLost;
       const rtt = snap.roundTripTime;
       const outBr = snap.availableOutgoingBitrate;
+      const bytes = snap.bytesSent ?? 0;
+
+      let outboundBitrateBps: number | undefined;
+      if (bitrateAcc.lastTs > 0) {
+        const dt = (Date.now() - bitrateAcc.lastTs) / 1000;
+        if (dt >= 0.2 && bytes >= bitrateAcc.lastBytes) {
+          outboundBitrateBps = (8 * (bytes - bitrateAcc.lastBytes)) / dt;
+        }
+      }
+      bitrateAcc = { lastBytes: bytes, lastTs: Date.now() };
 
       prevLost = lost;
 
       const lossRatio =
         sent + deltaLost > 0 ? deltaLost / (sent + deltaLost + 1) : 0;
+
+      const fullSnap: NetworkStatsSample & {
+        outboundBitrateBps?: number;
+      } = {
+        timestamp: snap.timestamp ?? Date.now(),
+        packetsLost: lost,
+        packetsSent: sent,
+        jitter: snap.jitter ?? 0,
+        roundTripTime: snap.roundTripTime,
+        availableOutgoingBitrate: snap.availableOutgoingBitrate,
+        bytesSent: snap.bytesSent,
+        outboundBitrateBps,
+      };
+
+      await options?.onStatsSample?.({ snap: fullSnap, lossRatio });
 
       let downgrade = false;
       if (lossRatio > 0.08 && deltaLost > 2) downgrade = true;
@@ -264,6 +307,8 @@ export type UseTelemedicineCallOptions = {
   onIceConnectionState?: (state: RTCIceConnectionState) => void;
   onRemoteUserId?: (userId: string | null) => void;
   onVideoTierChange?: (tier: AdaptationTier) => void;
+  /** default true — POST /api/webrtc/metrics cada ~7.5s (ticks de 2.5s × 3) */
+  sendCallMetricsToBackend?: boolean;
 };
 
 export type UseTelemedicineCallResult = {
@@ -272,9 +317,16 @@ export type UseTelemedicineCallResult = {
   connectionState: RTCPeerConnectionState | null;
   iceConnectionState: RTCIceConnectionState | null;
   videoTier: AdaptationTier;
+  connectionQuality: ConnectionQuality | null;
+  /** Vídeo detenido en envío por política de red (audio activo). */
+  videoSuspendedForNetwork: boolean;
   startCall: () => Promise<void>;
   endCall: () => void;
+  startRecording: (userConsent: boolean) => Promise<void>;
+  stopRecording: (userConsent: boolean) => Promise<void>;
 };
+
+export type { ConnectionQuality };
 
 /**
  * Hook de videollamada 1:1 compatible con el gateway Nest:
@@ -298,6 +350,7 @@ export function useTelemedicineCall(
     onIceConnectionState,
     onRemoteUserId,
     onVideoTierChange,
+    sendCallMetricsToBackend = true,
   } = options;
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
@@ -307,6 +360,11 @@ export function useTelemedicineCall(
   const [iceConnectionState, setIceConnectionState] =
     useState<RTCIceConnectionState | null>(null);
   const [videoTier, setVideoTier] = useState<AdaptationTier>(0);
+  const [connectionQuality, setConnectionQuality] = useState<
+    ConnectionQuality | null
+  >(null);
+  const [videoSuspendedForNetwork, setVideoSuspendedForNetwork] =
+    useState(false);
 
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const socketRef = useRef<Socket | null>(null);
@@ -324,6 +382,13 @@ export function useTelemedicineCall(
   );
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
+  const iceConnectionStateRef = useRef<RTCIceConnectionState | null>(null);
+  const reconnectingIceRef = useRef(false);
+  const capturedVideoTrackRef = useRef<MediaStreamTrack | null>(null);
+  const videoSuspendedByPolicyRef = useRef(false);
+  const metricsSamplesRef = useRef(0);
+  const poorNetworkStreakRef = useRef(0);
+  const goodNetworkStreakRef = useRef(0);
 
   useEffect(() => {
     videoTierRef.current = videoTier;
@@ -349,6 +414,9 @@ export function useTelemedicineCall(
     if (!pc || makingOfferRef.current) return;
     if (iceRestartInitiatorOnly && !isInitiator) return;
     if (pc.signalingState !== 'stable') return;
+
+    reconnectingIceRef.current = true;
+    setConnectionQuality('reconnecting');
 
     makingOfferRef.current = true;
     try {
@@ -392,8 +460,13 @@ export function useTelemedicineCall(
 
       pc.oniceconnectionstatechange = () => {
         const s = pc.iceConnectionState;
+        iceConnectionStateRef.current = s;
         setIceConnectionState(s);
         onIceConnectionState?.(s);
+
+        if (s === 'connected' || s === 'completed') {
+          reconnectingIceRef.current = false;
+        }
 
         if (s === 'failed') {
           scheduleIceRestartDebounced();
@@ -558,6 +631,15 @@ export function useTelemedicineCall(
 
   const endCall = useCallback(() => {
     detachMonitor();
+    reconnectingIceRef.current = false;
+    videoSuspendedByPolicyRef.current = false;
+    capturedVideoTrackRef.current = null;
+    metricsSamplesRef.current = 0;
+    poorNetworkStreakRef.current = 0;
+    goodNetworkStreakRef.current = 0;
+    iceConnectionStateRef.current = null;
+    setConnectionQuality(null);
+    setVideoSuspendedForNetwork(false);
     try {
       pcRef.current?.getSenders().forEach((s) => s.track?.stop());
       pcRef.current?.close();
@@ -587,6 +669,30 @@ export function useTelemedicineCall(
     setVideoTier(0);
     videoTierRef.current = 0;
   }, [consultationId, detachMonitor]);
+
+  const startRecording = useCallback(
+    async (userConsent: boolean) => {
+      await requestRecordingStart({
+        backendOrigin,
+        accessToken,
+        consultationId,
+        userConsent,
+      });
+    },
+    [accessToken, backendOrigin, consultationId],
+  );
+
+  const stopRecording = useCallback(
+    async (userConsent: boolean) => {
+      await requestRecordingStop({
+        backendOrigin,
+        accessToken,
+        consultationId,
+        userConsent,
+      });
+    },
+    [accessToken, backendOrigin, consultationId],
+  );
 
   const startCall = useCallback(async () => {
     endCall();
@@ -631,6 +737,14 @@ export function useTelemedicineCall(
     const stream = await navigator.mediaDevices.getUserMedia(mediaConstraints);
     setLocalStream(stream);
 
+    capturedVideoTrackRef.current = stream.getVideoTracks()[0] ?? null;
+    videoSuspendedByPolicyRef.current = false;
+    setVideoSuspendedForNetwork(false);
+    metricsSamplesRef.current = 0;
+    poorNetworkStreakRef.current = 0;
+    goodNetworkStreakRef.current = 0;
+    setConnectionQuality('good');
+
     for (const track of stream.getAudioTracks()) {
       pc.addTrack(track, stream);
     }
@@ -656,6 +770,94 @@ export function useTelemedicineCall(
         onTierChange: (tier) => {
           setVideoTier(tier);
           onVideoTierChange?.(tier);
+        },
+        onStatsSample: async ({ snap, lossRatio }) => {
+          setConnectionQuality(
+            deriveConnectionQuality({
+              reconnecting: reconnectingIceRef.current,
+              iceConnectionState: iceConnectionStateRef.current,
+              lossRatio,
+              rttMs: snap.roundTripTime,
+              outboundBitrateBps: snap.outboundBitrateBps,
+              videoSuspendedForNetwork: videoSuspendedByPolicyRef.current,
+            }),
+          );
+
+          const lowBitrate =
+            snap.outboundBitrateBps !== undefined &&
+            snap.outboundBitrateBps > 0 &&
+            snap.outboundBitrateBps < 100_000;
+
+          if (lossRatio > 0.12 || lowBitrate) {
+            poorNetworkStreakRef.current += 1;
+            goodNetworkStreakRef.current = 0;
+          } else {
+            poorNetworkStreakRef.current = 0;
+          }
+
+          if (
+            lossRatio < 0.02 &&
+            (snap.roundTripTime === undefined || snap.roundTripTime < 280)
+          ) {
+            goodNetworkStreakRef.current += 1;
+          } else {
+            goodNetworkStreakRef.current = 0;
+          }
+
+          const videoSender = pc
+            .getSenders()
+            .find((s) => s.track?.kind === 'video');
+
+          if (
+            poorNetworkStreakRef.current >= 2 &&
+            !videoSuspendedByPolicyRef.current &&
+            capturedVideoTrackRef.current &&
+            videoSender
+          ) {
+            videoSuspendedByPolicyRef.current = true;
+            setVideoSuspendedForNetwork(true);
+            try {
+              await videoSender.replaceTrack(null);
+            } catch {
+              /* ignore */
+            }
+          }
+
+          if (
+            goodNetworkStreakRef.current >= 4 &&
+            videoSuspendedByPolicyRef.current &&
+            capturedVideoTrackRef.current &&
+            videoSender
+          ) {
+            videoSuspendedByPolicyRef.current = false;
+            setVideoSuspendedForNetwork(false);
+            goodNetworkStreakRef.current = 0;
+            try {
+              await videoSender.replaceTrack(capturedVideoTrackRef.current);
+              await prioritizeAudioOverVideo(pc, videoTierRef.current);
+            } catch {
+              /* ignore */
+            }
+          }
+
+          if (sendCallMetricsToBackend) {
+            metricsSamplesRef.current += 1;
+            if (metricsSamplesRef.current >= 3) {
+              metricsSamplesRef.current = 0;
+              void sendCallMetrics({
+                backendOrigin,
+                accessToken,
+                consultationId,
+                rtt: snap.roundTripTime,
+                packetsLost: snap.packetsLost,
+                bitrate: snap.outboundBitrateBps,
+                jitter: snap.jitter > 0 ? snap.jitter : undefined,
+                packetLossRatio: lossRatio,
+              }).catch(() => {
+                /* no UX spam */
+              });
+            }
+          }
         },
       },
     );
@@ -688,6 +890,7 @@ export function useTelemedicineCall(
     onError,
     onRemoteUserId,
     onVideoTierChange,
+    sendCallMetricsToBackend,
     socketPath,
     wirePeerConnection,
   ]);
@@ -730,7 +933,11 @@ export function useTelemedicineCall(
     connectionState,
     iceConnectionState,
     videoTier,
+    connectionQuality,
+    videoSuspendedForNetwork,
     startCall,
     endCall,
+    startRecording,
+    stopRecording,
   };
 }
