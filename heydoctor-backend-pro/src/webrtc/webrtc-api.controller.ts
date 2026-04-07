@@ -16,6 +16,7 @@ import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator'
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
 import { SubscriptionPlan } from '../subscriptions/subscription.entity';
 import { PostWebrtcMetricsDto } from './dto/post-webrtc-metrics.dto';
+import { WebrtcGlobalSummaryQueryDto } from './dto/webrtc-global-summary-query.dto';
 import { WebrtcIceServersQueryDto } from './dto/webrtc-ice-servers-query.dto';
 import { WebrtcMetricsSummaryQueryDto } from './dto/webrtc-metrics-summary-query.dto';
 import {
@@ -58,6 +59,20 @@ export class WebrtcApiController {
     @Query() query: WebrtcMetricsSummaryQueryDto,
   ) {
     return this.callMetrics.summarize(user, query.consultationId);
+  }
+
+  /**
+   * Agregados por clínica (ventana móvil): distribución de calidad, mix relay/directo, salud TURN.
+   */
+  @Get('metrics/global-summary')
+  getGlobalMetricsSummary(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: WebrtcGlobalSummaryQueryDto,
+  ) {
+    return this.callMetrics.globalClinicSummary(
+      user,
+      query.windowDays ?? 7,
+    );
   }
 
   @Post('metrics')

@@ -12,6 +12,7 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AiService } from '../ai/ai.service';
 import { AuditService } from '../audit/audit.service';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { getCurrentRequestId } from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
@@ -427,7 +428,7 @@ export class ConsultationsService {
       saved.treatmentPlan !== prevTreatmentPlan;
 
     if (clinicalDocumentationChanged) {
-      this.runAiClinicalSummaryInBackground(saved);
+      this.runAiClinicalSummaryInBackground(saved, authUser);
 
       void this.auditService.logSuccess({
         userId: authUser.sub,
@@ -499,16 +500,22 @@ export class ConsultationsService {
   /**
    * Non-blocking AI assist: failures are swallowed so PATCH latency and success are unchanged.
    */
-  private runAiClinicalSummaryInBackground(consultation: Consultation): void {
+  private runAiClinicalSummaryInBackground(
+    consultation: Consultation,
+    authUser: AuthenticatedUser,
+  ): void {
     void (async () => {
       try {
-        const result = await this.aiService.generateClinicalSummary({
-          chiefComplaint: consultation.chiefComplaint ?? '',
-          symptoms: consultation.symptoms ?? '',
-          notes: consultation.notes ?? '',
-          diagnosis: consultation.diagnosis ?? '',
-          treatmentPlan: consultation.treatmentPlan ?? '',
-        });
+        const result = await this.aiService.generateClinicalSummary(
+          {
+            chiefComplaint: consultation.chiefComplaint ?? '',
+            symptoms: consultation.symptoms ?? '',
+            notes: consultation.notes ?? '',
+            diagnosis: consultation.diagnosis ?? '',
+            treatmentPlan: consultation.treatmentPlan ?? '',
+          },
+          authUser,
+        );
         await this.consultationsRepository.update(
           { id: consultation.id },
           {
@@ -519,18 +526,18 @@ export class ConsultationsService {
           },
         );
         this.logger.log('AI summary generated', {
-          consultationId: consultation.id,
-          patientId: consultation.patientId,
-          clinicId: consultation.clinicId,
+          consultationId: maskUuid(consultation.id),
+          patientId: maskUuid(consultation.patientId),
+          clinicId: maskUuid(consultation.clinicId),
         });
       } catch (err) {
         this.logger.error(
           'AI summary skipped or failed',
           err instanceof Error ? err : new Error(String(err)),
           {
-            consultationId: consultation.id,
-            patientId: consultation.patientId,
-            clinicId: consultation.clinicId,
+            consultationId: maskUuid(consultation.id),
+            patientId: maskUuid(consultation.patientId),
+            clinicId: maskUuid(consultation.clinicId),
           },
         );
       }

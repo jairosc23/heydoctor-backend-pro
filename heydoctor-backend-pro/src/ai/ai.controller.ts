@@ -1,5 +1,7 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
 import { SubscriptionPlan } from '../subscriptions/subscription.entity';
@@ -16,9 +18,10 @@ export class AiController {
 
   @Post('consultation-summary')
   consultationSummary(
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: GenerateAiDto,
   ): Promise<ClinicalSummaryResult> {
-    return this.aiService.generateClinicalSummary(dto);
+    return this.aiService.generateClinicalSummary(dto, user);
   }
 
   /**
@@ -26,8 +29,9 @@ export class AiController {
    */
   @Post('consultation-assist')
   consultationAssist(
+    @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ConsultationAssistDto,
   ): Promise<ConsultationAssistResult> {
-    return this.aiService.generateConsultationAssist(dto);
+    return this.aiService.generateConsultationAssist(dto, user);
   }
 }

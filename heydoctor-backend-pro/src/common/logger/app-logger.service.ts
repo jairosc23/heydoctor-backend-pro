@@ -1,5 +1,9 @@
 import { Injectable, Logger, type LoggerService } from '@nestjs/common';
-import { getCurrentRequestId } from '../request-context.storage';
+import {
+  getContextCallId,
+  getContextConsultationId,
+  getCurrentRequestId,
+} from '../request-context.storage';
 
 function isStructuredContext(value: unknown): value is Record<string, unknown> {
   return (
@@ -65,6 +69,14 @@ export class AppLoggerService implements LoggerService {
       hasInput && meta !== undefined ? { ...meta } : {};
     if (requestId !== undefined && out.requestId === undefined) {
       out.requestId = requestId;
+    }
+    const cid = getContextConsultationId();
+    if (cid !== undefined && out.consultationId === undefined) {
+      out.consultationId = cid;
+    }
+    const call = getContextCallId();
+    if (call !== undefined && out.callId === undefined) {
+      out.callId = call;
     }
     return Object.keys(out).length > 0 ? out : undefined;
   }

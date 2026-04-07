@@ -14,6 +14,7 @@ import {
 import type { Server, Socket } from 'socket.io';
 import type { JwtPayload } from '../auth/types/jwt-payload.interface';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { ConsultationsService } from '../consultations/consultations.service';
 import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
@@ -100,7 +101,9 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleDisconnect(client: Socket): void {
     const u = (client.data as { user?: AuthenticatedUser }).user;
     if (u) {
-      this.logger.debug(`WS disconnect user=${u.sub} socket=${client.id}`);
+      this.logger.debug(
+        `WS disconnect user=${maskUuid(u.sub)} socket=${client.id}`,
+      );
     }
   }
 
@@ -113,7 +116,9 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const consultationId = this.requireConsultationId(body?.consultationId);
     await this.consultationsService.verifySignalingAccess(consultationId, user);
     await client.join(consultationId);
-    this.logger.debug(`User ${user.sub} joined room ${consultationId}`);
+    this.logger.debug(
+      `User ${maskUuid(user.sub)} joined room ${maskUuid(consultationId)}`,
+    );
     client.to(consultationId).emit('peer-joined', { userId: user.sub });
     return { ok: true, consultationId };
   }
@@ -178,7 +183,9 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const consultationId = this.requireConsultationId(body?.consultationId);
     await client.leave(consultationId);
     client.to(consultationId).emit('peer-left', { userId: user.sub });
-    this.logger.debug(`User ${user.sub} left room ${consultationId}`);
+    this.logger.debug(
+      `User ${maskUuid(user.sub)} left room ${maskUuid(consultationId)}`,
+    );
     return { ok: true };
   }
 

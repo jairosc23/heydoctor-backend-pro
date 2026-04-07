@@ -1,6 +1,8 @@
 import { createHmac } from 'crypto';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { resolveTurnRegionalHosts } from './webrtc-turn-hosts.util';
+import { WebrtcTurnHealthService } from './webrtc-turn-health.service';
 
 /**
  * JSON shape returned for RTCPeerConnectionConfiguration.iceServers.
@@ -12,19 +14,16 @@ export type IceServerConfig = {
   credential?: string;
 };
 
-const DEFAULT_REGIONAL_HOSTS = [
-  'turn-scl.heydoctor.health',
-  'turn-gru.heydoctor.health',
-  'turn-bog.heydoctor.health',
-] as const;
-
 /**
  * Builds ICE server list: STUN (Google + regional) + TURN (udp/tcp/tls) per regional host.
  * Uses coturn-compatible ephemeral credentials when {@link TURN_REST_SECRET} is set.
  */
 @Injectable()
 export class WebrtcTurnService {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly turnHealth: WebrtcTurnHealthService,
+  ) {}
 
   /**
    * @param userId — sub claim; embedded in TURN username for traceability (no PHI).
@@ -48,7 +47,8 @@ export class WebrtcTurnService {
       86_400 * 7,
     );
 
-    const hosts = this.resolveRegionalHosts();
+    const hostsRaw = resolveTurnRegionalHosts(this.config);
+    const hosts = this.turnHealth.prioritizeHosts(hostsRaw);
     const creds = this.tryResolveCredentials(
       userId,
       secret,
@@ -86,17 +86,6 @@ export class WebrtcTurnService {
     }
 
     return servers;
-  }
-
-  private resolveRegionalHosts(): string[] {
-    const raw = this.config.get<string>('TURN_REGIONAL_HOSTS')?.trim();
-    if (raw) {
-      return raw
-        .split(',')
-        .map((h) => h.trim())
-        .filter(Boolean);
-    }
-    return [...DEFAULT_REGIONAL_HOSTS];
   }
 
   private tryResolveCredentials(

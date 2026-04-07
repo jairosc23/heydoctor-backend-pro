@@ -7,6 +7,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { AuditService } from '../audit/audit.service';
+import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { AuthorizationService } from '../authorization/authorization.service';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
 import type { ConsultationAssistDto } from './dto/consultation-assist.dto';
 import type { GenerateAiDto } from './dto/generate-ai.dto';
@@ -21,6 +24,8 @@ export class AiService {
     private readonly config: ConfigService,
     @Inject(ENV_CONFIG_TOKEN)
     private readonly env: EnvConfig,
+    private readonly auditService: AuditService,
+    private readonly authorizationService: AuthorizationService,
   ) {
     const apiKey = this.config.get<string>('OPENAI_API_KEY');
     this.client = new OpenAI({
@@ -31,7 +36,10 @@ export class AiService {
   /**
    * Calls OpenAI once; returns parsed JSON only (no DB writes).
    */
-  async generateClinicalSummary(dto: GenerateAiDto): Promise<ClinicalSummaryResult> {
+  async generateClinicalSummary(
+    dto: GenerateAiDto,
+    user: AuthenticatedUser,
+  ): Promise<ClinicalSummaryResult> {
     const model =
       this.config.get<string>('OPENAI_MODEL')?.trim() || 'gpt-4o-mini';
     const userBlock = this.buildUserContent(dto);
@@ -65,6 +73,7 @@ export class AiService {
         `consultation-summary ok model=${model} responseChars=${raw.length}`,
       );
     }
+    await this.auditAiUsage(user, 'AI_CONSULTATION_SUMMARY');
     return parsed;
   }
 
@@ -148,6 +157,7 @@ export class AiService {
    */
   async generateConsultationAssist(
     dto: ConsultationAssistDto,
+    user: AuthenticatedUser,
   ): Promise<ConsultationAssistResult> {
     const chief = dto.chiefComplaint?.trim() ?? '';
     const sx = dto.symptoms?.trim() ?? '';
@@ -205,7 +215,28 @@ export class AiService {
         `consultation-assist ok model=${model} responseChars=${raw.length}`,
       );
     }
+    await this.auditAiUsage(user, 'AI_CONSULTATION_ASSIST');
     return parsed;
+  }
+
+  private async auditAiUsage(
+    user: AuthenticatedUser,
+    action: string,
+  ): Promise<void> {
+    const { clinicId } =
+      await this.authorizationService.getUserWithClinic(user);
+    void this.auditService.logSuccess({
+      userId: user.sub,
+      action,
+      resource: 'ai',
+      resourceId: null,
+      clinicId,
+      httpStatus: 200,
+      metadata: {
+        model:
+          this.config.get<string>('OPENAI_MODEL')?.trim() || 'gpt-4o-mini',
+      },
+    });
   }
 
   private parseConsultationAssistJson(raw: string): ConsultationAssistResult {

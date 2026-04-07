@@ -33,6 +33,7 @@ import { GdprModule } from './gdpr/gdpr.module';
 import { HealthApiController, HealthController } from './health/health.controller';
 import { WebrtcModule } from './webrtc/webrtc.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { ObservabilityModule } from './common/observability/observability.module';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 
@@ -43,6 +44,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
       envFilePath: ['.env.local', '.env'],
     }),
     LoggerModule,
+    ObservabilityModule,
     AppCacheModule,
     JwtUserCacheModule,
     TypeOrmModule.forRoot({

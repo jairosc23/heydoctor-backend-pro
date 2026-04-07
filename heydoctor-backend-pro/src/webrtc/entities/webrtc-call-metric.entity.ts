@@ -56,4 +56,25 @@ export class WebrtcCallMetric {
     nullable: true,
   })
   packetLossRatio!: number | null;
+
+  /** Client session id for correlating samples (no PHI). */
+  @Column({ name: 'call_id', type: 'uuid', nullable: true })
+  callId!: string | null;
+
+  /** e.g. relay | srflx | host — for transport mix analytics. */
+  @Column({
+    name: 'selected_candidate_type',
+    type: 'varchar',
+    length: 16,
+    nullable: true,
+  })
+  selectedCandidateType!: string | null;
+
+  /** Inferred or client-reported region label (scl | gru | bog). */
+  @Column({ name: 'turn_region', type: 'varchar', length: 32, nullable: true })
+  turnRegion!: string | null;
+
+  /** ICE restarts observed in the client sampling window. */
+  @Column({ name: 'ice_restart_events', type: 'int', nullable: true })
+  iceRestartEvents!: number | null;
 }

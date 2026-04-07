@@ -1,9 +1,13 @@
 import { Type } from 'class-transformer';
 import {
+  IsIn,
+  IsInt,
   IsNumber,
   IsOptional,
+  IsString,
   IsUUID,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -47,4 +51,30 @@ export class PostWebrtcMetricsDto {
   @Min(0)
   @Max(1)
   packetLossRatio?: number;
+
+  /** Per-call correlation (client-generated UUID). */
+  @IsOptional()
+  @IsUUID('4')
+  callId?: string;
+
+  /** Selected candidate type for transport mix (client-reported). */
+  @IsOptional()
+  @IsString()
+  @IsIn(['relay', 'srflx', 'host', 'prflx', 'unknown'])
+  @MaxLength(16)
+  selectedCandidateType?: string;
+
+  /** Region hint: scl | gru | bog | legacy | unknown */
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  turnRegion?: string;
+
+  /** ICE restart events in the client sampling window. */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  iceRestartEvents?: number;
 }
