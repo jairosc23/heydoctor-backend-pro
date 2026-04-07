@@ -21,6 +21,13 @@
     "lib/heydoctor-trace-headers.ts",
     "lib/webrtc-transport-telemetry.ts",
     "lib/rtc-stats-report-get.ts",
+    "lib/fetch-platform-global.ts",
+    "lib/api-doctors-register.ts",
+    "lib/api-payments.ts",
+    "components/PlatformAdminDashboard.tsx",
+    "components/DoctorOnboardingForm.tsx",
+    "components/ConsultationPaymentPanel.tsx",
+    "components/WebrtcRecordingControls.tsx",
     "socket.io-client.d.ts"
   ]
 }

@@ -31,6 +31,9 @@ import { DoctorApplicationsModule } from './doctor-applications/doctor-applicati
 import { DoctorProfilesModule } from './doctor-profiles/doctor-profiles.module';
 import { GdprModule } from './gdpr/gdpr.module';
 import { HealthApiController, HealthController } from './health/health.controller';
+import { DoctorsModule } from './doctors/doctors.module';
+import { PaymentsModule } from './payments/payments.module';
+import { PlatformModule } from './platform/platform.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ObservabilityModule } from './common/observability/observability.module';
@@ -125,6 +128,9 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     DoctorProfilesModule,
     GdprModule,
     WebrtcModule,
+    PlatformModule,
+    DoctorsModule,
+    PaymentsModule,
   ],
   controllers: [AppController, HealthController, HealthApiController],
   providers: [

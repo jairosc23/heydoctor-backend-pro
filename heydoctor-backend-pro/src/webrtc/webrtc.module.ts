@@ -43,5 +43,6 @@ import { WebrtcTurnService } from './webrtc-turn.service';
     WebrtcTurnHealthService,
     WebrtcTurnService,
   ],
+  exports: [WebrtcTurnHealthService],
 })
 export class WebrtcModule {}

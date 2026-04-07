@@ -144,6 +144,50 @@ export class UsersService {
   }
 
   /**
+   * Doctor self-service onboarding: nueva clínica + usuario doctor (email único global en Fase 1).
+   */
+  async createDoctorWithNewClinic(params: {
+    email: string;
+    password: string;
+    name: string;
+    clinicName: string;
+  }): Promise<User> {
+    const normalized = params.email.trim().toLowerCase();
+    const existing = await this.findByEmail(normalized);
+    if (existing) {
+      this.logger.warn('Business rule violation', {
+        reason: 'email already registered',
+        clinicId: existing.clinicId,
+        existingUserId: existing.id,
+      });
+      throw new ConflictException('Email is already registered');
+    }
+
+    const clinic = await this.clinicService.createClinic(
+      params.clinicName.trim().slice(0, 200) || 'Clinic',
+    );
+
+    const passwordHash = await bcrypt.hash(params.password, BCRYPT_ROUNDS);
+    const entity = this.usersRepository.create({
+      email: normalized,
+      passwordHash,
+      role: UserRole.DOCTOR,
+      name: params.name.trim().slice(0, 200) || null,
+      clinic,
+    });
+    const saved = await this.usersRepository.save(entity);
+    const user = await this.findById(saved.id);
+    if (!user) {
+      throw new Error('Failed to load user after create');
+    }
+    this.logger.log('Doctor registered with new clinic', {
+      userId: user.id,
+      clinicId: user.clinicId,
+    });
+    return user;
+  }
+
+  /**
    * Crea usuario en una clínica existente (admin / Fase 4). Email único por clínica.
    */
   async createUserForClinic(

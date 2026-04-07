@@ -6,11 +6,13 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
-import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { AuditService } from '../audit/audit.service';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { ConsultationsService } from '../consultations/consultations.service';
 import type {
   WebrtcRecordingStartDto,
@@ -22,6 +24,7 @@ import { RecordingSession } from './entities/recording-session.entity';
 
 /**
  * Session metadata + audit trail only — no media persistence yet.
+ * storagePath / encryptionKeyId are compliance-oriented placeholders for S3 + KMS.
  */
 @Injectable()
 export class WebrtcRecordingStubService {
@@ -48,6 +51,9 @@ export class WebrtcRecordingStubService {
     userId: string;
     consentRequired: boolean;
     userConsentAsserted: boolean;
+    storagePath: string | null;
+    encryptionKeyId: string | null;
+    startedAt: string;
   }> {
     await this.consultationsService.verifySignalingAccess(
       dto.consultationId,
@@ -62,14 +68,23 @@ export class WebrtcRecordingStubService {
 
     const { clinicId } = await this.authorizationService.getUserWithClinic(user);
 
+    const encryptionKeyId =
+      process.env.RECORDING_ENCRYPTION_KEY_ID?.trim() || 'stub:kms:v1';
+    const recordingId = randomUUID();
+    const storagePath = `recordings/clinic/${clinicId}/sessions/${recordingId}/pending`;
+
     const session = this.sessions.create({
+      id: recordingId,
       consultationId: dto.consultationId,
       startedByUserId: user.sub,
       status: 'active' as RecordingSessionStatus,
       consentAsserted: dto.userConsent,
       consentRequired,
       encryptionKeyRef: null,
+      encryptionKeyId,
+      storagePath,
       storageProvider: 's3_compatible_stub',
+      endedAt: null,
     });
     const saved = await this.sessions.save(session);
 
@@ -88,13 +103,16 @@ export class WebrtcRecordingStubService {
       resourceId: saved.id,
       clinicId,
       httpStatus: 202,
-      metadata: { consultationId: dto.consultationId, mode: 'stub' },
+      metadata: {
+        mode: 'stub',
+        consentRequired,
+      },
     });
 
     this.logger.log('recording/start (stub)', {
       recordingId: saved.id,
-      consultationId: dto.consultationId,
-      userId: user.sub,
+      consultationId: maskUuid(dto.consultationId),
+      userId: maskUuid(user.sub),
       consentRequired,
     });
 
@@ -107,6 +125,9 @@ export class WebrtcRecordingStubService {
       userId: user.sub,
       consentRequired,
       userConsentAsserted: dto.userConsent,
+      storagePath: saved.storagePath,
+      encryptionKeyId: saved.encryptionKeyId,
+      startedAt: saved.createdAt.toISOString(),
     };
   }
 
@@ -122,6 +143,7 @@ export class WebrtcRecordingStubService {
     userId: string;
     consentRequired: boolean;
     userConsentAsserted: boolean;
+    endedAt: string;
   }> {
     await this.consultationsService.verifySignalingAccess(
       dto.consultationId,
@@ -148,7 +170,9 @@ export class WebrtcRecordingStubService {
       throw new NotFoundException('No active recording session for this user');
     }
 
+    const endedAt = new Date();
     active.status = 'finalized';
+    active.endedAt = endedAt;
     await this.sessions.save(active);
 
     await this.accessAudits.save(
@@ -166,12 +190,12 @@ export class WebrtcRecordingStubService {
       resourceId: active.id,
       clinicId,
       httpStatus: 202,
-      metadata: { consultationId: dto.consultationId, mode: 'stub' },
+      metadata: { mode: 'stub' },
     });
 
     this.logger.log('recording/stop (stub)', {
       recordingId: active.id,
-      consultationId: dto.consultationId,
+      consultationId: maskUuid(dto.consultationId),
     });
 
     return {
@@ -183,6 +207,56 @@ export class WebrtcRecordingStubService {
       userId: user.sub,
       consentRequired,
       userConsentAsserted: dto.userConsent,
+      endedAt: endedAt.toISOString(),
+    };
+  }
+
+  async getStatus(
+    user: AuthenticatedUser,
+    consultationId: string,
+  ): Promise<{
+    active: boolean;
+    recording: {
+      recordingId: string;
+      consultationId: string;
+      status: RecordingSessionStatus;
+      startedByUserId: string;
+      consentRequired: boolean;
+      userConsentAsserted: boolean;
+      storagePath: string | null;
+      encryptionKeyId: string | null;
+      startedAt: string;
+      endedAt: string | null;
+    } | null;
+  }> {
+    await this.consultationsService.verifySignalingAccess(
+      consultationId,
+      user,
+    );
+
+    const active = await this.sessions.findOne({
+      where: { consultationId, status: 'active' },
+      order: { createdAt: 'DESC' },
+    });
+
+    if (!active) {
+      return { active: false, recording: null };
+    }
+
+    return {
+      active: true,
+      recording: {
+        recordingId: active.id,
+        consultationId: active.consultationId,
+        status: active.status,
+        startedByUserId: active.startedByUserId,
+        consentRequired: active.consentRequired,
+        userConsentAsserted: active.consentAsserted,
+        storagePath: active.storagePath,
+        encryptionKeyId: active.encryptionKeyId,
+        startedAt: active.createdAt.toISOString(),
+        endedAt: active.endedAt ? active.endedAt.toISOString() : null,
+      },
     };
   }
 }

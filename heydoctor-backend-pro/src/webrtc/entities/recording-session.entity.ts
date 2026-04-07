@@ -42,8 +42,19 @@ export class RecordingSession {
   @Column({ name: 'encryption_key_ref', type: 'text', nullable: true })
   encryptionKeyRef!: string | null;
 
+  /** KMS / vault key id (no secrets); compliance-oriented placeholder until real KMS. */
+  @Column({ name: 'encryption_key_id', type: 'varchar', length: 128, nullable: true })
+  encryptionKeyId!: string | null;
+
+  /** S3-compatible object prefix or key (no media until pipeline is live). */
+  @Column({ name: 'storage_path', type: 'text', nullable: true })
+  storagePath!: string | null;
+
   @Column({ name: 'storage_provider', type: 'varchar', length: 32 })
   storageProvider!: string;
+
+  @Column({ name: 'ended_at', type: 'timestamptz', nullable: true })
+  endedAt!: Date | null;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;

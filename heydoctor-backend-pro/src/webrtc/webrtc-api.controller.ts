@@ -19,6 +19,7 @@ import { PostWebrtcMetricsDto } from './dto/post-webrtc-metrics.dto';
 import { WebrtcGlobalSummaryQueryDto } from './dto/webrtc-global-summary-query.dto';
 import { WebrtcIceServersQueryDto } from './dto/webrtc-ice-servers-query.dto';
 import { WebrtcMetricsSummaryQueryDto } from './dto/webrtc-metrics-summary-query.dto';
+import { WebrtcRecordingStatusQueryDto } from './dto/webrtc-recording-status-query.dto';
 import {
   WebrtcRecordingStartDto,
   WebrtcRecordingStopDto,
@@ -82,6 +83,14 @@ export class WebrtcApiController {
     @Body() dto: PostWebrtcMetricsDto,
   ) {
     return this.callMetrics.record(user, dto);
+  }
+
+  @Get('recording/status')
+  recordingStatus(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query() query: WebrtcRecordingStatusQueryDto,
+  ) {
+    return this.recordingStub.getStatus(user, query.consultationId);
   }
 
   /** Placeholder — see RECORDING_ARCHITECTURE.md for the future pipeline. */

@@ -37,6 +37,15 @@ export class DoctorProfilesService {
     return this.profileRepo.findOne({ where: { userId } });
   }
 
+  /** Public slug check for onboarding (no PII). */
+  async isSlugTaken(slug: string): Promise<boolean> {
+    const row = await this.profileRepo.findOne({
+      where: { slug },
+      select: { id: true },
+    });
+    return row != null;
+  }
+
   async getRatings(
     doctorProfileId: string,
   ): Promise<{ ratings: DoctorRating[]; average: number; count: number }> {

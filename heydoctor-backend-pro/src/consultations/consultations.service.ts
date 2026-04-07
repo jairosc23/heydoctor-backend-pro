@@ -62,6 +62,16 @@ export class ConsultationsService {
     private readonly env: EnvConfig,
   ) {}
 
+  /** Scoped lookup for billing / integrations (no auth side-effects). */
+  async findByIdForClinic(
+    id: string,
+    clinicId: string,
+  ): Promise<Consultation | null> {
+    return this.consultationsRepository.findOne({
+      where: { id, clinicId },
+    });
+  }
+
   async create(
     dto: CreateConsultationDto,
     authUser: AuthenticatedUser,
