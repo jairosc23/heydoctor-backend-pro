@@ -387,6 +387,9 @@ export function useTelemedicineCall(
   const metricsSamplesRef = useRef(0);
   const poorNetworkStreakRef = useRef(0);
   const goodNetworkStreakRef = useRef(0);
+  const lastQualityInputsRef = useRef<Parameters<
+    typeof deriveConnectionQuality
+  >[0] | null>(null);
 
   useEffect(() => {
     videoTierRef.current = videoTier;
@@ -464,6 +467,16 @@ export function useTelemedicineCall(
 
         if (s === 'connected' || s === 'completed') {
           reconnectingIceRef.current = false;
+          const last = lastQualityInputsRef.current;
+          if (last) {
+            setConnectionQuality(
+              deriveConnectionQuality({
+                ...last,
+                reconnecting: false,
+                iceConnectionState: s,
+              }),
+            );
+          }
         }
 
         if (s === 'failed') {
@@ -635,6 +648,7 @@ export function useTelemedicineCall(
     metricsSamplesRef.current = 0;
     poorNetworkStreakRef.current = 0;
     goodNetworkStreakRef.current = 0;
+    lastQualityInputsRef.current = null;
     iceConnectionStateRef.current = null;
     setConnectionQuality(null);
     setVideoSuspendedForNetwork(false);
@@ -770,16 +784,16 @@ export function useTelemedicineCall(
           onVideoTierChange?.(tier);
         },
         onStatsSample: async ({ snap, lossRatio }) => {
-          setConnectionQuality(
-            deriveConnectionQuality({
-              reconnecting: reconnectingIceRef.current,
-              iceConnectionState: iceConnectionStateRef.current,
-              lossRatio,
-              rttMs: snap.roundTripTime,
-              outboundBitrateBps: snap.outboundBitrateBps,
-              videoSuspendedForNetwork: videoSuspendedByPolicyRef.current,
-            }),
-          );
+          const qualityInputs = {
+            reconnecting: reconnectingIceRef.current,
+            iceConnectionState: iceConnectionStateRef.current,
+            lossRatio,
+            rttMs: snap.roundTripTime,
+            outboundBitrateBps: snap.outboundBitrateBps,
+            videoSuspendedForNetwork: videoSuspendedByPolicyRef.current,
+          };
+          lastQualityInputsRef.current = qualityInputs;
+          setConnectionQuality(deriveConnectionQuality(qualityInputs));
 
           const lowBitrate =
             snap.outboundBitrateBps !== undefined &&
@@ -849,7 +863,7 @@ export function useTelemedicineCall(
                 rtt: snap.roundTripTime,
                 packetsLost: snap.packetsLost,
                 bitrate: snap.outboundBitrateBps,
-                jitter: snap.jitter > 0 ? snap.jitter : undefined,
+                jitter: snap.jitter,
                 packetLossRatio: lossRatio,
               }).catch(() => {
                 /* no UX spam */

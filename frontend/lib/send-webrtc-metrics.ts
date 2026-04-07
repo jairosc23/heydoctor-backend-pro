@@ -32,7 +32,7 @@ export async function sendCallMetrics(
   if (rtt !== undefined) body.rtt = rtt;
   if (packetsLost !== undefined) body.packetsLost = packetsLost;
   if (bitrate !== undefined) body.bitrate = bitrate;
-  if (jitter !== undefined) body.jitter = jitter;
+  if (jitter !== undefined && !Number.isNaN(jitter)) body.jitter = jitter;
   if (packetLossRatio !== undefined) body.packetLossRatio = packetLossRatio;
 
   const res = await fetch(url.toString(), {

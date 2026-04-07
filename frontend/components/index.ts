@@ -22,3 +22,5 @@ export { LabOrdersPanel } from './LabOrdersPanel';
 export { PrescriptionPanel } from './PrescriptionPanel';
 export { ClinicalInsightsPanel } from './ClinicalInsightsPanel';
 export { ClinicalConsultationForm } from './ClinicalConsultationForm';
+export { ConnectionQualityBadge } from './ConnectionQualityBadge';
+export type { ConnectionQualityBadgeProps } from './ConnectionQualityBadge';
