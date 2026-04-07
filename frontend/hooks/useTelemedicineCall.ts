@@ -326,8 +326,6 @@ export type UseTelemedicineCallResult = {
   stopRecording: (userConsent: boolean) => Promise<void>;
 };
 
-export type { ConnectionQuality };
-
 /**
  * Hook de videollamada 1:1 compatible con el gateway Nest:
  * join-consultation, offer, answer, ice-candidate (Socket.IO namespace /webrtc).
