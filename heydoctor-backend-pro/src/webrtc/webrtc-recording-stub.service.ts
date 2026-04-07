@@ -23,19 +23,26 @@ export class WebrtcRecordingStubService {
     accepted: true;
     mode: 'stub';
     consultationId: string;
+    userId: string;
+    consentRequired: boolean;
+    userConsentAsserted: boolean;
   }> {
     await this.consultationsService.verifySignalingAccess(
       dto.consultationId,
       user,
     );
+    const consentRequired = dto.consentRequired !== false;
     this.logger.log(
-      `recording/start (stub) consultationId=${dto.consultationId} userId=${user.sub} consent=${dto.userConsent}`,
+      `recording/start (stub) consultationId=${dto.consultationId} userId=${user.sub} userConsent=${dto.userConsent} consentRequired=${consentRequired}`,
     );
     return {
       ok: true,
       accepted: true,
       mode: 'stub',
       consultationId: dto.consultationId,
+      userId: user.sub,
+      consentRequired,
+      userConsentAsserted: dto.userConsent,
     };
   }
 
@@ -47,19 +54,26 @@ export class WebrtcRecordingStubService {
     accepted: true;
     mode: 'stub';
     consultationId: string;
+    userId: string;
+    consentRequired: boolean;
+    userConsentAsserted: boolean;
   }> {
     await this.consultationsService.verifySignalingAccess(
       dto.consultationId,
       user,
     );
+    const consentRequired = dto.consentRequired !== false;
     this.logger.log(
-      `recording/stop (stub) consultationId=${dto.consultationId} userId=${user.sub} consent=${dto.userConsent}`,
+      `recording/stop (stub) consultationId=${dto.consultationId} userId=${user.sub} userConsent=${dto.userConsent} consentRequired=${consentRequired}`,
     );
     return {
       ok: true,
       accepted: true,
       mode: 'stub',
       consultationId: dto.consultationId,
+      userId: user.sub,
+      consentRequired,
+      userConsentAsserted: dto.userConsent,
     };
   }
 }

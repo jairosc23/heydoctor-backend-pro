@@ -4,3 +4,11 @@ export type ClinicalSummaryResult = {
   suggestedDiagnosis: string[];
   improvedNotes: string;
 };
+
+/** Assistive-only suggestions — never a diagnosis or prescription. */
+export type ConsultationAssistResult = {
+  assistiveOnlyNotice: string;
+  possibleDiagnoses: string[];
+  recommendations: string[];
+  generalEducation: string[];
+};

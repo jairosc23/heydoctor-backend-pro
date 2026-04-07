@@ -9,6 +9,7 @@ import { WebrtcApiController } from './webrtc-api.controller';
 import { WebrtcCallMetricsService } from './webrtc-call-metrics.service';
 import { WebrtcGateway } from './webrtc.gateway';
 import { WebrtcRecordingStubService } from './webrtc-recording-stub.service';
+import { WebrtcTurnService } from './webrtc-turn.service';
 
 /**
  * WebRTC signaling over Socket.IO (no media). For horizontal scale, attach a
@@ -27,6 +28,7 @@ import { WebrtcRecordingStubService } from './webrtc-recording-stub.service';
     WebrtcGateway,
     WebrtcCallMetricsService,
     WebrtcRecordingStubService,
+    WebrtcTurnService,
   ],
 })
 export class WebrtcModule {}
