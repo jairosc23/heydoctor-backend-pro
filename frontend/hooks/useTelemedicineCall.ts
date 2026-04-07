@@ -1,13 +1,30 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+
+/** RFC-4122 v4 for `X-HeyDoctor-Call-Id` / DTO (middleware accepts UUID only). */
+function generateCallId(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 import {
   deriveConnectionQuality,
   type ConnectionQuality,
 } from '../lib/webrtc-connection-quality';
 import { fetchWebrtcIceServers } from '../lib/fetch-webrtc-ice-servers';
 import { requestRecordingStart, requestRecordingStop } from '../lib/webrtc-recording-api';
+import { rtcStatsReportGet } from '../lib/rtc-stats-report-get';
 import { sendCallMetrics } from '../lib/send-webrtc-metrics';
+import { extractSelectedTransportFromStats } from '../lib/webrtc-transport-telemetry';
 import type { Socket } from 'socket.io-client';
 import { io } from 'socket.io-client';
 
@@ -127,6 +144,7 @@ function parseOutboundVideoStats(
       const o = s as RTCOutboundRtpStreamStats & {
         packetsSent?: number;
         bytesSent?: number;
+        packetsLost?: number;
       };
       if (typeof o.packetsLost === 'number') packetsLost = o.packetsLost;
       if (typeof o.packetsSent === 'number') packetsSent = o.packetsSent;
@@ -139,7 +157,7 @@ function parseOutboundVideoStats(
   let availableOutgoingBitrate: number | undefined;
 
   if (outboundVideoId) {
-    const ob = report.get(outboundVideoId);
+    const ob = rtcStatsReportGet(report, outboundVideoId);
     const rid =
       ob &&
       'remoteId' in ob &&
@@ -147,9 +165,13 @@ function parseOutboundVideoStats(
         ? (ob as { remoteId: string }).remoteId
         : undefined;
     if (rid) {
-      const remote = report.get(rid);
+      const remote = rtcStatsReportGet(report, rid);
       if (remote?.type === 'remote-inbound-rtp') {
-        const r = remote as RTCRemoteInboundRtpStreamStats;
+        const r = remote as RTCStats & {
+          packetsLost?: number;
+          jitter?: number;
+          roundTripTime?: number;
+        };
         if (typeof r.packetsLost === 'number') packetsLost = r.packetsLost;
         if (typeof r.jitter === 'number') jitter = r.jitter;
         if (typeof r.roundTripTime === 'number') {
@@ -197,6 +219,7 @@ export function createAdaptiveVideoMonitor(
     onStatsSample?: (payload: {
       snap: NetworkStatsSample & { outboundBitrateBps?: number };
       lossRatio: number;
+      statsReport: RTCStatsReport;
     }) => void | Promise<void>;
   },
 ): () => void {
@@ -245,7 +268,11 @@ export function createAdaptiveVideoMonitor(
         outboundBitrateBps,
       };
 
-      await options?.onStatsSample?.({ snap: fullSnap, lossRatio });
+      await options?.onStatsSample?.({
+        snap: fullSnap,
+        lossRatio,
+        statsReport: report,
+      });
 
       let downgrade = false;
       if (lossRatio > 0.08 && deltaLost > 2) downgrade = true;
@@ -375,9 +402,7 @@ export function useTelemedicineCall(
     null,
   );
   const disconnectedSinceRef = useRef<number | null>(null);
-  const disconnectedPollRef = useRef<ReturnType<typeof setInterval> | null>(
-    null,
-  );
+  const disconnectedPollRef = useRef<number | null>(null);
 
   const remoteStreamRef = useRef<MediaStream | null>(null);
   const iceConnectionStateRef = useRef<RTCIceConnectionState | null>(null);
@@ -385,6 +410,10 @@ export function useTelemedicineCall(
   const capturedVideoTrackRef = useRef<MediaStreamTrack | null>(null);
   const videoSuspendedByPolicyRef = useRef(false);
   const metricsSamplesRef = useRef(0);
+  /** One UUID per started call; cleared in endCall. */
+  const callIdRef = useRef<string | null>(null);
+  /** ICE restarts since last successful metrics POST (backend window). */
+  const iceRestartEventsSinceMetricsRef = useRef(0);
   const poorNetworkStreakRef = useRef(0);
   const goodNetworkStreakRef = useRef(0);
   const lastQualityInputsRef = useRef<Parameters<
@@ -427,6 +456,7 @@ export function useTelemedicineCall(
         consultationId,
         sdp: pc.localDescription,
       });
+      iceRestartEventsSinceMetricsRef.current += 1;
     } catch (e) {
       onError?.((e as Error).message);
     } finally {
@@ -646,6 +676,8 @@ export function useTelemedicineCall(
     videoSuspendedByPolicyRef.current = false;
     capturedVideoTrackRef.current = null;
     metricsSamplesRef.current = 0;
+    callIdRef.current = null;
+    iceRestartEventsSinceMetricsRef.current = 0;
     poorNetworkStreakRef.current = 0;
     goodNetworkStreakRef.current = 0;
     lastQualityInputsRef.current = null;
@@ -684,10 +716,15 @@ export function useTelemedicineCall(
 
   const startRecording = useCallback(
     async (userConsent: boolean) => {
+      const callId = callIdRef.current;
+      if (!callId) {
+        throw new Error('No active call session');
+      }
       await requestRecordingStart({
         backendOrigin,
         accessToken,
         consultationId,
+        callId,
         userConsent,
       });
     },
@@ -696,10 +733,15 @@ export function useTelemedicineCall(
 
   const stopRecording = useCallback(
     async (userConsent: boolean) => {
+      const callId = callIdRef.current;
+      if (!callId) {
+        throw new Error('No active call session');
+      }
       await requestRecordingStop({
         backendOrigin,
         accessToken,
         consultationId,
+        callId,
         userConsent,
       });
     },
@@ -708,6 +750,7 @@ export function useTelemedicineCall(
 
   const startCall = useCallback(async () => {
     endCall();
+    callIdRef.current = generateCallId();
     remoteIdRef.current = null;
     onRemoteUserId?.(null);
 
@@ -731,15 +774,22 @@ export function useTelemedicineCall(
         return;
       }
       socket.once('connect', () => resolve());
-      socket.once('connect_error', (err) => reject(err));
+      socket.once('connect_error', (err: unknown) => reject(err));
     });
 
     socketRef.current = socket;
+
+    const activeCallId = callIdRef.current;
+    if (!activeCallId) {
+      onError?.('Missing call correlation id');
+      return;
+    }
 
     const iceServers = await fetchWebrtcIceServers({
       backendOrigin,
       consultationId,
       accessToken,
+      callId: activeCallId,
     });
 
     const pc = new RTCPeerConnection(createProRtcConfiguration(iceServers));
@@ -783,7 +833,7 @@ export function useTelemedicineCall(
           setVideoTier(tier);
           onVideoTierChange?.(tier);
         },
-        onStatsSample: async ({ snap, lossRatio }) => {
+        onStatsSample: async ({ snap, lossRatio, statsReport }) => {
           const qualityInputs = {
             reconnecting: reconnectingIceRef.current,
             iceConnectionState: iceConnectionStateRef.current,
@@ -856,18 +906,31 @@ export function useTelemedicineCall(
             metricsSamplesRef.current += 1;
             if (metricsSamplesRef.current >= 3) {
               metricsSamplesRef.current = 0;
+              const callId = callIdRef.current;
+              if (!callId) return;
+              const { selectedCandidateType, turnRegion } =
+                extractSelectedTransportFromStats(statsReport);
+              const iceRestartEvents = iceRestartEventsSinceMetricsRef.current;
               void sendCallMetrics({
                 backendOrigin,
                 accessToken,
                 consultationId,
+                callId,
                 rtt: snap.roundTripTime,
                 packetsLost: snap.packetsLost,
                 bitrate: snap.outboundBitrateBps,
                 jitter: snap.jitter,
                 packetLossRatio: lossRatio,
-              }).catch(() => {
-                /* no UX spam */
-              });
+                iceRestartEvents,
+                selectedCandidateType,
+                turnRegion,
+              })
+                .then(() => {
+                  iceRestartEventsSinceMetricsRef.current = 0;
+                })
+                .catch(() => {
+                  /* no UX spam */
+                });
             }
           }
         },

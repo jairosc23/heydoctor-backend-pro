@@ -3,6 +3,8 @@
  * TURN credentials must never be static in the client bundle.
  */
 
+import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
+
 export type IceServersResponse = {
   iceServers: RTCIceServer[];
 };
@@ -11,8 +13,9 @@ export async function fetchWebrtcIceServers(params: {
   backendOrigin: string;
   consultationId: string;
   accessToken: string;
+  callId: string;
 }): Promise<RTCIceServer[]> {
-  const { backendOrigin, consultationId, accessToken } = params;
+  const { backendOrigin, consultationId, accessToken, callId } = params;
   const url = new URL('/api/webrtc/ice-servers', backendOrigin.replace(/\/$/, ''));
   url.searchParams.set('consultationId', consultationId);
 
@@ -21,6 +24,7 @@ export async function fetchWebrtcIceServers(params: {
     headers: {
       Authorization: `Bearer ${accessToken}`,
       Accept: 'application/json',
+      ...heyDoctorTraceHeaders(consultationId, callId),
     },
     credentials: 'include',
   });

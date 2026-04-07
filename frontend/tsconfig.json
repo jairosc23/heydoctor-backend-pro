@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "hooks/useTelemedicineCall.ts",
+    "lib/webrtc-connection-quality.ts",
+    "lib/fetch-webrtc-ice-servers.ts",
+    "lib/webrtc-recording-api.ts",
+    "lib/send-webrtc-metrics.ts",
+    "lib/heydoctor-trace-headers.ts",
+    "lib/webrtc-transport-telemetry.ts",
+    "lib/rtc-stats-report-get.ts",
+    "socket.io-client.d.ts"
+  ]
+}

@@ -1,7 +1,10 @@
+import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
+
 export type RecordingApiInput = {
   backendOrigin: string;
   accessToken: string;
   consultationId: string;
+  callId: string;
   userConsent: boolean;
 };
 
@@ -17,6 +20,7 @@ export async function requestRecordingStart(
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       'Content-Type': 'application/json',
+      ...heyDoctorTraceHeaders(input.consultationId, input.callId),
     },
     credentials: 'include',
     body: JSON.stringify({
@@ -42,6 +46,7 @@ export async function requestRecordingStop(
     headers: {
       Authorization: `Bearer ${input.accessToken}`,
       'Content-Type': 'application/json',
+      ...heyDoctorTraceHeaders(input.consultationId, input.callId),
     },
     credentials: 'include',
     body: JSON.stringify({
