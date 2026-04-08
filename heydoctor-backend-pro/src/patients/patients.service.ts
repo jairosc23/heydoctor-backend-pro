@@ -25,14 +25,14 @@ export class PatientsService {
   async findAll(
     authUser: AuthenticatedUser,
     query?: PatientsListQueryDto,
-  ): Promise<Patient[] | PaginatedResult<Patient>> {
+  ): Promise<PaginatedResult<Patient>> {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
     const qb = this.patientsRepository
       .createQueryBuilder('p')
-      .where('p.clinicId = :clinicId', { clinicId })
-      .orderBy('p.createdAt', 'DESC');
+      .where('p.clinic_id = :clinicId', { clinicId })
+      .orderBy('p.created_at', 'DESC');
 
     const search = query?.search?.trim();
     if (search) {
@@ -49,7 +49,8 @@ export class PatientsService {
         query.offset !== undefined);
 
     if (!paginate) {
-      return qb.getMany();
+      const [data, total] = await qb.getManyAndCount();
+      return { data, total, page: 1, limit: total };
     }
 
     const limit = Math.min(query!.limit ?? 20, 100);

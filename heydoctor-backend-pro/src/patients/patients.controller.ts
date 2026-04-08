@@ -41,6 +41,7 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PatientsListQueryDto,
   ) {
+    console.log('QUERY:', pagination);
     this.logRequest(
       `findAll requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
     );

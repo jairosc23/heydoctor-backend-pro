@@ -40,6 +40,7 @@ export class ConsultationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ConsultationsListQueryDto,
   ) {
+    console.log('QUERY:', query);
     return this.consultationsService.findAll(user, query);
   }
 
