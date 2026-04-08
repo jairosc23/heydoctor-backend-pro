@@ -83,7 +83,7 @@ export class WebrtcRecordingStubService {
       encryptionKeyRef: null,
       encryptionKeyId,
       storagePath,
-      storageProvider: 's3_compatible_stub',
+      storageProvider: 'stub',
       endedAt: null,
     });
     const saved = await this.sessions.save(session);
@@ -110,7 +110,7 @@ export class WebrtcRecordingStubService {
     });
 
     this.logger.log('recording/start (stub)', {
-      recordingId: saved.id,
+      recordingId: maskUuid(saved.id),
       consultationId: maskUuid(dto.consultationId),
       userId: maskUuid(user.sub),
       consentRequired,
@@ -194,7 +194,7 @@ export class WebrtcRecordingStubService {
     });
 
     this.logger.log('recording/stop (stub)', {
-      recordingId: active.id,
+      recordingId: maskUuid(active.id),
       consultationId: maskUuid(dto.consultationId),
     });
 

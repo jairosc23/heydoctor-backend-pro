@@ -17,6 +17,10 @@ import {
 import { User } from '../users/user.entity';
 import { UserRole } from '../users/user-role.enum';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import {
+  maskOptionalUuid,
+  maskUuid,
+} from '../common/observability/log-masking.util';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
 import { UsersService } from '../users/users.service';
 import { RefreshToken } from './entities/refresh-token.entity';
@@ -119,8 +123,8 @@ export class AuthService {
       user.clinicId,
     );
     this.logger.log('User login success', {
-      userId: user.id,
-      clinicId: user.clinicId,
+      userId: maskUuid(user.id),
+      clinicId: maskUuid(user.clinicId),
     });
     return this.buildAuthResponse(user);
   }
@@ -423,7 +427,10 @@ export class AuthService {
       this.logger.error(
         'Unexpected error in AuthService.logSecurityEvent',
         error,
-        { action, userId },
+        {
+          action,
+          userId: userId != null ? maskOptionalUuid(userId) : undefined,
+        },
       );
     }
   }

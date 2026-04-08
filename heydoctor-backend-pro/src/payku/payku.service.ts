@@ -25,6 +25,7 @@ import {
   isFinalStatus,
   isTransitionAllowed,
 } from './payku-payment.entity';
+import { maskUuid } from '../common/observability/log-masking.util';
 import {
   assertPaykuWebhookAuthenticated,
   type PaykuWebhookAuthConfig,
@@ -232,7 +233,9 @@ export class PaykuService {
 
     const incomingStatus = this.resolveStatus(body);
     if (!incomingStatus) {
-      this.logger.warn(`Webhook unknown status for payment ${paymentId}`);
+      this.logger.warn(
+        `Webhook unknown status for payment ${maskUuid(paymentId)}`,
+      );
       return { action: 'unknown_status', paymentId };
     }
 
@@ -261,7 +264,7 @@ export class PaykuService {
       });
 
       if (!payment) {
-        this.logger.warn(`Payment ${paymentId} not found`);
+        this.logger.warn(`Payment ${maskUuid(paymentId)} not found`);
         void this.auditService.logError({
           action: 'PAYKU_WEBHOOK_PAYMENT_NOT_FOUND',
           resource: 'payment',
@@ -320,7 +323,7 @@ export class PaykuService {
 
       if (!isTransitionAllowed(payment.status, incomingStatus)) {
         this.logger.error(
-          `[PAYKU_ALERT] Invalid transition ${payment.status} → ${incomingStatus} for ${paymentId}`,
+          `[PAYKU_ALERT] Invalid transition ${payment.status} → ${incomingStatus} for ${maskUuid(paymentId)}`,
         );
         void this.auditService.logError({
           action: 'PAYMENT_STATUS_UPDATED',
@@ -337,7 +340,7 @@ export class PaykuService {
       if (incomingStatus === PaykuPaymentStatus.PAID) {
         if (incomingAmount == null) {
           this.logger.error(
-            `[PAYKU_ALERT] Missing amount in paid webhook for ${paymentId}`,
+            `[PAYKU_ALERT] Missing amount in paid webhook for ${maskUuid(paymentId)}`,
           );
           void this.auditService.logError({
             action: 'PAYMENT_STATUS_UPDATED',
@@ -353,7 +356,7 @@ export class PaykuService {
 
         if (incomingAmount !== payment.amount) {
           this.logger.error(
-            `[PAYKU_ALERT] Amount mismatch for ${paymentId}: expected ${payment.amount}, got ${incomingAmount}`,
+            `[PAYKU_ALERT] Amount mismatch for ${maskUuid(paymentId)}: expected ${payment.amount}, got ${incomingAmount}`,
           );
           void this.auditService.logError({
             action: 'PAYMENT_STATUS_UPDATED',
@@ -412,7 +415,7 @@ export class PaykuService {
           );
         } catch (err) {
           this.logger.error(
-            `Failed to upgrade user ${payment.userId} after payment ${paymentId}`,
+            `Failed to upgrade user ${maskUuid(payment.userId)} after payment ${maskUuid(paymentId)}`,
             err,
           );
         }
@@ -443,7 +446,7 @@ export class PaykuService {
             }
           } catch (err) {
             this.logger.error(
-              `Failed to lock consultation ${payment.consultationId} after payment`,
+              `Failed to lock consultation ${payment.consultationId ? maskUuid(payment.consultationId) : 'none'} after payment`,
               err,
             );
           }
@@ -462,7 +465,9 @@ export class PaykuService {
 
     if (ageMs > limitMs) {
       payment.status = PaykuPaymentStatus.EXPIRED;
-      this.logger.log(`Payment ${payment.id} auto-expired (age: ${Math.round(ageMs / 60_000)}min)`);
+      this.logger.log(
+        `Payment ${maskUuid(payment.id)} auto-expired (age: ${Math.round(ageMs / 60_000)}min)`,
+      );
     }
   }
 

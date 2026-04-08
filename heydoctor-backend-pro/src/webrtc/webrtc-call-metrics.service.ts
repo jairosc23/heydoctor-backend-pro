@@ -5,6 +5,7 @@ import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { Consultation } from '../consultations/consultation.entity';
 import { ConsultationsService } from '../consultations/consultations.service';
+import { DEFAULT_ANALYTICS_WINDOW_DAYS } from '../common/analytics/analytics-window.constants';
 import { EnterpriseObservabilityService } from '../common/observability/enterprise-observability.service';
 import type { PostWebrtcMetricsDto } from './dto/post-webrtc-metrics.dto';
 import { WebrtcCallMetric } from './entities/webrtc-call-metric.entity';
@@ -190,7 +191,7 @@ export class WebrtcCallMetricsService {
 
   async globalClinicSummary(
     user: AuthenticatedUser,
-    windowDays = 7,
+    windowDays = DEFAULT_ANALYTICS_WINDOW_DAYS,
   ): Promise<WebrtcGlobalSummaryResult> {
     const { clinicId } = await this.authorizationService.getUserWithClinic(user);
     const since = new Date();

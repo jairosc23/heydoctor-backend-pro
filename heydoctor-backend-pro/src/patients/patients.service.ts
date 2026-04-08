@@ -7,6 +7,7 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { Patient } from './patient.entity';
 
@@ -70,8 +71,8 @@ export class PatientsService {
     if (existing) {
       this.logger.warn('Business rule violation', {
         reason: 'patient email already exists in clinic',
-        clinicId,
-        patientId: existing.id,
+        clinicId: maskUuid(clinicId),
+        patientId: maskUuid(existing.id),
       });
       throw new ConflictException('A patient with this email already exists');
     }
@@ -94,9 +95,9 @@ export class PatientsService {
     });
 
     this.logger.log('Patient created', {
-      patientId: saved.id,
-      clinicId,
-      actorUserId: authUser.sub,
+      patientId: maskUuid(saved.id),
+      clinicId: maskUuid(clinicId),
+      actorUserId: maskUuid(authUser.sub),
     });
 
     return saved;

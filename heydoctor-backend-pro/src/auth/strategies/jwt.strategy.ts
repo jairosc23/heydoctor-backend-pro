@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import type { Cache } from 'cache-manager';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { maskEmail, maskUuid } from '../../common/observability/log-masking.util';
 import { UserRole } from '../../users/user-role.enum';
 import { UsersService } from '../../users/users.service';
 import { getJwtUserCacheKey } from '../jwt-user-cache.constants';
@@ -72,7 +73,10 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     reason: JwtValidateFailReason,
     sub: string | undefined,
   ): never {
-    this.logger.warn('[JWT VALIDATE FAIL]', { reason, sub });
+    this.logger.warn('[JWT VALIDATE FAIL]', {
+      reason,
+      sub: sub ? maskUuid(sub) : undefined,
+    });
     throw new UnauthorizedException();
   }
 
@@ -94,8 +98,11 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
     if (this.isJwtDebug()) {
       this.logger.debug('[JWT VALIDATE] payload recibido', {
-        sub: payload?.sub,
-        email: payload?.email,
+        sub: payload?.sub ? maskUuid(payload.sub) : undefined,
+        email:
+          payload?.email != null
+            ? maskEmail(String(payload.email))
+            : undefined,
         role: payload?.role,
       });
     }

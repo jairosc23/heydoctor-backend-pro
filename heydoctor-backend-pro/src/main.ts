@@ -91,7 +91,6 @@ async function bootstrap() {
   bootstrapLogger.log(
     `Listening 0.0.0.0:${port} — AuthModule: POST /api/auth/login (JwtAuthGuard no es global; login es público)`,
   );
-  console.log('[HeyDoctor] PORT from ENV:', port);
   logExpressRouteStackIfEnabled(app);
 }
 

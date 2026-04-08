@@ -117,10 +117,10 @@ export class ConsultationsService {
     });
 
     this.logger.log('Consultation created', {
-      consultationId: saved.id,
-      patientId: dto.patientId,
-      doctorId: authUser.sub,
-      clinicId,
+      consultationId: maskUuid(saved.id),
+      patientId: maskUuid(dto.patientId),
+      doctorId: maskUuid(authUser.sub),
+      clinicId: maskUuid(clinicId),
     });
 
     return saved;

@@ -8,6 +8,7 @@ import {
 import { Observable, tap } from 'rxjs';
 import type { Request } from 'express';
 import { AuditService } from '../audit/audit.service';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import {
   ComplianceConfig,
@@ -80,7 +81,9 @@ export class PhiAccessLogInterceptorV2 implements NestInterceptor {
           });
         },
         error: () => {
-          this.logger.warn(`PHI access denied: ${method} ${path} by ${userId ?? 'anonymous'}`);
+          this.logger.warn(
+            `PHI access denied: ${method} ${path} by ${userId != null ? maskUuid(userId) : 'anonymous'}`,
+          );
         },
       }),
     );

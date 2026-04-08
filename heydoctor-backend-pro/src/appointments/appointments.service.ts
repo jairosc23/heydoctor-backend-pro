@@ -10,6 +10,7 @@ import { randomUUID } from 'crypto';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { UsersService } from '../users/users.service';
 import { UserRole } from '../users/user-role.enum';
@@ -126,8 +127,8 @@ export class AppointmentsService {
     ) {
       this.logger.warn('Invalid appointment confirmation attempt', {
         reason: 'token_expired',
-        appointmentId: row.id,
-        clinicId: row.clinicId,
+        appointmentId: maskUuid(row.id),
+        clinicId: maskUuid(row.clinicId),
       });
       return {
         success: false,
@@ -138,8 +139,8 @@ export class AppointmentsService {
     if (row.status === AppointmentStatus.CANCELLED) {
       this.logger.warn('Invalid appointment confirmation attempt', {
         reason: 'already_cancelled',
-        appointmentId: row.id,
-        clinicId: row.clinicId,
+        appointmentId: maskUuid(row.id),
+        clinicId: maskUuid(row.clinicId),
       });
       return {
         success: false,
@@ -149,8 +150,8 @@ export class AppointmentsService {
 
     if (row.status === AppointmentStatus.CONFIRMED) {
       this.logger.log('Appointment confirmed', {
-        appointmentId: row.id,
-        clinicId: row.clinicId,
+        appointmentId: maskUuid(row.id),
+        clinicId: maskUuid(row.clinicId),
       });
       return {
         success: true,
@@ -165,8 +166,8 @@ export class AppointmentsService {
     await this.appointmentsRepository.save(row);
 
     this.logger.log('Appointment confirmed', {
-      appointmentId: row.id,
-      clinicId: row.clinicId,
+      appointmentId: maskUuid(row.id),
+      clinicId: maskUuid(row.clinicId),
     });
 
     return {
@@ -208,8 +209,8 @@ export class AppointmentsService {
     ) {
       this.logger.warn('Invalid appointment confirmation attempt', {
         reason: 'token_expired_cancel',
-        appointmentId: row.id,
-        clinicId: row.clinicId,
+        appointmentId: maskUuid(row.id),
+        clinicId: maskUuid(row.clinicId),
       });
       return {
         success: false,
@@ -219,8 +220,8 @@ export class AppointmentsService {
 
     if (row.status === AppointmentStatus.CANCELLED) {
       this.logger.log('Appointment cancelled', {
-        appointmentId: row.id,
-        clinicId: row.clinicId,
+        appointmentId: maskUuid(row.id),
+        clinicId: maskUuid(row.clinicId),
       });
       return {
         success: true,
@@ -235,8 +236,8 @@ export class AppointmentsService {
     await this.appointmentsRepository.save(row);
 
     this.logger.log('Appointment cancelled', {
-      appointmentId: row.id,
-      clinicId: row.clinicId,
+      appointmentId: maskUuid(row.id),
+      clinicId: maskUuid(row.clinicId),
     });
 
     return {

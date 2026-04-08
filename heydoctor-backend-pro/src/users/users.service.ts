@@ -12,6 +12,7 @@ import * as bcrypt from 'bcrypt';
 import { JwtUserCacheInvalidationService } from '../auth/jwt-user-cache-invalidation.service';
 import { ClinicService } from '../clinic/clinic.service';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './user.entity';
 import { UserRole } from './user-role.enum';
@@ -118,8 +119,8 @@ export class UsersService {
     if (existing) {
       this.logger.warn('Business rule violation', {
         reason: 'email already registered',
-        clinicId: existing.clinicId,
-        existingUserId: existing.id,
+        clinicId: maskUuid(existing.clinicId),
+        existingUserId: maskUuid(existing.id),
       });
       throw new ConflictException('Email is already registered');
     }
@@ -157,8 +158,8 @@ export class UsersService {
     if (existing) {
       this.logger.warn('Business rule violation', {
         reason: 'email already registered',
-        clinicId: existing.clinicId,
-        existingUserId: existing.id,
+        clinicId: maskUuid(existing.clinicId),
+        existingUserId: maskUuid(existing.id),
       });
       throw new ConflictException('Email is already registered');
     }
@@ -181,8 +182,8 @@ export class UsersService {
       throw new Error('Failed to load user after create');
     }
     this.logger.log('Doctor registered with new clinic', {
-      userId: user.id,
-      clinicId: user.clinicId,
+      userId: maskUuid(user.id),
+      clinicId: maskUuid(user.clinicId),
     });
     return user;
   }
@@ -203,8 +204,8 @@ export class UsersService {
     if (existing) {
       this.logger.warn('Business rule violation', {
         reason: 'email already exists in clinic',
-        clinicId,
-        existingUserId: existing.id,
+        clinicId: maskUuid(clinicId),
+        existingUserId: maskUuid(existing.id),
       });
       throw new ConflictException('Email is already registered in this clinic');
     }
@@ -228,8 +229,8 @@ export class UsersService {
     }
 
     this.logger.log('User created', {
-      userId: user.id,
-      clinicId,
+      userId: maskUuid(user.id),
+      clinicId: maskUuid(clinicId),
       role: user.role,
     });
     return user;
@@ -251,8 +252,8 @@ export class UsersService {
       if (existing && existing.id !== userId) {
         this.logger.warn('Business rule violation', {
           reason: 'email already in use in clinic',
-          clinicId: user.clinicId,
-          conflictingUserId: existing.id,
+          clinicId: maskUuid(user.clinicId),
+          conflictingUserId: maskUuid(existing.id),
         });
         throw new ConflictException('Email is already in use');
       }
@@ -272,8 +273,8 @@ export class UsersService {
     await this.invalidateJwtUserCache(user.id);
 
     this.logger.log('User updated', {
-      userId: user.id,
-      clinicId: user.clinicId,
+      userId: maskUuid(user.id),
+      clinicId: maskUuid(user.clinicId),
       fields,
     });
     return user;
@@ -302,8 +303,8 @@ export class UsersService {
     await this.invalidateJwtUserCache(user.id);
 
     this.logger.log('User updated', {
-      userId: user.id,
-      clinicId: user.clinicId,
+      userId: maskUuid(user.id),
+      clinicId: maskUuid(user.clinicId),
       isActive,
     });
     return user;

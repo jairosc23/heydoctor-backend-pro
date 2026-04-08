@@ -13,6 +13,10 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import {
+  maskEmail,
+  maskUuid,
+} from '../common/observability/log-masking.util';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { PatientsService } from './patients.service';
 
@@ -37,7 +41,9 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PaginationQueryDto,
   ) {
-    this.logRequest(`findAll requested by user ${user.sub} (${user.email})`);
+    this.logRequest(
+      `findAll requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
+    );
     return this.patientsService.findAll(user, pagination);
   }
 
@@ -46,7 +52,9 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
   ) {
-    this.logRequest(`findOne ${id} requested by user ${user.sub} (${user.email})`);
+    this.logRequest(
+      `findOne ${maskUuid(id)} requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
+    );
     return this.patientsService.findOne(id, user);
   }
 
@@ -55,7 +63,9 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePatientDto,
   ) {
-    this.logRequest(`create requested by user ${user.sub} (${user.email})`);
+    this.logRequest(
+      `create requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
+    );
     return this.patientsService.create(dto, user);
   }
 }

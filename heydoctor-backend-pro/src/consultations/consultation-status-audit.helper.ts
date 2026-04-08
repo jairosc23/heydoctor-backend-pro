@@ -1,6 +1,10 @@
 import type { LoggerService } from '@nestjs/common';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
+import {
+  maskOptionalUuid,
+  maskUuid,
+} from '../common/observability/log-masking.util';
 import { ConsultationStatus } from './consultation-status.enum';
 
 export type LogConsultationStatusChangeParams = {
@@ -44,20 +48,20 @@ export function logConsultationStatusChange(
   const patientKey = patientId ?? undefined;
 
   logger?.log('Consultation status changed', {
-    consultationId,
-    patientId: patientKey,
+    consultationId: maskUuid(consultationId),
+    patientId: patientKey !== undefined ? maskOptionalUuid(patientKey) : undefined,
     from: previousStatus,
     to: nextStatus,
-    userId: authUser.sub,
-    clinicId: clinicKey,
+    userId: maskUuid(authUser.sub),
+    clinicId: clinicKey !== undefined ? maskOptionalUuid(clinicKey) : undefined,
   });
 
   if (nextStatus === ConsultationStatus.COMPLETED && logger) {
     logger.log('Consultation completed', {
-      consultationId,
-      patientId: patientKey,
-      doctorId: doctorId ?? authUser.sub,
-      clinicId: clinicKey,
+      consultationId: maskUuid(consultationId),
+      patientId: patientKey !== undefined ? maskOptionalUuid(patientKey) : undefined,
+      doctorId: maskUuid(doctorId ?? authUser.sub),
+      clinicId: clinicKey !== undefined ? maskOptionalUuid(clinicKey) : undefined,
     });
   }
 

@@ -1,4 +1,5 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { DEFAULT_ANALYTICS_WINDOW_DAYS } from '../common/analytics/analytics-window.constants';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -15,6 +16,8 @@ export class PlatformController {
   /** Product + operations dashboard: consultations, WebRTC quality, TURN mix, per clinic. */
   @Get('metrics/global')
   getGlobalMetrics(@Query() query: PlatformGlobalMetricsQueryDto) {
-    return this.platformMetrics.getGlobalMetrics(query.windowDays ?? 7);
+    return this.platformMetrics.getGlobalMetrics(
+      query.windowDays ?? DEFAULT_ANALYTICS_WINDOW_DAYS,
+    );
   }
 }

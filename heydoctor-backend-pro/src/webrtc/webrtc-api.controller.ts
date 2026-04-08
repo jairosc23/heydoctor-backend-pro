@@ -16,6 +16,7 @@ import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator'
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
 import { SubscriptionPlan } from '../subscriptions/subscription.entity';
 import { PostWebrtcMetricsDto } from './dto/post-webrtc-metrics.dto';
+import { DEFAULT_ANALYTICS_WINDOW_DAYS } from '../common/analytics/analytics-window.constants';
 import { WebrtcGlobalSummaryQueryDto } from './dto/webrtc-global-summary-query.dto';
 import { WebrtcIceServersQueryDto } from './dto/webrtc-ice-servers-query.dto';
 import { WebrtcMetricsSummaryQueryDto } from './dto/webrtc-metrics-summary-query.dto';
@@ -72,7 +73,7 @@ export class WebrtcApiController {
   ) {
     return this.callMetrics.globalClinicSummary(
       user,
-      query.windowDays ?? 7,
+      query.windowDays ?? DEFAULT_ANALYTICS_WINDOW_DAYS,
     );
   }
 

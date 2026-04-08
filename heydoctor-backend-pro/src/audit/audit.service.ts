@@ -2,6 +2,7 @@ import { Inject, Injectable, type LoggerService } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
+import { maskOptionalUuid } from '../common/observability/log-masking.util';
 import { AuditLog } from './audit-log.entity';
 import { AuditOutcome } from './audit-outcome.enum';
 import type { AuditLogErrorPayload, AuditLogSuccessPayload } from './audit.types';
@@ -117,8 +118,9 @@ export class AuditService {
       if (shouldEmitAuditPersistSuccessLog(data.action)) {
         this.logger.log('Audit log created', {
           action: data.action,
-          userId: data.userId ?? undefined,
-          clinicId: data.clinicId ?? undefined,
+          userId: data.userId != null ? maskOptionalUuid(data.userId) : undefined,
+          clinicId:
+            data.clinicId != null ? maskOptionalUuid(data.clinicId) : undefined,
         });
       }
       const log: AuditAlertLogContext = {
@@ -132,8 +134,9 @@ export class AuditService {
       const error = err instanceof Error ? err : new Error(String(err));
       this.logger.error('AuditService.logSuccess failed', error, {
         action: data.action,
-        userId: data.userId,
-        clinicId: data.clinicId,
+        userId: data.userId != null ? maskOptionalUuid(data.userId) : undefined,
+        clinicId:
+          data.clinicId != null ? maskOptionalUuid(data.clinicId) : undefined,
       });
     }
   }
@@ -155,8 +158,9 @@ export class AuditService {
       if (shouldEmitAuditPersistErrorLog()) {
         this.logger.log('Audit log created', {
           action: data.action,
-          userId: data.userId ?? undefined,
-          clinicId: data.clinicId ?? undefined,
+          userId: data.userId != null ? maskOptionalUuid(data.userId) : undefined,
+          clinicId:
+            data.clinicId != null ? maskOptionalUuid(data.clinicId) : undefined,
         });
       }
       const log: AuditAlertLogContext = {
@@ -170,8 +174,9 @@ export class AuditService {
       const error = err instanceof Error ? err : new Error(String(err));
       this.logger.error('AuditService.logError failed', error, {
         action: data.action,
-        userId: data.userId,
-        clinicId: data.clinicId,
+        userId: data.userId != null ? maskOptionalUuid(data.userId) : undefined,
+        clinicId:
+          data.clinicId != null ? maskOptionalUuid(data.clinicId) : undefined,
       });
     }
   }
@@ -197,7 +202,7 @@ export class AuditService {
 
     if (pruned.length === abuseWarnAt) {
       this.logger.warn('Potential abuse detected', {
-        userId: log.userId,
+        userId: maskOptionalUuid(log.userId),
       });
     }
   }

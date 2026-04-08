@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  MAX_ANALYTICS_WINDOW_DAYS,
+  MIN_ANALYTICS_WINDOW_DAYS,
+} from '../common/analytics/analytics-window.constants';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { Consultation } from '../consultations/consultation.entity';
 import { WebrtcCallMetric } from '../webrtc/entities/webrtc-call-metric.entity';
 import { WebrtcTurnHealthService } from '../webrtc/webrtc-turn-health.service';
@@ -56,7 +61,10 @@ export class PlatformMetricsService {
   async getGlobalMetrics(
     windowDays: number,
   ): Promise<PlatformGlobalMetricsResult> {
-    const days = Math.min(90, Math.max(1, windowDays));
+    const days = Math.min(
+      MAX_ANALYTICS_WINDOW_DAYS,
+      Math.max(MIN_ANALYTICS_WINDOW_DAYS, windowDays),
+    );
     const since = new Date();
     since.setUTCDate(since.getUTCDate() - days);
     const sinceIso = since.toISOString();
@@ -329,7 +337,7 @@ export class PlatformMetricsService {
         alerts.push({
           type: 'CLINIC_POOR_QUALITY_SPIKE',
           severity: c.poorSamplePct > poorPctThreshold + 20 ? 'critical' : 'warning',
-          message: `Clinic ${c.clinicName} poor sample rate ${c.poorSamplePct.toFixed(1)}%`,
+          message: `Clinic ${maskUuid(c.clinicId)} poor sample rate ${c.poorSamplePct.toFixed(1)}%`,
         });
       }
     }

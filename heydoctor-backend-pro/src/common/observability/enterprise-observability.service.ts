@@ -41,16 +41,20 @@ export class EnterpriseObservabilityService {
       event,
       ts: new Date().toISOString(),
       ...(requestId ? { requestId } : {}),
-      ...(ctxCall || fields.callId ? { callId: fields.callId ?? ctxCall } : {}),
     };
     delete safe.userId;
     delete safe.consultationId;
+    delete safe.callId;
     if (userId !== undefined) {
       safe.userIdMasked = maskUuid(String(userId));
     }
     const cid = (fields.consultationId as string | undefined) ?? ctxConsultation;
     if (cid !== undefined) {
       safe.consultationIdMasked = maskUuid(String(cid));
+    }
+    const rawCall = (fields.callId as string | undefined) ?? ctxCall;
+    if (rawCall !== undefined && rawCall !== null && String(rawCall).trim() !== '') {
+      safe.callIdMasked = maskUuid(String(rawCall));
     }
     if (fields.userEmail !== undefined) {
       safe.userEmailMasked = maskEmail(String(fields.userEmail));

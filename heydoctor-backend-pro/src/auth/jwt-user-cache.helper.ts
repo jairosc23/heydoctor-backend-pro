@@ -1,5 +1,6 @@
 import type { LoggerService } from '@nestjs/common';
 import type { Cache } from 'cache-manager';
+import { maskUuid } from '../common/observability/log-masking.util';
 import { getJwtUserCacheKey } from './jwt-user-cache.constants';
 
 /**
@@ -13,10 +14,10 @@ export async function invalidateUserCache(
 ): Promise<void> {
   try {
     await cache.del(getJwtUserCacheKey(userId));
-    logger?.debug?.(`JWT cache invalidated for user: ${userId}`);
+    logger?.debug?.(`JWT cache invalidated for user: ${maskUuid(userId)}`);
   } catch (err) {
     logger?.warn?.(
-      `JWT cache invalidation failed for user: ${userId}`,
+      `JWT cache invalidation failed for user: ${maskUuid(userId)}`,
       err instanceof Error ? err.message : String(err),
     );
   }
