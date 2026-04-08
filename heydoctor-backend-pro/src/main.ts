@@ -2,7 +2,9 @@ import { Logger, RequestMethod, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ThrottlerGuard } from '@nestjs/throttler';
+import * as Sentry from '@sentry/node';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
 import { logExpressRouteStackIfEnabled } from './common/bootstrap/log-express-routes';
 import { validateAndLogEnv } from './config/env-startup-check';
 import { EnvConfig, ENV_CONFIG_TOKEN } from './config/env.config';
@@ -11,6 +13,15 @@ import { AppModule } from './app.module';
 import type { Request, Response } from 'express';
 
 const bootstrapLogger = new Logger('Bootstrap');
+
+const sentryDsn = process.env.SENTRY_DSN?.trim();
+if (sentryDsn) {
+  Sentry.init({
+    dsn: sentryDsn,
+    environment: process.env.NODE_ENV ?? 'development',
+    tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.15 : 1.0,
+  });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -24,6 +35,15 @@ async function bootstrap() {
 
   app.use(cookieParser());
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
+
+  app.use(
+    helmet({
+      contentSecurityPolicy: false,
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
   app.useWebSocketAdapter(new IoAdapter(app));
 
   /**

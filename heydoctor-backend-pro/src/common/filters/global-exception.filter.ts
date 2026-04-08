@@ -9,6 +9,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../../config/env.config';
 
 type ErrorBody = {
@@ -46,6 +47,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           path: request.url,
           statusCode: status,
         });
+        if (process.env.SENTRY_DSN?.trim()) {
+          Sentry.captureException(exception, {
+            tags: { requestId: requestId ?? 'none', httpStatus: String(status) },
+            extra: { path: request.url, body: payload },
+          });
+        }
       }
       response.status(status).json(payload);
       return;
@@ -57,6 +64,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       requestId,
       path: request.url,
     });
+    if (process.env.SENTRY_DSN?.trim()) {
+      Sentry.captureException(err, {
+        tags: { requestId: requestId ?? 'none' },
+        extra: { path: request.url },
+      });
+    }
 
     const body: ErrorBody = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
