@@ -24,6 +24,7 @@ import { PatientsService } from './patients.service';
 @Controller('patients')
 export class PatientsController {
   private readonly logger = new Logger(PatientsController.name);
+  private readonly apiLogger = new Logger('API');
 
   constructor(private readonly patientsService: PatientsService) {}
 
@@ -41,7 +42,13 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PatientsListQueryDto,
   ) {
-    console.log('QUERY:', pagination);
+    this.apiLogger.debug(
+      `list patients page=${pagination.page ?? '—'} limit=${
+        pagination.limit ?? '—'
+      } offset=${pagination.offset ?? '—'} search=${
+        pagination.search?.trim() ? 'yes' : 'no'
+      }`,
+    );
     this.logRequest(
       `findAll requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
     );

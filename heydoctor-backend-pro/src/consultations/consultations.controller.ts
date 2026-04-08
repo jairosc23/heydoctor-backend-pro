@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   ParseUUIDPipe,
   Patch,
@@ -25,6 +26,8 @@ import { UpdateConsultationDto } from './dto/update-consultation.dto';
 @Controller('consultations')
 @UseGuards(JwtAuthGuard)
 export class ConsultationsController {
+  private readonly apiLogger = new Logger('API');
+
   constructor(private readonly consultationsService: ConsultationsService) {}
 
   @Post()
@@ -40,7 +43,20 @@ export class ConsultationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ConsultationsListQueryDto,
   ) {
-    console.log('QUERY:', query);
+    this.apiLogger.debug(
+      `list consultations page=${query.page ?? '—'} limit=${
+        query.limit ?? '—'
+      } offset=${query.offset ?? '—'} filters=${
+        [
+          query.patientId ? 'patient' : '',
+          query.status ? 'status' : '',
+          query.search?.trim() ? 'search' : '',
+          query.from || query.to ? 'date' : '',
+        ]
+          .filter(Boolean)
+          .join(',') || 'none'
+      }`,
+    );
     return this.consultationsService.findAll(user, query);
   }
 

@@ -36,8 +36,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
     const requestId = request.requestId;
-
-    console.error('ERROR:', exception);
+    const safePath =
+      typeof request.url === 'string'
+        ? (request.url.split('?')[0] ?? request.url)
+        : request.url;
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
@@ -46,13 +48,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       if (status >= HttpStatus.INTERNAL_SERVER_ERROR) {
         this.logger.warn(String(payload.message), {
           requestId,
-          path: request.url,
+          path: safePath,
           statusCode: status,
         });
-        if (process.env.SENTRY_DSN?.trim()) {
+        if (process.env.SENTRY_DSN?.trim() && exception instanceof Error) {
           Sentry.captureException(exception, {
-            tags: { requestId: requestId ?? 'none', httpStatus: String(status) },
-            extra: { path: request.url, body: payload },
+            tags: {
+              requestId: requestId ?? 'none',
+              httpStatus: String(status),
+            },
+            extra: { path: safePath },
           });
         }
       }
@@ -64,12 +69,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       exception instanceof Error ? exception : new Error(String(exception));
     this.logger.error(err.message, err.stack, {
       requestId,
-      path: request.url,
+      path: safePath,
     });
-    if (process.env.SENTRY_DSN?.trim()) {
+    if (process.env.SENTRY_DSN?.trim() && err instanceof Error) {
       Sentry.captureException(err, {
         tags: { requestId: requestId ?? 'none' },
-        extra: { path: request.url },
+        extra: { path: safePath },
       });
     }
 
