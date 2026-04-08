@@ -24,6 +24,11 @@ import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 
+/**
+ * Refresh rotable en DB + cookie HttpOnly en el dominio del API.
+ * - TTL access: `JWT_ACCESS_TTL` (p. ej. 15m); refresh: `JWT_REFRESH_TTL` (p. ej. 7d).
+ * - Producción: `SameSite=None`, `Secure=true`, path `/api/auth` (emitir desde este controlador únicamente).
+ */
 const REFRESH_COOKIE = 'refresh_token';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
