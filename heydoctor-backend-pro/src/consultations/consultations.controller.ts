@@ -14,6 +14,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { logSafeList } from '../common/observability/safe-list-observability';
 import { ConsultationsListQueryDto } from './dto/consultations-list-query.dto';
 import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
@@ -43,20 +44,17 @@ export class ConsultationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ConsultationsListQueryDto,
   ) {
-    this.apiLogger.debug(
-      `list consultations page=${query.page ?? '—'} limit=${
-        query.limit ?? '—'
-      } offset=${query.offset ?? '—'} filters=${
-        [
-          query.patientId ? 'patient' : '',
-          query.status ? 'status' : '',
-          query.search?.trim() ? 'search' : '',
-          query.from || query.to ? 'date' : '',
-        ]
-          .filter(Boolean)
-          .join(',') || 'none'
-      }`,
-    );
+    logSafeList(this.apiLogger, 'consultations_list', {
+      page: query.page,
+      limit: query.limit,
+      offset: query.offset,
+      filters: {
+        hasPatient: !!query.patientId,
+        hasStatus: !!query.status,
+        hasSearch: !!query.search?.trim(),
+        hasDateRange: !!(query.from || query.to),
+      },
+    });
     return this.consultationsService.findAll(user, query);
   }
 

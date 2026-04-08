@@ -12,6 +12,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { logSafeList } from '../common/observability/safe-list-observability';
 import { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import {
   maskEmail,
@@ -42,16 +43,14 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PatientsListQueryDto,
   ) {
-    this.apiLogger.debug(
-      `list patients page=${pagination.page ?? '—'} limit=${
-        pagination.limit ?? '—'
-      } offset=${pagination.offset ?? '—'} search=${
-        pagination.search?.trim() ? 'yes' : 'no'
-      }`,
-    );
-    this.logRequest(
-      `findAll requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
-    );
+    logSafeList(this.apiLogger, 'patients_list', {
+      page: pagination.page,
+      limit: pagination.limit,
+      offset: pagination.offset,
+      filters: {
+        hasSearch: !!pagination.search?.trim(),
+      },
+    });
     return this.patientsService.findAll(user, pagination);
   }
 
