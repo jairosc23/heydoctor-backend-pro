@@ -43,7 +43,8 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PatientsListQueryDto,
   ) {
-    logSafeList(this.apiLogger, 'patients_list', {
+    logSafeList(this.apiLogger, {
+      msg: 'patients_list',
       page: pagination.page,
       limit: pagination.limit,
       offset: pagination.offset,

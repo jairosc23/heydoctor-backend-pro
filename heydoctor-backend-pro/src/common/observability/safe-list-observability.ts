@@ -1,24 +1,23 @@
 import type { Logger } from '@nestjs/common';
 
-export type SafeListFilters = Record<string, boolean>;
-
 /**
  * JSON en una línea para agregadores (Railway) sin PII: sin IDs, emails, body ni tokens.
+ * `ts` es ISO 8601 del servidor para correlación independiente del timestamp del proveedor.
  */
 export function logSafeList(
   logger: Logger,
-  msg: string,
-  opts: {
+  data: {
+    msg: string;
     page?: number;
     limit?: number;
     offset?: number;
-    filters: SafeListFilters;
+    filters?: Record<string, boolean>;
   },
 ): void {
-  const row: Record<string, unknown> = { msg };
-  if (opts.page !== undefined) row.page = opts.page;
-  if (opts.limit !== undefined) row.limit = opts.limit;
-  if (opts.offset !== undefined) row.offset = opts.offset;
-  row.filters = opts.filters;
-  logger.log(JSON.stringify(row));
+  logger.log(
+    JSON.stringify({
+      ...data,
+      ts: new Date().toISOString(),
+    }),
+  );
 }

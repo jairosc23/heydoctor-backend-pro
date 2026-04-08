@@ -44,7 +44,8 @@ export class ConsultationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ConsultationsListQueryDto,
   ) {
-    logSafeList(this.apiLogger, 'consultations_list', {
+    logSafeList(this.apiLogger, {
+      msg: 'consultations_list',
       page: query.page,
       limit: query.limit,
       offset: query.offset,
