@@ -62,7 +62,9 @@ async function bootstrap() {
   });
 
   app.use(new RequestIdMiddleware().use);
-  /** Solo Throttler global; JwtAuthGuard aplica en rutas con @UseGuards (no bloquea login). */
+  /**
+   * Throttler global (AppModule) + bucket login por email; JwtAuthGuard solo en rutas protegidas.
+   */
   app.useGlobalGuards(app.get(ThrottlerGuard));
 
   const envConfig = app.get<EnvConfig>(ENV_CONFIG_TOKEN);
