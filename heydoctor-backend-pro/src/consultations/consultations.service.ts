@@ -15,7 +15,7 @@ import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
 import { getCurrentRequestId } from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import type { ConsultationsListQueryDto } from './dto/consultations-list-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { ConsentService } from '../consents/consent.service';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
@@ -128,35 +128,59 @@ export class ConsultationsService {
 
   async findAll(
     authUser: AuthenticatedUser,
-    pagination?: PaginationQueryDto,
+    query?: ConsultationsListQueryDto,
   ): Promise<Consultation[] | PaginatedResult<Consultation>> {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const paginate =
-      pagination !== undefined &&
-      (pagination.page !== undefined || pagination.limit !== undefined);
 
-    if (!paginate) {
-      return this.consultationsRepository.find({
-        where: { clinicId },
-        relations: { patient: true },
-        order: { createdAt: 'DESC' },
-      });
+    const qb = this.consultationsRepository
+      .createQueryBuilder('c')
+      .leftJoinAndSelect('c.patient', 'patient')
+      .where('c.clinicId = :clinicId', { clinicId })
+      .orderBy('c.createdAt', 'DESC');
+
+    if (query?.patientId) {
+      qb.andWhere('c.patientId = :patientId', { patientId: query.patientId });
+    }
+    if (query?.status) {
+      qb.andWhere('c.status = :status', { status: query.status });
+    }
+    if (query?.doctorId) {
+      qb.andWhere('c.doctorId = :doctorId', { doctorId: query.doctorId });
+    }
+    if (query?.from) {
+      qb.andWhere('c.createdAt >= :from', { from: new Date(query.from) });
+    }
+    if (query?.to) {
+      const end = new Date(query.to);
+      end.setUTCHours(23, 59, 59, 999);
+      qb.andWhere('c.createdAt <= :to', { to: end });
     }
 
-    const page = pagination.page ?? 1;
-    const limit = Math.min(pagination.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const paginate =
+      query !== undefined &&
+      (query.page !== undefined ||
+        query.limit !== undefined ||
+        query.offset !== undefined);
 
-    const [data, total] = await this.consultationsRepository.findAndCount({
-      where: { clinicId },
-      relations: { patient: true },
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-    });
+    if (!paginate) {
+      return qb.getMany();
+    }
 
-    return { data, total, page, limit };
+    const limit = Math.min(query!.limit ?? 20, 100);
+    const page = query!.page ?? 1;
+    const offset = query!.offset;
+    const skip =
+      offset !== undefined && offset >= 0 ? offset : (page - 1) * limit;
+    qb.skip(skip).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    const resolvedPage =
+      offset !== undefined && limit > 0
+        ? Math.floor(offset / limit) + 1
+        : page;
+
+    return { data, total, page: resolvedPage, limit };
   }
 
   async findOne(

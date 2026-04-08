@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import type { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
@@ -24,33 +24,48 @@ export class PatientsService {
 
   async findAll(
     authUser: AuthenticatedUser,
-    pagination?: PaginationQueryDto,
+    query?: PatientsListQueryDto,
   ): Promise<Patient[] | PaginatedResult<Patient>> {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const paginate =
-      pagination !== undefined &&
-      (pagination.page !== undefined || pagination.limit !== undefined);
 
-    if (!paginate) {
-      return this.patientsRepository.find({
-        where: { clinicId },
-        order: { createdAt: 'DESC' },
+    const qb = this.patientsRepository
+      .createQueryBuilder('p')
+      .where('p.clinicId = :clinicId', { clinicId })
+      .orderBy('p.createdAt', 'DESC');
+
+    const search = query?.search?.trim();
+    if (search) {
+      const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+      qb.andWhere('(p.name ILIKE :s OR p.email ILIKE :s)', {
+        s: `%${escaped}%`,
       });
     }
 
-    const page = pagination.page ?? 1;
-    const limit = Math.min(pagination.limit ?? 20, 100);
-    const skip = (page - 1) * limit;
+    const paginate =
+      query !== undefined &&
+      (query.page !== undefined ||
+        query.limit !== undefined ||
+        query.offset !== undefined);
 
-    const [data, total] = await this.patientsRepository.findAndCount({
-      where: { clinicId },
-      order: { createdAt: 'DESC' },
-      skip,
-      take: limit,
-    });
+    if (!paginate) {
+      return qb.getMany();
+    }
 
-    return { data, total, page, limit };
+    const limit = Math.min(query!.limit ?? 20, 100);
+    const page = query!.page ?? 1;
+    const offset = query!.offset;
+    const skip =
+      offset !== undefined && offset >= 0 ? offset : (page - 1) * limit;
+    qb.skip(skip).take(limit);
+
+    const [data, total] = await qb.getManyAndCount();
+    const resolvedPage =
+      offset !== undefined && limit > 0
+        ? Math.floor(offset / limit) + 1
+        : page;
+
+    return { data, total, page: resolvedPage, limit };
   }
 
   async findOne(id: string, authUser: AuthenticatedUser): Promise<Patient> {

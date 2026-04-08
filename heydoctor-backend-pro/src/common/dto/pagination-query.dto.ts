@@ -15,4 +15,11 @@ export class PaginationQueryDto {
   @Min(1)
   @Max(100)
   limit?: number;
+
+  /** Alternativa a `page`: desplazamiento directo (compatible con cliente legacy). */
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  offset?: number;
 }

@@ -13,7 +13,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { ConsultationsListQueryDto } from './dto/consultations-list-query.dto';
 import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
 import { SubscriptionPlan } from '../subscriptions/subscription.entity';
@@ -38,9 +38,9 @@ export class ConsultationsController {
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() pagination: PaginationQueryDto,
+    @Query() query: ConsultationsListQueryDto,
   ) {
-    return this.consultationsService.findAll(user, pagination);
+    return this.consultationsService.findAll(user, query);
   }
 
   @Get(':id/ai')

@@ -12,7 +12,7 @@ import {
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
-import { PaginationQueryDto } from '../common/dto/pagination-query.dto';
+import { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import {
   maskEmail,
   maskUuid,
@@ -39,7 +39,7 @@ export class PatientsController {
   @Get()
   findAll(
     @CurrentUser() user: AuthenticatedUser,
-    @Query() pagination: PaginationQueryDto,
+    @Query() pagination: PatientsListQueryDto,
   ) {
     this.logRequest(
       `findAll requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
