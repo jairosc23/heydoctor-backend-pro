@@ -8,6 +8,17 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 
+function mergeSetCookieJar(setCookie: string[] | string | undefined): string {
+  if (!setCookie) {
+    return '';
+  }
+  const parts = Array.isArray(setCookie) ? setCookie : [setCookie];
+  return parts
+    .map((c) => String(c).split(';')[0].trim())
+    .filter(Boolean)
+    .join('; ');
+}
+
 describe('Multi-tenant isolation (e2e)', () => {
   let app: INestApplication<App>;
 
@@ -71,6 +82,8 @@ describe('Multi-tenant isolation (e2e)', () => {
 
     const tokenA = regA.body.access_token as string;
     const tokenB = regB.body.access_token as string;
+    const csrfA = regA.body.csrfToken as string;
+    const jarA = mergeSetCookieJar(regA.headers['set-cookie']);
 
     const meA = await server
       .get('/api/auth/me')
@@ -88,6 +101,8 @@ describe('Multi-tenant isolation (e2e)', () => {
     const createPatientRes = await server
       .post('/api/patients')
       .set('Authorization', `Bearer ${tokenA}`)
+      .set('Cookie', jarA)
+      .set('X-CSRF-Token', csrfA)
       .send({ name: 'Paciente Aislado', email: patientEmail })
       .expect(201);
 

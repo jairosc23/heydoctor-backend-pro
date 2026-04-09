@@ -7,9 +7,11 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -17,8 +19,11 @@ import { logSafeList } from '../common/observability/safe-list-observability';
 import { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import {
   maskEmail,
+  maskOptionalUuid,
   maskUuid,
 } from '../common/observability/log-masking.util';
+import { extractClientHttpMeta } from '../common/http/client-meta.util';
+import { AuditService } from '../audit/audit.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { PatientsService } from './patients.service';
 
@@ -28,7 +33,10 @@ export class PatientsController {
   private readonly logger = new Logger(PatientsController.name);
   private readonly apiLogger = new Logger('API');
 
-  constructor(private readonly patientsService: PatientsService) {}
+  constructor(
+    private readonly patientsService: PatientsService,
+    private readonly auditService: AuditService,
+  ) {}
 
   /** Emits DEBUG in non-production, LOG in production (less noisy default levels). */
   private logRequest(message: string): void {
@@ -69,14 +77,30 @@ export class PatientsController {
   }
 
   @Get(':id')
-  findOne(
+  async findOne(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Req() req: Request,
   ) {
     this.logRequest(
       `findOne ${maskUuid(id)} requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
     );
-    return this.patientsService.findOne(id, user);
+    const patient = await this.patientsService.findOne(id, user);
+    const meta = extractClientHttpMeta(req);
+    await this.auditService.logSuccess({
+      userId: user.sub,
+      action: 'PATIENT_RECORD_ACCESS',
+      resource: 'patient',
+      resourceId: id,
+      clinicId: patient.clinicId,
+      httpStatus: 200,
+      metadata: {
+        ...meta,
+        maskedUserId: maskOptionalUuid(user.sub),
+        timestamp: new Date().toISOString(),
+      },
+    });
+    return patient;
   }
 
   @Post()

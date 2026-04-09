@@ -2,6 +2,8 @@ import {
   Body,
   Controller,
   Get,
+  Param,
+  ParseUUIDPipe,
   Post,
   Req,
   Res,
@@ -24,6 +26,7 @@ import { MagicLinkDto } from './dto/magic-link.dto';
 import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
+import { CsrfService } from '../common/security/csrf.service';
 
 /**
  * Refresh rotable en DB + cookie HttpOnly en el dominio del API.
@@ -74,7 +77,14 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
+    private readonly csrfService: CsrfService,
   ) {}
+
+  /** Token CSRF + cookie `csrf_token` (no HttpOnly); para SPAs cross-origin usar el valor del JSON en `X-CSRF-Token`. */
+  @Get('csrf')
+  getCsrf(@Res({ passthrough: true }) res: Response): { csrfToken: string } {
+    return { csrfToken: this.csrfService.attach(res) };
+  }
 
   private refreshCookieMaxAgeMs(): number {
     return jwtTtlToMs(
@@ -143,6 +153,21 @@ export class AuthController {
     return this.authService.listActiveSessions(user.sub);
   }
 
+  @Post('sessions/:sessionId/revoke')
+  @UseGuards(JwtAuthGuard)
+  async revokeOneSession(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('sessionId', new ParseUUIDPipe({ version: '4' })) sessionId: string,
+    @Req() req: Request,
+  ): Promise<{ ok: true }> {
+    await this.authService.revokeSessionById(
+      user.sub,
+      sessionId,
+      extractContext(req),
+    );
+    return { ok: true };
+  }
+
   @Post('register')
   async register(
     @Body() dto: RegisterDto,
@@ -157,7 +182,12 @@ export class AuthController {
     );
     this.setRefreshCookie(res, refreshToken);
     this.setSessionCookie(res, result.access_token);
-    return { access_token: result.access_token, user: result.user };
+    const csrfToken = this.csrfService.attach(res);
+    return {
+      access_token: result.access_token,
+      user: result.user,
+      csrfToken,
+    };
   }
 
   @Post('magic-link')
@@ -174,7 +204,12 @@ export class AuthController {
     );
     this.setRefreshCookie(res, refreshToken);
     this.setSessionCookie(res, result.access_token);
-    return { access_token: result.access_token, user: result.user };
+    const csrfToken = this.csrfService.attach(res);
+    return {
+      access_token: result.access_token,
+      user: result.user,
+      csrfToken,
+    };
   }
 
   @Post('login')
@@ -191,7 +226,12 @@ export class AuthController {
     );
     this.setRefreshCookie(res, refreshToken);
     this.setSessionCookie(res, result.access_token);
-    return { access_token: result.access_token, user: result.user };
+    const csrfToken = this.csrfService.attach(res);
+    return {
+      access_token: result.access_token,
+      user: result.user,
+      csrfToken,
+    };
   }
 
   @Post('refresh')
@@ -210,7 +250,8 @@ export class AuthController {
 
     this.setRefreshCookie(res, newRefreshToken);
     this.setSessionCookie(res, accessToken);
-    return { access_token: accessToken };
+    const csrfToken = this.csrfService.attach(res);
+    return { access_token: accessToken, csrfToken };
   }
 
   @Post('logout')

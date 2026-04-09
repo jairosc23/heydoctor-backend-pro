@@ -11,6 +11,7 @@ import { AuthController } from './auth.controller';
 import { AuthRefreshTokenCleanupService } from './auth-refresh-token-cleanup.service';
 import { AuthService } from './auth.service';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
+import { AuthSession } from './entities/auth-session.entity';
 import { MagicLinkRedemption } from './entities/magic-link-redemption.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -25,6 +26,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
     TypeOrmModule.forFeature([
       Subscription,
       RefreshToken,
+      AuthSession,
       MagicLinkRedemption,
       AuditLog,
     ]),

@@ -1,6 +1,7 @@
 import {
   Inject,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
   type LoggerService,
 } from '@nestjs/common';
@@ -9,6 +10,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
 import {
   Brackets,
+  In,
   IsNull,
   MoreThan,
   QueryFailedError,
@@ -29,6 +31,7 @@ import {
 } from '../common/observability/log-masking.util';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
 import { UsersService } from '../users/users.service';
+import { AuthSession } from './entities/auth-session.entity';
 import { MagicLinkRedemption } from './entities/magic-link-redemption.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
@@ -108,6 +111,8 @@ export class AuthService {
     private readonly subscriptionRepository: Repository<Subscription>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @InjectRepository(AuthSession)
+    private readonly authSessionRepository: Repository<AuthSession>,
     @InjectRepository(MagicLinkRedemption)
     private readonly magicLinkRedemptionRepository: Repository<MagicLinkRedemption>,
     @InjectRepository(AuditLog)
@@ -308,6 +313,15 @@ export class AuthService {
     });
     await this.refreshTokenRepository.save(entity);
 
+    const sessionRow = this.authSessionRepository.create({
+      userId,
+      refreshTokenId: entity.id,
+      refreshTokenHash: tokenHash,
+      userAgent: rawUa ? rawUa.slice(0, 512) : null,
+      ip: ctx.ip,
+    });
+    await this.authSessionRepository.save(sessionRow);
+
     return raw;
   }
 
@@ -350,8 +364,14 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token expired');
     }
 
-    stored.revokedAt = new Date();
-    stored.lastUsedAt = new Date();
+    const nowRot = new Date();
+    await this.authSessionRepository.update(
+      { refreshTokenId: stored.id },
+      { revokedAt: nowRot, lastUsedAt: nowRot },
+    );
+
+    stored.revokedAt = nowRot;
+    stored.lastUsedAt = nowRot;
     await this.refreshTokenRepository.save(stored);
 
     const user = await this.usersService.findById(stored.userId);
@@ -393,13 +413,18 @@ export class AuthService {
       return;
     }
     if (!stored.revokedAt) {
-      stored.revokedAt = new Date();
+      const nowL = new Date();
+      await this.authSessionRepository.update(
+        { refreshTokenId: stored.id },
+        { revokedAt: nowL },
+      );
+      stored.revokedAt = nowL;
       await this.refreshTokenRepository.save(stored);
       await this.logSecurityEvent(
         'LOGOUT',
         stored.userId,
         ctx,
-        { sessionId: stored.id },
+        { sessionId: stored.id, authSessionScope: 'current_refresh' },
         stored.clinicId,
       );
     }
@@ -411,15 +436,62 @@ export class AuthService {
       where: { tokenHash },
     });
     if (stored && !stored.revokedAt) {
-      stored.revokedAt = new Date();
+      const nowR = new Date();
+      await this.authSessionRepository.update(
+        { refreshTokenId: stored.id },
+        { revokedAt: nowR },
+      );
+      stored.revokedAt = nowR;
       await this.refreshTokenRepository.save(stored);
     }
   }
 
   async revokeAllUserTokens(userId: string): Promise<void> {
+    const now = new Date();
+    await this.authSessionRepository.update(
+      { userId, revokedAt: IsNull() },
+      { revokedAt: now },
+    );
     await this.refreshTokenRepository.update(
       { userId, revokedAt: IsNull() },
-      { revokedAt: new Date() },
+      { revokedAt: now },
+    );
+  }
+
+  async revokeSessionById(
+    userId: string,
+    sessionId: string,
+    ctx: RequestContext,
+  ): Promise<void> {
+    const user = await this.usersService.findById(userId);
+    if (!user || user.isActive === false) {
+      throw new UnauthorizedException();
+    }
+
+    const sessionRow = await this.authSessionRepository.findOne({
+      where: { id: sessionId, userId },
+      relations: { refreshToken: true },
+    });
+    if (!sessionRow) {
+      throw new NotFoundException('Session not found');
+    }
+
+    const rt = sessionRow.refreshToken;
+    if (!rt.revokedAt) {
+      rt.revokedAt = new Date();
+      await this.refreshTokenRepository.save(rt);
+    }
+    if (!sessionRow.revokedAt) {
+      sessionRow.revokedAt = new Date();
+      await this.authSessionRepository.save(sessionRow);
+    }
+
+    await this.logSecurityEvent(
+      'LOGOUT',
+      userId,
+      ctx,
+      { scope: 'SINGLE_DEVICE', sessionId },
+      user.clinicId,
     );
   }
 
@@ -450,6 +522,11 @@ export class AuthService {
       )
       .execute();
 
+    await this.authSessionRepository.update(
+      { userId, revokedAt: IsNull() },
+      { revokedAt: new Date() },
+    );
+
     await this.logSecurityEvent(
       'LOGOUT',
       userId,
@@ -465,30 +542,35 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const rows = await this.refreshTokenRepository
-      .createQueryBuilder('rt')
-      .where('rt.user_id = :userId', { userId })
-      .andWhere('rt.revoked_at IS NULL')
-      .andWhere('rt.expires_at > :now', { now: new Date() })
+    const sessions = await this.authSessionRepository
+      .createQueryBuilder('s')
+      .innerJoinAndSelect('s.refreshToken', 'rt')
+      .where('s.userId = :userId', { userId })
+      .andWhere('s.revokedAt IS NULL')
+      .andWhere('rt.revokedAt IS NULL')
+      .andWhere('rt.expiresAt > :now', { now: new Date() })
       .andWhere(
         new Brackets((qb) => {
-          qb.where('rt.clinic_id = :clinicId', {
+          qb.where('rt.clinicId = :clinicId', {
             clinicId: user.clinicId,
-          }).orWhere('rt.clinic_id IS NULL');
+          }).orWhere('rt.clinicId IS NULL');
         }),
       )
-      .orderBy('rt.last_used_at', 'DESC', 'NULLS LAST')
-      .addOrderBy('rt.created_at', 'DESC')
+      .orderBy('rt.lastUsedAt', 'DESC', 'NULLS LAST')
+      .addOrderBy('s.createdAt', 'DESC')
       .getMany();
 
-    return rows.map((r) => ({
-      sessionId: r.id,
-      device:
-        r.userAgentNormalized?.trim() || formatDeviceLabel(r.userAgent),
-      ip: maskIpForSessionList(r.ipAddress),
-      createdAt: r.createdAt.toISOString(),
-      lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
-    }));
+    return sessions.map((s) => {
+      const r = s.refreshToken;
+      return {
+        sessionId: s.id,
+        device:
+          r.userAgentNormalized?.trim() || formatDeviceLabel(r.userAgent),
+        ip: maskIpForSessionList(r.ipAddress),
+        createdAt: s.createdAt.toISOString(),
+        lastUsedAt: r.lastUsedAt?.toISOString() ?? null,
+      };
+    });
   }
 
   // ── Session limit enforcement ─────────────────────────────────
@@ -524,6 +606,13 @@ export class AuthService {
     });
 
     const now = new Date();
+    const ids = oldest.map((row) => row.id);
+    if (ids.length > 0) {
+      await this.authSessionRepository.update(
+        { refreshTokenId: In(ids) },
+        { revokedAt: now },
+      );
+    }
     for (const row of oldest) {
       row.revokedAt = now;
     }
@@ -553,6 +642,9 @@ export class AuthService {
         metadata: {
           ip: ctx.ip,
           userAgent: ctx.userAgent,
+          maskedUserId:
+            userId != null ? maskOptionalUuid(userId) : null,
+          timestamp: new Date().toISOString(),
           ...extra,
         },
       });

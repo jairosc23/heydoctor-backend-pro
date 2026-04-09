@@ -1,7 +1,14 @@
+import { createHash } from 'crypto';
 import { join } from 'path';
-import { ExecutionContext, Module } from '@nestjs/common';
+import {
+  ExecutionContext,
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+} from '@nestjs/common';
 import { APP_FILTER } from '@nestjs/core';
 import type { Request } from 'express';
+import cookieParser from 'cookie-parser';
 import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
@@ -37,6 +44,8 @@ import { PlatformModule } from './platform/platform.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { ObservabilityModule } from './common/observability/observability.module';
+import { CsrfMiddleware } from './common/security/csrf.middleware';
+import { CsrfModule } from './common/security/csrf.module';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 
@@ -48,6 +57,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     }),
     LoggerModule,
     ObservabilityModule,
+    CsrfModule,
     AppCacheModule,
     JwtUserCacheModule,
     TypeOrmModule.forRoot({
@@ -100,6 +110,59 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
                 );
               },
             },
+            {
+              name: 'loginIp',
+              ttl: 15 * 60_000,
+              limit: 40,
+              skipIf: (context: ExecutionContext) => {
+                const req = context.switchToHttp().getRequest<Request>();
+                if (req.method !== 'POST') {
+                  return true;
+                }
+                const path = req.originalUrl?.split('?')[0] ?? req.url ?? '';
+                return !path.includes('/auth/login');
+              },
+              getTracker: (req: Record<string, unknown>) => {
+                const r = req as unknown as Request;
+                return `login-ip:${String(r.ip ?? 'unknown')}`;
+              },
+            },
+            {
+              name: 'magicLink',
+              ttl: 60 * 60_000,
+              limit: 20,
+              skipIf: (context: ExecutionContext) => {
+                const req = context.switchToHttp().getRequest<Request>();
+                if (req.method !== 'POST') {
+                  return true;
+                }
+                const path = req.originalUrl?.split('?')[0] ?? req.url ?? '';
+                return !path.includes('/auth/magic-link');
+              },
+              getTracker: (req: Record<string, unknown>) => {
+                const r = req as unknown as Request;
+                const raw = (r.body as { token?: string } | undefined)?.token;
+                if (typeof raw === 'string' && raw.trim().length > 0) {
+                  const h = createHash('sha256').update(raw.trim()).digest('hex');
+                  return `magic-link-token:${h.slice(0, 40)}`;
+                }
+                return `magic-link-ip:${String(r.ip ?? 'unknown')}`;
+              },
+            },
+            {
+              name: 'webrtc',
+              ttl: 60_000,
+              limit: 90,
+              skipIf: (context: ExecutionContext) => {
+                const req = context.switchToHttp().getRequest<Request>();
+                const path = req.originalUrl?.split('?')[0] ?? req.url ?? '';
+                return !path.includes('/webrtc');
+              },
+              getTracker: (req: Record<string, unknown>) => {
+                const r = req as unknown as Request;
+                return `webrtc:${String(r.ip ?? 'unknown')}`;
+              },
+            },
           ],
           ...(redisUrl
             ? { storage: new ThrottlerStorageRedisService(redisUrl) }
@@ -138,4 +201,8 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(cookieParser(), CsrfMiddleware).forRoutes('*');
+  }
+}

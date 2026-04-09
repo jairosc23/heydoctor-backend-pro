@@ -3,7 +3,6 @@ import { NestFactory } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import * as Sentry from '@sentry/node';
-import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { logExpressRouteStackIfEnabled } from './common/bootstrap/log-express-routes';
 import { validateAndLogEnv } from './config/env-startup-check';
@@ -33,7 +32,6 @@ async function bootstrap() {
     res.status(200).send('ok');
   });
 
-  app.use(cookieParser());
   app.getHttpAdapter().getInstance().set('trust proxy', 1);
 
   app.use(
@@ -94,12 +92,19 @@ async function bootstrap() {
       'Content-Type',
       'Authorization',
       'Accept',
+      'X-CSRF-Token',
       'X-HeyDoctor-Consultation-Id',
       'X-HeyDoctor-Call-Id',
     ],
   });
 
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
+    if (envConfig.isProduction) {
+      res.setHeader(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains; preload',
+      );
+    }
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');

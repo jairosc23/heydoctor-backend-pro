@@ -9,9 +9,11 @@ import {
   Patch,
   Post,
   Query,
+  Req,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -20,6 +22,9 @@ import { ConsultationsListQueryDto } from './dto/consultations-list-query.dto';
 import { RequirePlan } from '../subscriptions/decorators/require-plan.decorator';
 import { FeatureGuard } from '../subscriptions/guards/feature.guard';
 import { SubscriptionPlan } from '../subscriptions/subscription.entity';
+import { AuditService } from '../audit/audit.service';
+import { extractClientHttpMeta } from '../common/http/client-meta.util';
+import { maskOptionalUuid } from '../common/observability/log-masking.util';
 import { ConsultationsService } from './consultations.service';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { SignConsultationDto } from './dto/sign-consultation.dto';
@@ -31,7 +36,10 @@ export class ConsultationsController {
   private readonly logger = new Logger(ConsultationsController.name);
   private readonly apiLogger = new Logger('API');
 
-  constructor(private readonly consultationsService: ConsultationsService) {}
+  constructor(
+    private readonly consultationsService: ConsultationsService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
   create(
@@ -83,11 +91,28 @@ export class ConsultationsController {
   }
 
   @Get(':id')
-  findOne(
+  async findOne(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,
+    @Req() req: Request,
   ) {
-    return this.consultationsService.findOne(id, user);
+    const consultation = await this.consultationsService.findOne(id, user);
+    const meta = extractClientHttpMeta(req);
+    await this.auditService.logSuccess({
+      userId: user.sub,
+      action: 'CONSULTATION_RECORD_ACCESS',
+      resource: 'consultation',
+      resourceId: id,
+      clinicId: consultation.clinicId,
+      httpStatus: 200,
+      metadata: {
+        ...meta,
+        maskedUserId: maskOptionalUuid(user.sub),
+        patientId: maskOptionalUuid(consultation.patient?.id),
+        timestamp: new Date().toISOString(),
+      },
+    });
+    return consultation;
   }
 
   @Patch(':id')
