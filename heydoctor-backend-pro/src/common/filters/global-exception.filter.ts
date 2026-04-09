@@ -41,8 +41,11 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? (request.url.split('?')[0] ?? request.url)
         : request.url;
 
-    /** Temporal: error real en Railway (sin body/headers/tokens). */
-    if (exception instanceof Error) {
+    /** Temporal: error real en Railway (sin 4xx ruidosos: HttpException < 500). */
+    const shouldCaptureForDebug =
+      !(exception instanceof HttpException) ||
+      exception.getStatus() >= HttpStatus.INTERNAL_SERVER_ERROR;
+    if (exception instanceof Error && shouldCaptureForDebug) {
       this.logger.error(
         JSON.stringify({
           msg: 'runtime_error',
@@ -56,7 +59,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       if (process.env.SENTRY_DSN?.trim()) {
         Sentry.captureException(exception);
       }
-    } else {
+    } else if (!(exception instanceof Error)) {
       this.logger.error(
         JSON.stringify({
           msg: 'runtime_non_error',
