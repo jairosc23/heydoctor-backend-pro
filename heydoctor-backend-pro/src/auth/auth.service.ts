@@ -7,7 +7,13 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
-import { Brackets, IsNull, MoreThan, Repository } from 'typeorm';
+import {
+  Brackets,
+  IsNull,
+  MoreThan,
+  QueryFailedError,
+  Repository,
+} from 'typeorm';
 import { AuditLog } from '../audit/audit-log.entity';
 import { AuditOutcome } from '../audit/audit-outcome.enum';
 import {
@@ -23,6 +29,7 @@ import {
 } from '../common/observability/log-masking.util';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../config/env.config';
 import { UsersService } from '../users/users.service';
+import { MagicLinkRedemption } from './entities/magic-link-redemption.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
@@ -35,6 +42,22 @@ import {
 import { jwtTtlToMs } from './jwt-ttl.util';
 
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+
+type MagicLinkVerifiedPayload = {
+  sub?: string;
+  email?: string;
+  role?: string;
+  typ?: string;
+  jti?: string;
+};
+
+function isPgUniqueViolation(err: unknown): boolean {
+  if (!(err instanceof QueryFailedError)) {
+    return false;
+  }
+  const d = err.driverError as { code?: string } | undefined;
+  return d?.code === '23505';
+}
 
 function generateRawToken(): string {
   return randomBytes(32).toString('hex');
@@ -85,6 +108,8 @@ export class AuthService {
     private readonly subscriptionRepository: Repository<Subscription>,
     @InjectRepository(RefreshToken)
     private readonly refreshTokenRepository: Repository<RefreshToken>,
+    @InjectRepository(MagicLinkRedemption)
+    private readonly magicLinkRedemptionRepository: Repository<MagicLinkRedemption>,
     @InjectRepository(AuditLog)
     private readonly auditLogRepository: Repository<AuditLog>,
   ) {}
@@ -98,6 +123,116 @@ export class AuthService {
       UserRole.DOCTOR,
     );
     return this.buildAuthResponse(user);
+  }
+
+  /**
+   * Canje de enlace mágico: JWT con `typ: 'magic_link'` y `jti` (un solo uso por jti),
+   * o JWT de acceso estándar (un solo uso por valor del token).
+   */
+  async exchangeMagicLink(
+    rawToken: string,
+    ctx: RequestContext,
+  ): Promise<{ access_token: string; user: AuthUserView }> {
+    const trimmed = rawToken.trim();
+    if (!trimmed) {
+      throw new UnauthorizedException('Token required');
+    }
+
+    let payload: MagicLinkVerifiedPayload;
+    try {
+      payload =
+        await this.jwtService.verifyAsync<MagicLinkVerifiedPayload>(trimmed);
+    } catch {
+      await this.logSecurityEvent(
+        'MAGIC_LINK_EXCHANGE_FAIL',
+        null,
+        ctx,
+        { reason: 'invalid_or_expired_jwt' },
+      );
+      throw new UnauthorizedException('Invalid or expired token');
+    }
+
+    const sub = payload.sub;
+    if (!sub || typeof sub !== 'string') {
+      throw new UnauthorizedException('Invalid token subject');
+    }
+
+    let redemptionKey: string;
+    if (payload.typ === 'magic_link') {
+      const jti =
+        typeof payload.jti === 'string' && payload.jti.trim().length > 0
+          ? payload.jti.trim()
+          : null;
+      if (!jti) {
+        throw new UnauthorizedException('Magic link token missing jti');
+      }
+      redemptionKey = `jti:${jti}`;
+    } else {
+      if (
+        typeof payload.email !== 'string' ||
+        typeof payload.role !== 'string'
+      ) {
+        throw new UnauthorizedException('Invalid token claims');
+      }
+      redemptionKey = `tok:${hashToken(trimmed)}`;
+    }
+
+    const user = await this.usersService.findById(sub);
+    if (!user || user.isActive === false) {
+      await this.logSecurityEvent(
+        'MAGIC_LINK_EXCHANGE_FAIL',
+        sub,
+        ctx,
+        { reason: 'user_inactive_or_missing' },
+      );
+      throw new UnauthorizedException('User not found');
+    }
+
+    const pEmail = String(payload.email ?? '')
+      .toLowerCase()
+      .trim();
+    const pRole = String(payload.role ?? '').trim();
+    if (
+      user.email.toLowerCase().trim() !== pEmail ||
+      String(user.role) !== pRole
+    ) {
+      await this.logSecurityEvent(
+        'MAGIC_LINK_EXCHANGE_FAIL',
+        user.id,
+        ctx,
+        { reason: 'claims_mismatch' },
+        user.clinicId,
+      );
+      throw new UnauthorizedException('Token claims do not match user');
+    }
+
+    await this.recordMagicLinkRedemption(redemptionKey);
+
+    const result = await this.buildAuthResponse(user);
+    await this.logSecurityEvent(
+      'MAGIC_LINK_REDEEMED',
+      user.id,
+      ctx,
+      {
+        mode: payload.typ === 'magic_link' ? 'magic_jwt' : 'legacy_access_jwt',
+      },
+      user.clinicId,
+    );
+    return result;
+  }
+
+  private async recordMagicLinkRedemption(redemptionKey: string): Promise<void> {
+    const row = this.magicLinkRedemptionRepository.create({
+      redemptionKey,
+    });
+    try {
+      await this.magicLinkRedemptionRepository.save(row);
+    } catch (err) {
+      if (isPgUniqueViolation(err)) {
+        throw new UnauthorizedException('Token already used');
+      }
+      throw err;
+    }
   }
 
   async login(dto: LoginDto, ctx: RequestContext) {

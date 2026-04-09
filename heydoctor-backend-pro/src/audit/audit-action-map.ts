@@ -21,6 +21,7 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
   'GET /api/health': { action: 'HEALTH_CHECK', resource: 'health' },
   'POST /api/auth/register': { action: 'AUTH_REGISTER', resource: 'auth' },
   'POST /api/auth/login': { action: 'AUTH_LOGIN', resource: 'auth' },
+  'POST /api/auth/magic-link': { action: 'AUTH_MAGIC_LINK', resource: 'auth' },
   'POST /api/auth/refresh': { action: 'AUTH_REFRESH', resource: 'auth' },
   'POST /api/auth/logout': { action: 'AUTH_LOGOUT', resource: 'auth' },
   'POST /api/auth/revoke-all': { action: 'AUTH_REVOKE_ALL_SESSIONS', resource: 'auth' },

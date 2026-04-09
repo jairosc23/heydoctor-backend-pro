@@ -20,6 +20,7 @@ import {
 } from './auth.service';
 import type { AuthenticatedUser } from './strategies/jwt.strategy';
 import { LoginDto } from './dto/login.dto';
+import { MagicLinkDto } from './dto/magic-link.dto';
 import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
@@ -150,6 +151,23 @@ export class AuthController {
   ) {
     const ctx = extractContext(req);
     const result = await this.authService.register(dto);
+    const refreshToken = await this.authService.createRefreshToken(
+      result.user.id,
+      ctx,
+    );
+    this.setRefreshCookie(res, refreshToken);
+    this.setSessionCookie(res, result.access_token);
+    return { access_token: result.access_token, user: result.user };
+  }
+
+  @Post('magic-link')
+  async magicLink(
+    @Body() dto: MagicLinkDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const ctx = extractContext(req);
+    const result = await this.authService.exchangeMagicLink(dto.token, ctx);
     const refreshToken = await this.authService.createRefreshToken(
       result.user.id,
       ctx,
