@@ -33,17 +33,10 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchClinic = async () => {
       try {
-        const token =
-          typeof window !== 'undefined'
-            ? localStorage.getItem('jwt') || localStorage.getItem('token')
-            : null;
-        if (!token) {
-          setClinic(null);
-          return;
-        }
         const base = getApiBase();
         const res = await fetch(`${base}/api/clinics/me`, {
-          headers: { Authorization: `Bearer ${token}` },
+          credentials: 'include',
+          headers: { Accept: 'application/json' },
         });
         if (res.ok) {
           const json = await res.json();

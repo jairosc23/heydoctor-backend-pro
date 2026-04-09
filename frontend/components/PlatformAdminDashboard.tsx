@@ -8,7 +8,6 @@ import {
 
 export type PlatformAdminDashboardProps = {
   backendOrigin: string;
-  accessToken: string;
   windowDays?: number;
 };
 
@@ -17,7 +16,6 @@ export type PlatformAdminDashboardProps = {
  */
 export function PlatformAdminDashboard({
   backendOrigin,
-  accessToken,
   windowDays = 7,
 }: PlatformAdminDashboardProps) {
   const [data, setData] = useState<PlatformGlobalMetrics | null>(null);
@@ -30,7 +28,6 @@ export function PlatformAdminDashboard({
     try {
       const m = await fetchPlatformGlobalMetrics({
         backendOrigin,
-        accessToken,
         windowDays,
       });
       setData(m);
@@ -39,7 +36,7 @@ export function PlatformAdminDashboard({
     } finally {
       setLoading(false);
     }
-  }, [backendOrigin, accessToken, windowDays]);
+  }, [backendOrigin, windowDays]);
 
   useEffect(() => {
     void load();

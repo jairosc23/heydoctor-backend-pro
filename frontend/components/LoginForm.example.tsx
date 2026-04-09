@@ -6,9 +6,9 @@
  *
  * Uso:
  * 1. Importa: import { login } from '@/lib/api-auth';
- * 2. En onSubmit: const res = await login({ email, password });
- * 3. Guarda el JWT: localStorage.setItem('jwt', res.jwt);
- * 4. Redirige al dashboard
+ * 2. En onSubmit: await login({ email, password }) con credentials: 'include' (ya en api-auth).
+ * 3. No guardes el JWT en localStorage: la sesión va en cookies HttpOnly (`heydoctor_session`, `refresh_token`).
+ * 4. Redirige al dashboard; las siguientes peticiones deben usar fetch(..., { credentials: 'include' }).
  */
 import React, { useState } from 'react';
 import { login } from '../lib/api-auth';
@@ -24,12 +24,7 @@ export function LoginFormExample() {
     setError('');
     setLoading(true);
     try {
-      const res = await login({ email, password });
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('jwt', res.jwt);
-        localStorage.setItem('token', res.jwt); // compatibilidad
-      }
-      // Redirigir al dashboard
+      await login({ email, password });
       window.location.href = '/dashboard';
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

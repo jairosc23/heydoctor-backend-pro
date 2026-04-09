@@ -1,3 +1,5 @@
+import { apiCredentialsInit } from './api-credentials';
+
 export type CreatePaymentSessionPayload = {
   consultationId: string;
   amount: number;
@@ -18,7 +20,6 @@ export type CreatePaymentSessionResponse = {
 
 export async function createPaymentSession(
   backendOrigin: string,
-  accessToken: string,
   payload: CreatePaymentSessionPayload,
 ): Promise<CreatePaymentSessionResponse> {
   const url = new URL(
@@ -26,13 +27,12 @@ export async function createPaymentSession(
     backendOrigin.replace(/\/$/, ''),
   );
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    credentials: 'include',
     body: JSON.stringify(payload),
   });
   if (!res.ok) {

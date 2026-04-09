@@ -10,7 +10,6 @@ import {
 
 export type WebrtcRecordingControlsProps = {
   backendOrigin: string;
-  accessToken: string;
   consultationId: string;
   callId: string | null;
   pollIntervalMs?: number;
@@ -21,7 +20,6 @@ export type WebrtcRecordingControlsProps = {
  */
 export function WebrtcRecordingControls({
   backendOrigin,
-  accessToken,
   consultationId,
   callId,
   pollIntervalMs = 12_000,
@@ -40,7 +38,6 @@ export function WebrtcRecordingControls({
     try {
       const s = await fetchRecordingStatus({
         backendOrigin,
-        accessToken,
         consultationId,
         callId,
       });
@@ -54,7 +51,7 @@ export function WebrtcRecordingControls({
     } catch {
       setStatusText('No se pudo leer el estado de grabación');
     }
-  }, [backendOrigin, accessToken, consultationId, callId]);
+  }, [backendOrigin, consultationId, callId]);
 
   useEffect(() => {
     void refreshStatus();
@@ -77,7 +74,6 @@ export function WebrtcRecordingControls({
     try {
       const r = await requestRecordingStart({
         backendOrigin,
-        accessToken,
         consultationId,
         callId,
         userConsent: true,
@@ -102,7 +98,6 @@ export function WebrtcRecordingControls({
     try {
       await requestRecordingStop({
         backendOrigin,
-        accessToken,
         consultationId,
         callId,
         userConsent: true,

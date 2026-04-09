@@ -1,3 +1,5 @@
+import { apiCredentialsInit } from './api-credentials';
+
 export type PlatformGlobalMetrics = {
   windowDays: number;
   generatedAt: string;
@@ -39,21 +41,17 @@ export type PlatformGlobalMetrics = {
 
 export async function fetchPlatformGlobalMetrics(params: {
   backendOrigin: string;
-  accessToken: string;
   windowDays?: number;
 }): Promise<PlatformGlobalMetrics> {
-  const { backendOrigin, accessToken, windowDays = 7 } = params;
+  const { backendOrigin, windowDays = 7 } = params;
   const url = new URL(
     '/api/platform/metrics/global',
     backendOrigin.replace(/\/$/, ''),
   );
   url.searchParams.set('windowDays', String(windowDays));
   const res = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      Accept: 'application/json',
-    },
-    credentials: 'include',
+    ...apiCredentialsInit,
+    headers: { Accept: 'application/json' },
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

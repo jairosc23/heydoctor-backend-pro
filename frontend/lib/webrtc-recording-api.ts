@@ -2,7 +2,6 @@ import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
 
 export type RecordingApiInput = {
   backendOrigin: string;
-  accessToken: string;
   consultationId: string;
   callId: string;
   userConsent: boolean;
@@ -34,6 +33,20 @@ export type RecordingStopResult = {
   endedAt: string;
 };
 
+function postHeaders(consultationId: string, callId: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    ...heyDoctorTraceHeaders(consultationId, callId),
+  };
+}
+
+function getHeaders(consultationId: string, callId: string): Record<string, string> {
+  return {
+    Accept: 'application/json',
+    ...heyDoctorTraceHeaders(consultationId, callId),
+  };
+}
+
 export async function requestRecordingStart(
   input: RecordingApiInput,
 ): Promise<RecordingStartResult> {
@@ -43,11 +56,7 @@ export async function requestRecordingStart(
   );
   const res = await fetch(url.toString(), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${input.accessToken}`,
-      'Content-Type': 'application/json',
-      ...heyDoctorTraceHeaders(input.consultationId, input.callId),
-    },
+    headers: postHeaders(input.consultationId, input.callId),
     credentials: 'include',
     body: JSON.stringify({
       consultationId: input.consultationId,
@@ -70,11 +79,7 @@ export async function requestRecordingStop(
   );
   const res = await fetch(url.toString(), {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${input.accessToken}`,
-      'Content-Type': 'application/json',
-      ...heyDoctorTraceHeaders(input.consultationId, input.callId),
-    },
+    headers: postHeaders(input.consultationId, input.callId),
     credentials: 'include',
     body: JSON.stringify({
       consultationId: input.consultationId,
@@ -106,7 +111,6 @@ export type RecordingStatusResult = {
 
 export async function fetchRecordingStatus(params: {
   backendOrigin: string;
-  accessToken: string;
   consultationId: string;
   callId: string;
 }): Promise<RecordingStatusResult> {
@@ -116,11 +120,7 @@ export async function fetchRecordingStatus(params: {
   );
   url.searchParams.set('consultationId', params.consultationId);
   const res = await fetch(url.toString(), {
-    headers: {
-      Authorization: `Bearer ${params.accessToken}`,
-      Accept: 'application/json',
-      ...heyDoctorTraceHeaders(params.consultationId, params.callId),
-    },
+    headers: getHeaders(params.consultationId, params.callId),
     credentials: 'include',
   });
   if (!res.ok) {

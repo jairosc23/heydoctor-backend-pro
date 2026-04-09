@@ -1,7 +1,10 @@
 /**
  * Auth API - Login contra el backend Nest (Railway).
  * Usa NEXT_PUBLIC_API_URL para todas las llamadas.
+ * Sesión: cookies HttpOnly (`heydoctor_session`, `refresh_token`) con credentials: 'include'.
  */
+
+import { apiCredentialsInit } from './api-credentials';
 
 const getApiBase = () =>
   (typeof window !== 'undefined' && (window as any).__API_URL__) ||
@@ -14,7 +17,7 @@ export interface LoginCredentials {
 }
 
 export interface LoginResponse {
-  jwt: string;
+  access_token: string;
   user: {
     id: string;
     email: string;
@@ -34,9 +37,11 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
   }
 
   const res = await fetch(`${base}/api/auth/login`, {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      Accept: 'application/json',
     },
     body: JSON.stringify(credentials),
   });
@@ -46,5 +51,5 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
     throw new Error(err.message || 'Login failed');
   }
 
-  return res.json();
+  return res.json() as Promise<LoginResponse>;
 }

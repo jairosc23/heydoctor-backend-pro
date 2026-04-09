@@ -1,18 +1,19 @@
 /**
  * API helpers for clinic-scoped requests.
  * Include clinic_id in filters when backend requires it.
+ * Autenticación: cookies HttpOnly (`heydoctor_session`) + credentials: 'include'.
  */
 
-const getAuthHeaders = () => {
-  if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('jwt') || localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiCredentialsInit } from './api-credentials';
 
 const getApiBase = () =>
   (typeof window !== 'undefined' && (window as any).__API_URL__) ||
   process.env.NEXT_PUBLIC_API_URL ||
   '';
+
+const jsonHeaders = () => ({
+  Accept: 'application/json',
+});
 
 export async function fetchPatients(clinicId: number | null) {
   const base = getApiBase();
@@ -20,7 +21,8 @@ export async function fetchPatients(clinicId: number | null) {
     ? `?filters[clinic][id][$eq]=${clinicId}`
     : '';
   const res = await fetch(`${base}/api/patients${params}`, {
-    headers: getAuthHeaders(),
+    ...apiCredentialsInit,
+    headers: jsonHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch patients');
   return res.json();
@@ -32,7 +34,8 @@ export async function fetchAppointments(clinicId: number | null) {
     ? `?filters[clinic][id][$eq]=${clinicId}`
     : '';
   const res = await fetch(`${base}/api/appointments${params}`, {
-    headers: getAuthHeaders(),
+    ...apiCredentialsInit,
+    headers: jsonHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch appointments');
   return res.json();
@@ -41,7 +44,8 @@ export async function fetchAppointments(clinicId: number | null) {
 export async function fetchClinicMe() {
   const base = getApiBase();
   const res = await fetch(`${base}/api/clinics/me`, {
-    headers: getAuthHeaders(),
+    ...apiCredentialsInit,
+    headers: jsonHeaders(),
   });
   if (!res.ok) return null;
   const json = await res.json();
@@ -52,7 +56,8 @@ export async function fetchClinicMe() {
 export async function fetchPatientMedicalRecord(patientId: number | string) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/patients/${patientId}/medical-record`, {
-    headers: getAuthHeaders(),
+    ...apiCredentialsInit,
+    headers: jsonHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch medical record');
   const json = await res.json();

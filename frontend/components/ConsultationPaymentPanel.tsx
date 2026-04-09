@@ -5,7 +5,6 @@ import { createPaymentSession } from '../lib/api-payments';
 
 export type ConsultationPaymentPanelProps = {
   backendOrigin: string;
-  accessToken: string;
   consultationId: string;
   defaultAmount?: number;
   defaultCurrency?: string;
@@ -13,7 +12,6 @@ export type ConsultationPaymentPanelProps = {
 
 export function ConsultationPaymentPanel({
   backendOrigin,
-  accessToken,
   consultationId,
   defaultAmount = 35_000,
   defaultCurrency = 'CLP',
@@ -29,7 +27,7 @@ export function ConsultationPaymentPanel({
     setError(null);
     setResult(null);
     try {
-      const r = await createPaymentSession(backendOrigin, accessToken, {
+      const r = await createPaymentSession(backendOrigin, {
         consultationId,
         amount,
         currency,

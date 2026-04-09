@@ -2,7 +2,6 @@ import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
 
 export type SendCallMetricsInput = {
   backendOrigin: string;
-  accessToken: string;
   consultationId: string;
   /** One UUID per call session (client-generated). */
   callId: string;
@@ -25,7 +24,6 @@ export async function sendCallMetrics(
 ): Promise<void> {
   const {
     backendOrigin,
-    accessToken,
     consultationId,
     callId,
     rtt,
@@ -56,7 +54,6 @@ export async function sendCallMetrics(
   const res = await fetch(url.toString(), {
     method: 'POST',
     headers: {
-      Authorization: `Bearer ${accessToken}`,
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...heyDoctorTraceHeaders(consultationId, callId),

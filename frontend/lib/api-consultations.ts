@@ -2,19 +2,17 @@
  * Consultas clínicas (Nest HeyDoctor).
  */
 
-const getAuthHeaders = () => {
-  if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('jwt') || localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiCredentialsInit } from './api-credentials';
 
 const getApiBase = () =>
   (typeof window !== 'undefined' && (window as unknown as { __API_URL__?: string }).__API_URL__) ||
   process.env.NEXT_PUBLIC_API_URL ||
   '';
 
+const getHeaders = () => ({ Accept: 'application/json' });
+
 const jsonHeaders = () => ({
-  ...getAuthHeaders(),
+  ...getHeaders(),
   'Content-Type': 'application/json',
 });
 
@@ -53,7 +51,8 @@ export type PatchConsultationPayload = Partial<{
 export async function fetchConsultation(consultationId: string): Promise<Consultation> {
   const base = getApiBase();
   const res = await fetch(`${base}/api/consultations/${consultationId}`, {
-    headers: getAuthHeaders(),
+    ...apiCredentialsInit,
+    headers: getHeaders(),
   });
   if (!res.ok) throw new Error('No se pudo cargar la consulta');
   return res.json() as Promise<Consultation>;
@@ -65,6 +64,7 @@ export async function patchConsultation(
 ): Promise<Consultation> {
   const base = getApiBase();
   const res = await fetch(`${base}/api/consultations/${consultationId}`, {
+    ...apiCredentialsInit,
     method: 'PATCH',
     headers: jsonHeaders(),
     body: JSON.stringify(body),

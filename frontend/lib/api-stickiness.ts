@@ -2,19 +2,17 @@
  * API client para Templates, Favorite Orders y Patient Reminders.
  */
 
-const getAuthHeaders = () => {
-  if (typeof window === 'undefined') return {};
-  const token = localStorage.getItem('jwt') || localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
-};
+import { apiCredentialsInit } from './api-credentials';
 
 const getApiBase = () =>
   (typeof window !== 'undefined' && (window as any).__API_URL__) ||
   process.env.NEXT_PUBLIC_API_URL ||
   '';
 
+const getHeaders = () => ({ Accept: 'application/json' });
+
 const jsonHeaders = () => ({
-  ...getAuthHeaders(),
+  ...getHeaders(),
   'Content-Type': 'application/json',
 });
 
@@ -31,7 +29,10 @@ export interface TemplateData {
 
 export async function fetchTemplates() {
   const base = getApiBase();
-  const res = await fetch(`${base}/api/templates`, { headers: getAuthHeaders() });
+  const res = await fetch(`${base}/api/templates`, {
+    ...apiCredentialsInit,
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error('Failed to fetch templates');
   const json = await res.json();
   return json.data ?? json;
@@ -40,6 +41,7 @@ export async function fetchTemplates() {
 export async function createTemplate(data: TemplateData) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/templates`, {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify(toData(data)),
@@ -51,6 +53,7 @@ export async function createTemplate(data: TemplateData) {
 export async function updateTemplate(id: number | string, data: Partial<TemplateData>) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/templates/${id}`, {
+    ...apiCredentialsInit,
     method: 'PUT',
     headers: jsonHeaders(),
     body: JSON.stringify(toData(data)),
@@ -62,8 +65,9 @@ export async function updateTemplate(id: number | string, data: Partial<Template
 export async function deleteTemplate(id: number | string) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/templates/${id}`, {
+    ...apiCredentialsInit,
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getHeaders(),
   });
   if (!res.ok) throw new Error('Failed to delete template');
 }
@@ -82,7 +86,10 @@ export interface FavoriteOrderData {
 
 export async function fetchFavoriteOrders() {
   const base = getApiBase();
-  const res = await fetch(`${base}/api/favorite-orders`, { headers: getAuthHeaders() });
+  const res = await fetch(`${base}/api/favorite-orders`, {
+    ...apiCredentialsInit,
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error('Failed to fetch favorite orders');
   const json = await res.json();
   return json.data ?? json;
@@ -91,6 +98,7 @@ export async function fetchFavoriteOrders() {
 export async function createFavoriteOrder(data: FavoriteOrderData) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/favorite-orders`, {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify(toData(data)),
@@ -102,8 +110,9 @@ export async function createFavoriteOrder(data: FavoriteOrderData) {
 export async function deleteFavoriteOrder(id: number | string) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/favorite-orders/${id}`, {
+    ...apiCredentialsInit,
     method: 'DELETE',
-    headers: getAuthHeaders(),
+    headers: getHeaders(),
   });
   if (!res.ok) throw new Error('Failed to delete favorite order');
 }
@@ -120,7 +129,10 @@ export interface PatientReminderData {
 export async function fetchPatientReminders(patientId?: number | string) {
   const base = getApiBase();
   const params = patientId ? `?filters[patient][id][$eq]=${patientId}` : '';
-  const res = await fetch(`${base}/api/patient-reminders${params}`, { headers: getAuthHeaders() });
+  const res = await fetch(`${base}/api/patient-reminders${params}`, {
+    ...apiCredentialsInit,
+    headers: getHeaders(),
+  });
   if (!res.ok) throw new Error('Failed to fetch patient reminders');
   const json = await res.json();
   return json.data ?? json;
@@ -129,6 +141,7 @@ export async function fetchPatientReminders(patientId?: number | string) {
 export async function createPatientReminder(data: PatientReminderData) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/patient-reminders`, {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: jsonHeaders(),
     body: JSON.stringify(toData(data)),
@@ -140,6 +153,7 @@ export async function createPatientReminder(data: PatientReminderData) {
 export async function updatePatientReminder(id: number | string, data: Partial<PatientReminderData> & { status?: string }) {
   const base = getApiBase();
   const res = await fetch(`${base}/api/patient-reminders/${id}`, {
+    ...apiCredentialsInit,
     method: 'PUT',
     headers: jsonHeaders(),
     body: JSON.stringify(toData(data)),
