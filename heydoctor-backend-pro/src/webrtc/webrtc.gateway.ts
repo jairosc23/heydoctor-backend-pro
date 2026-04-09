@@ -215,6 +215,13 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
     if (auth?.token && typeof auth.token === 'string') {
       return auth.token;
     }
+    const cookieHeader = client.handshake.headers.cookie;
+    if (typeof cookieHeader === 'string' && cookieHeader.length > 0) {
+      const session = this.parseCookie(cookieHeader, 'heydoctor_session');
+      if (session) {
+        return session;
+      }
+    }
     const header = client.handshake.headers.authorization;
     if (
       typeof header === 'string' &&
@@ -228,6 +235,24 @@ export class WebrtcGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     if (Array.isArray(q) && typeof q[0] === 'string') {
       return q[0];
+    }
+    return null;
+  }
+
+  /** Parseo mínimo `name=value` (sin dependencia extra). */
+  private parseCookie(header: string, name: string): string | null {
+    const parts = header.split(';');
+    for (const part of parts) {
+      const trimmed = part.trim();
+      if (!trimmed.startsWith(`${name}=`)) {
+        continue;
+      }
+      const value = trimmed.slice(name.length + 1);
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
     }
     return null;
   }

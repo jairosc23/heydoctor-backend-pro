@@ -27,10 +27,14 @@ import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 /**
  * Refresh rotable en DB + cookie HttpOnly en el dominio del API.
  * - TTL access: `JWT_ACCESS_TTL` (p. ej. 15m); refresh: `JWT_REFRESH_TTL` (p. ej. 7d).
- * - Producción: `SameSite=None`, `Secure=true`, path `/api/auth` (emitir desde este controlador únicamente).
+ * - Refresh: path `/api/auth` (login, refresh, logout).
+ * - Access JWT: cookie `heydoctor_session`, path `/api` (todas las rutas API + WebRTC HTTP).
+ * - Producción: `SameSite=None`, `Secure=true`.
  */
 const REFRESH_COOKIE = 'refresh_token';
+const SESSION_COOKIE = 'heydoctor_session';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
+const DEFAULT_ACCESS_MS = 15 * 60 * 1000;
 
 function cookieOptions(
   isProduction: boolean,
@@ -48,6 +52,22 @@ function cookieOptions(
   };
 }
 
+function sessionCookieOptions(
+  isProduction: boolean,
+): {
+  httpOnly: true;
+  secure: boolean;
+  sameSite: 'none' | 'lax';
+  path: string;
+} {
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? 'none' : 'lax',
+    path: '/api',
+  };
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(
@@ -62,6 +82,13 @@ export class AuthController {
     );
   }
 
+  private sessionCookieMaxAgeMs(): number {
+    return jwtTtlToMs(
+      this.config.get<string>('JWT_ACCESS_TTL'),
+      DEFAULT_ACCESS_MS,
+    );
+  }
+
   private setRefreshCookie(res: Response, token: string): void {
     const isProd = process.env.NODE_ENV === 'production';
     res.cookie(REFRESH_COOKIE, token, {
@@ -70,9 +97,22 @@ export class AuthController {
     });
   }
 
+  private setSessionCookie(res: Response, accessToken: string): void {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.cookie(SESSION_COOKIE, accessToken, {
+      ...sessionCookieOptions(isProd),
+      maxAge: this.sessionCookieMaxAgeMs(),
+    });
+  }
+
   private clearRefreshCookie(res: Response): void {
     const isProd = process.env.NODE_ENV === 'production';
     res.clearCookie(REFRESH_COOKIE, cookieOptions(isProd));
+  }
+
+  private clearSessionCookie(res: Response): void {
+    const isProd = process.env.NODE_ENV === 'production';
+    res.clearCookie(SESSION_COOKIE, sessionCookieOptions(isProd));
   }
 
   @Get('me')
@@ -115,6 +155,7 @@ export class AuthController {
       ctx,
     );
     this.setRefreshCookie(res, refreshToken);
+    this.setSessionCookie(res, result.access_token);
     return { access_token: result.access_token, user: result.user };
   }
 
@@ -131,6 +172,7 @@ export class AuthController {
       ctx,
     );
     this.setRefreshCookie(res, refreshToken);
+    this.setSessionCookie(res, result.access_token);
     return { access_token: result.access_token, user: result.user };
   }
 
@@ -149,6 +191,7 @@ export class AuthController {
       await this.authService.validateAndRotateRefreshToken(rawToken, ctx);
 
     this.setRefreshCookie(res, newRefreshToken);
+    this.setSessionCookie(res, accessToken);
     return { access_token: accessToken };
   }
 
@@ -161,6 +204,7 @@ export class AuthController {
     const rawToken = req.cookies?.[REFRESH_COOKIE];
     await this.authService.performLogout(rawToken, ctx);
     this.clearRefreshCookie(res);
+    this.clearSessionCookie(res);
     return { ok: true };
   }
 }

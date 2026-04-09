@@ -75,14 +75,28 @@ async function bootstrap() {
     );
   }
 
-  // List every frontend origin that calls this API with credentials (cookies + Bearer).
-  const defaultCorsOrigins = ['http://localhost:3000'];
+  // Credenciales cross-origin: lista explícita de orígenes (nunca '*' con credentials).
+  // `CORS_ORIGIN` en Railway puede ampliar o sustituir (coma-separada).
+  const productionFrontendOrigins = ['https://heydoctor-frontend.vercel.app'];
+  const localDevOrigins = ['http://localhost:3000'];
   const corsOrigins =
-    envConfig.corsOrigin.length > 0 ? envConfig.corsOrigin : defaultCorsOrigins;
+    envConfig.corsOrigin.length > 0
+      ? envConfig.corsOrigin
+      : envConfig.isProduction
+        ? productionFrontendOrigins
+        : localDevOrigins;
 
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'Accept',
+      'X-HeyDoctor-Consultation-Id',
+      'X-HeyDoctor-Call-Id',
+    ],
   });
 
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
