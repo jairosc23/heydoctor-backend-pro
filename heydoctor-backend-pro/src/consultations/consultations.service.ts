@@ -134,29 +134,31 @@ export class ConsultationsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    /** Columnas SQL explícitas: evita fallos con @RelationId en WHERE (Postgres/TypeORM). */
+    /** Columnas DB reales (quoted): evita EntityPropertyNotFoundError con @RelationId. */
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
-      .where('c.clinic_id = :clinicId', { clinicId })
-      .orderBy('c.created_at', 'DESC');
+      .where('"c"."clinic_id" = :clinicId', { clinicId })
+      .orderBy('"c"."created_at"', 'DESC');
 
     if (query?.patientId) {
-      qb.andWhere('c.patient_id = :patientId', { patientId: query.patientId });
+      qb.andWhere('"c"."patient_id" = :patientId', {
+        patientId: query.patientId,
+      });
     }
     if (query?.status) {
-      qb.andWhere('c.status = :status', { status: query.status });
+      qb.andWhere('"c"."status" = :status', { status: query.status });
     }
     if (query?.doctorId) {
-      qb.andWhere('c.doctor_id = :doctorId', { doctorId: query.doctorId });
+      qb.andWhere('"c"."doctor_id" = :doctorId', { doctorId: query.doctorId });
     }
     if (query?.from) {
-      qb.andWhere('c.created_at >= :from', { from: new Date(query.from) });
+      qb.andWhere('"c"."created_at" >= :from', { from: new Date(query.from) });
     }
     if (query?.to) {
       const end = new Date(query.to);
       end.setUTCHours(23, 59, 59, 999);
-      qb.andWhere('c.created_at <= :to', { to: end });
+      qb.andWhere('"c"."created_at" <= :to', { to: end });
     }
     const consultSearch = query?.search?.trim();
     if (consultSearch) {

@@ -35,10 +35,11 @@ export class PatientsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
+    /** Columnas DB reales (quoted): @RelationId no es columna mapeada en QueryBuilder. */
     const qb = this.patientsRepository
       .createQueryBuilder('p')
-      .where('p.clinic_id = :clinicId', { clinicId })
-      .orderBy('p.created_at', 'DESC');
+      .where('"p"."clinic_id" = :clinicId', { clinicId })
+      .orderBy('"p"."created_at"', 'DESC');
 
     const search = query?.search?.trim();
     if (search) {

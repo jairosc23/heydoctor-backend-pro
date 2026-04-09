@@ -127,7 +127,7 @@ export class WebrtcCallMetricsService {
       .addSelect('AVG(m.rttMs)', 'avgRtt')
       .addSelect('AVG(m.packetLossRatio)', 'avgLoss')
       .addSelect('AVG(m.outboundBitrateBps)', 'avgBitrate')
-      .where('m.consultationId = :id', { id: consultationId })
+      .where('m.consultation_id = :id', { id: consultationId })
       .getRawOne<{
         cnt: string;
         avgRtt: string | null;
@@ -199,14 +199,14 @@ export class WebrtcCallMetricsService {
 
     const base = this.repo
       .createQueryBuilder('m')
-      .innerJoin(Consultation, 'c', 'c.id = m.consultationId')
-      .where('c.clinicId = :clinicId', { clinicId })
-      .andWhere('m.recordedAt >= :since', { since });
+      .innerJoin(Consultation, 'c', 'c.id = m.consultation_id')
+      .where('"c"."clinic_id" = :clinicId', { clinicId })
+      .andWhere('m.recorded_at >= :since', { since });
 
     const totals = await base
       .clone()
       .select('COUNT(*)', 'total')
-      .addSelect('COUNT(DISTINCT m.consultationId)', 'consultations')
+      .addSelect('COUNT(DISTINCT m.consultation_id)', 'consultations')
       .addSelect('AVG(m.rttMs)', 'avgRtt')
       .getRawOne<{
         total: string;

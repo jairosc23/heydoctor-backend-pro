@@ -45,24 +45,24 @@ export class LegalService {
     const raw = await this.consultationsRepository
       .createQueryBuilder('c')
       .leftJoin('c.consent', 'tc')
-      .leftJoin(User, 'doctor', 'doctor.id = c.doctorId')
-      .where('c.clinicId = :clinicId', { clinicId })
-      .select('c.id', 'consultationId')
-      .addSelect('c.createdAt', 'createdAt')
-      .addSelect('c.doctorId', 'doctorId')
-      .addSelect('c.patientId', 'patientId')
-      .addSelect('c.consentId', 'consentId')
-      .addSelect('COALESCE(c.consentVersion, tc.version)', 'consentVersion')
+      .leftJoin(User, 'doctor', 'doctor.id = "c"."doctor_id"')
+      .where('"c"."clinic_id" = :clinicId', { clinicId })
+      .select('"c"."id"', 'consultationId')
+      .addSelect('"c"."created_at"', 'createdAt')
+      .addSelect('"c"."doctor_id"', 'doctorId')
+      .addSelect('"c"."patient_id"', 'patientId')
+      .addSelect('"c"."consent_id"', 'consentId')
+      .addSelect('COALESCE("c"."consent_version", tc.version)', 'consentVersion')
       .addSelect(
-        'COALESCE(c.consentGivenAt, tc.consentGivenAt)',
+        'COALESCE("c"."consent_given_at", tc.consent_given_at)',
         'consentGivenAt',
       )
-      .addSelect('COALESCE(c.consentIp, tc.ip)', 'consentIp')
+      .addSelect('COALESCE("c"."consent_ip", tc.ip)', 'consentIp')
       .addSelect(
-        'COALESCE(c.consentUserAgent, tc.userAgent)',
+        'COALESCE("c"."consent_user_agent", tc.user_agent)',
         'consentUserAgent',
       )
-      .orderBy('c.createdAt', 'ASC')
+      .orderBy('"c"."created_at"', 'ASC')
       .getRawMany<RawLegalRow>();
 
     const rows: LegalConsultationExportRow[] = raw.map((r) => ({
