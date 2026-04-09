@@ -3,6 +3,7 @@ import {
   ForbiddenException,
   Inject,
   Injectable,
+  InternalServerErrorException,
   NotFoundException,
   type LoggerService,
 } from '@nestjs/common';
@@ -176,7 +177,21 @@ export class ConsultationsService {
         query.offset !== undefined);
 
     if (!paginate) {
-      const [data, total] = await qb.getManyAndCount();
+      let data: Consultation[];
+      let total: number;
+      try {
+        [data, total] = await qb.getManyAndCount();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          JSON.stringify({
+            msg: 'query_failed',
+            context: 'consultations.findAll',
+            error: message,
+          }),
+        );
+        throw new InternalServerErrorException('Query failed');
+      }
       return { data, total, page: 1, limit: total };
     }
 
@@ -187,7 +202,21 @@ export class ConsultationsService {
       offset !== undefined && offset >= 0 ? offset : (page - 1) * limit;
     qb.skip(skip).take(limit);
 
-    const [data, total] = await qb.getManyAndCount();
+    let data: Consultation[];
+    let total: number;
+    try {
+      [data, total] = await qb.getManyAndCount();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        JSON.stringify({
+          msg: 'query_failed',
+          context: 'consultations.findAll.paginated',
+          error: message,
+        }),
+      );
+      throw new InternalServerErrorException('Query failed');
+    }
     const resolvedPage =
       offset !== undefined && limit > 0
         ? Math.floor(offset / limit) + 1

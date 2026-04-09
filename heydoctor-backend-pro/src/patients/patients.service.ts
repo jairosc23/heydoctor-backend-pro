@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, type LoggerService } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  type LoggerService,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -49,7 +55,21 @@ export class PatientsService {
         query.offset !== undefined);
 
     if (!paginate) {
-      const [data, total] = await qb.getManyAndCount();
+      let data: Patient[];
+      let total: number;
+      try {
+        [data, total] = await qb.getManyAndCount();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          JSON.stringify({
+            msg: 'query_failed',
+            context: 'patients.findAll',
+            error: message,
+          }),
+        );
+        throw new InternalServerErrorException('Query failed');
+      }
       return { data, total, page: 1, limit: total };
     }
 
@@ -60,7 +80,21 @@ export class PatientsService {
       offset !== undefined && offset >= 0 ? offset : (page - 1) * limit;
     qb.skip(skip).take(limit);
 
-    const [data, total] = await qb.getManyAndCount();
+    let data: Patient[];
+    let total: number;
+    try {
+      [data, total] = await qb.getManyAndCount();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        JSON.stringify({
+          msg: 'query_failed',
+          context: 'patients.findAll.paginated',
+          error: message,
+        }),
+      );
+      throw new InternalServerErrorException('Query failed');
+    }
     const resolvedPage =
       offset !== undefined && limit > 0
         ? Math.floor(offset / limit) + 1

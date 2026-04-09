@@ -9,6 +9,7 @@ import {
   Patch,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -27,6 +28,7 @@ import { UpdateConsultationDto } from './dto/update-consultation.dto';
 @Controller('consultations')
 @UseGuards(JwtAuthGuard)
 export class ConsultationsController {
+  private readonly logger = new Logger(ConsultationsController.name);
   private readonly apiLogger = new Logger('API');
 
   constructor(private readonly consultationsService: ConsultationsService) {}
@@ -44,6 +46,17 @@ export class ConsultationsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() query: ConsultationsListQueryDto,
   ) {
+    if (!user?.sub) {
+      throw new UnauthorizedException('Missing clinic context');
+    }
+    this.logger.log(
+      JSON.stringify({
+        msg: 'user_context',
+        hasUser: !!user,
+        hasSub: !!user?.sub,
+        path: 'consultations.findAll',
+      }),
+    );
     logSafeList(this.apiLogger, {
       msg: 'consultations_list',
       page: query.page,

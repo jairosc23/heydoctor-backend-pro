@@ -41,6 +41,32 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         ? (request.url.split('?')[0] ?? request.url)
         : request.url;
 
+    /** Temporal: error real en Railway (sin body/headers/tokens). */
+    if (exception instanceof Error) {
+      this.logger.error(
+        JSON.stringify({
+          msg: 'runtime_error',
+          name: exception.name,
+          message: exception.message,
+          stack: exception.stack,
+          path: safePath,
+          requestId: requestId ?? undefined,
+        }),
+      );
+      if (process.env.SENTRY_DSN?.trim()) {
+        Sentry.captureException(exception);
+      }
+    } else {
+      this.logger.error(
+        JSON.stringify({
+          msg: 'runtime_non_error',
+          value: String(exception),
+          path: safePath,
+          requestId: requestId ?? undefined,
+        }),
+      );
+    }
+
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const raw = exception.getResponse();
@@ -51,15 +77,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
           path: safePath,
           statusCode: status,
         });
-        if (process.env.SENTRY_DSN?.trim() && exception instanceof Error) {
-          Sentry.captureException(exception, {
-            tags: {
-              requestId: requestId ?? 'none',
-              httpStatus: String(status),
-            },
-            extra: { path: safePath },
-          });
-        }
       }
       response.status(status).json(payload);
       return;
@@ -67,16 +84,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
     const err =
       exception instanceof Error ? exception : new Error(String(exception));
-    this.logger.error(err.message, err.stack, {
-      requestId,
-      path: safePath,
-    });
-    if (process.env.SENTRY_DSN?.trim() && err instanceof Error) {
-      Sentry.captureException(err, {
-        tags: { requestId: requestId ?? 'none' },
-        extra: { path: safePath },
-      });
-    }
 
     const body: ErrorBody = {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,

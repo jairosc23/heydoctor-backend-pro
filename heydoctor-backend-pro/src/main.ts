@@ -110,6 +110,7 @@ async function bootstrap() {
 
   await app.listen(port, '0.0.0.0');
 
+  bootstrapLogger.log('Migrations should be applied');
   bootstrapLogger.log(
     `Listening 0.0.0.0:${port} — AuthModule: POST /api/auth/login (JwtAuthGuard no es global; login es público)`,
   );

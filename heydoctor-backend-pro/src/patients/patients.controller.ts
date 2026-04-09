@@ -7,6 +7,7 @@ import {
   ParseUUIDPipe,
   Post,
   Query,
+  UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -43,6 +44,18 @@ export class PatientsController {
     @CurrentUser() user: AuthenticatedUser,
     @Query() pagination: PatientsListQueryDto,
   ) {
+    // JWT no expone clinicId; la clínica se resuelve en el servicio. Requiere sub.
+    if (!user?.sub) {
+      throw new UnauthorizedException('Missing clinic context');
+    }
+    this.logger.log(
+      JSON.stringify({
+        msg: 'user_context',
+        hasUser: !!user,
+        hasSub: !!user?.sub,
+        path: 'patients.findAll',
+      }),
+    );
     logSafeList(this.apiLogger, {
       msg: 'patients_list',
       page: pagination.page,
