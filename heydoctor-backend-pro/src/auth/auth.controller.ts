@@ -26,6 +26,7 @@ import { MagicLinkDto } from './dto/magic-link.dto';
 import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
+import { useCrossSiteCookies } from '../common/http/cross-site-cookies.util';
 import { CsrfService } from '../common/security/csrf.service';
 
 /**
@@ -39,14 +40,6 @@ const REFRESH_COOKIE = 'refresh_token';
 const SESSION_COOKIE = 'heydoctor_session';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_ACCESS_MS = 15 * 60 * 1000;
-
-/** Cookies cross-site (Vercel → API Railway): Secure + SameSite=None en prod o en Railway. */
-function crossSiteCookieMode(): boolean {
-  return (
-    process.env.NODE_ENV === 'production' ||
-    Boolean(process.env.RAILWAY_ENVIRONMENT?.trim())
-  );
-}
 
 function cookieOptions(
   crossSite: boolean,
@@ -109,7 +102,7 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string): void {
-    const xs = crossSiteCookieMode();
+    const xs = useCrossSiteCookies();
     res.cookie(REFRESH_COOKIE, token, {
       ...cookieOptions(xs),
       maxAge: this.refreshCookieMaxAgeMs(),
@@ -117,7 +110,7 @@ export class AuthController {
   }
 
   private setSessionCookie(res: Response, accessToken: string): void {
-    const xs = crossSiteCookieMode();
+    const xs = useCrossSiteCookies();
     res.cookie(SESSION_COOKIE, accessToken, {
       ...sessionCookieOptions(xs),
       maxAge: this.sessionCookieMaxAgeMs(),
@@ -125,12 +118,12 @@ export class AuthController {
   }
 
   private clearRefreshCookie(res: Response): void {
-    const xs = crossSiteCookieMode();
+    const xs = useCrossSiteCookies();
     res.clearCookie(REFRESH_COOKIE, cookieOptions(xs));
   }
 
   private clearSessionCookie(res: Response): void {
-    const xs = crossSiteCookieMode();
+    const xs = useCrossSiteCookies();
     res.clearCookie(SESSION_COOKIE, sessionCookieOptions(xs));
   }
 
@@ -228,8 +221,6 @@ export class AuthController {
   ) {
     const ctx = extractContext(req);
     const result = await this.authService.login(dto, ctx);
-    // Temporal (SOCIO / prod): verificar en logs Railway que el login llega a fijar cookies.
-    console.log('Setting cookies for user', result.user.id);
     const refreshToken = await this.authService.createRefreshToken(
       result.user.id,
       ctx,

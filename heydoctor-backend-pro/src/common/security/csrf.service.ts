@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
+import { useCrossSiteCookies } from '../http/cross-site-cookies.util';
 import { CSRF_COOKIE_NAME } from './csrf.constants';
 
 @Injectable()
@@ -15,9 +16,7 @@ export class CsrfService {
   }
 
   setCookie(res: Response, token: string): void {
-    const crossSite =
-      process.env.NODE_ENV === 'production' ||
-      Boolean(process.env.RAILWAY_ENVIRONMENT?.trim());
+    const crossSite = useCrossSiteCookies();
     res.cookie(CSRF_COOKIE_NAME, token, {
       httpOnly: false,
       secure: crossSite,
