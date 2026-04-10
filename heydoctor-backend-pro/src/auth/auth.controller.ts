@@ -25,15 +25,12 @@ import { LoginDto } from './dto/login.dto';
 import { MagicLinkDto } from './dto/magic-link.dto';
 import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
-import { AUTH_COOKIE_DOMAIN } from './auth-cookie-domain';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 import { CsrfService } from '../common/security/csrf.service';
 
 /**
- * Cookies cross-site (Vercel → API): `SameSite=None` + `Secure` + `Domain` para el sitio médico.
- * Sesión `path: /`; refresh `path: /api/auth`.
- *
- * Requiere API en host bajo `*.heydoctor.health`; con otro host (p. ej. `*.railway.app`) el dominio no coincide y el navegador descarta Set-Cookie.
+ * Cookies host-only (sin `domain`): el navegador asigna el host de la respuesta (p. ej. pro-api.heydoctor.health).
+ * Cross-site: `SameSite=None` + `Secure`. Sesión `path: /`; refresh `path: /api/auth`.
  */
 const REFRESH_COOKIE = 'refresh_token';
 const SESSION_COOKIE = 'heydoctor_session';
@@ -44,7 +41,6 @@ const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
   httpOnly: true as const,
   secure: true as const,
   sameSite: 'none' as const,
-  domain: AUTH_COOKIE_DOMAIN,
 };
 
 const REFRESH_COOKIE_PATH = '/api/auth';

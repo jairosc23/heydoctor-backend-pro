@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { randomBytes } from 'crypto';
-import { AUTH_COOKIE_DOMAIN } from '../../auth/auth-cookie-domain';
 import { CSRF_COOKIE_NAME } from './csrf.constants';
 
 @Injectable()
@@ -20,7 +19,6 @@ export class CsrfService {
       httpOnly: false,
       secure: true,
       sameSite: 'none',
-      domain: AUTH_COOKIE_DOMAIN,
       path: '/api',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
