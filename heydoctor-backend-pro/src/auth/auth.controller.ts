@@ -26,52 +26,27 @@ import { MagicLinkDto } from './dto/magic-link.dto';
 import { RegisterDto } from './dto/register.dto';
 import { jwtTtlToMs } from './jwt-ttl.util';
 import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
-import { useCrossSiteCookies } from '../common/http/cross-site-cookies.util';
 import { CsrfService } from '../common/security/csrf.service';
 
 /**
- * Refresh rotable en DB + cookie HttpOnly en el dominio del API.
- * - TTL access: `JWT_ACCESS_TTL` (p. ej. 15m); refresh: `JWT_REFRESH_TTL` (p. ej. 7d).
- * - Refresh: path `/api/auth` (login, refresh, logout).
- * - Access JWT: cookie `heydoctor_session`, path `/api` (todas las rutas API + WebRTC HTTP).
- * - Producción: `SameSite=None`, `Secure=true`.
+ * Cookies fijas cross-site (Vercel → API): siempre `SameSite=None` + `Secure` (HTTPS).
+ * Sesión con path `/` para incluirla en todas las rutas del host API; refresh acotado a `/api/auth`.
+ *
+ * Nota: con `secure: true` el login por HTTP local sin TLS no recibirá cookies en el navegador.
  */
 const REFRESH_COOKIE = 'refresh_token';
 const SESSION_COOKIE = 'heydoctor_session';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_ACCESS_MS = 15 * 60 * 1000;
 
-function cookieOptions(
-  crossSite: boolean,
-): {
-  httpOnly: true;
-  secure: boolean;
-  sameSite: 'none' | 'lax';
-  path: string;
-} {
-  return {
-    httpOnly: true,
-    secure: crossSite,
-    sameSite: crossSite ? 'none' : 'lax',
-    path: '/api/auth',
-  };
-}
+const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
+  httpOnly: true as const,
+  secure: true as const,
+  sameSite: 'none' as const,
+};
 
-function sessionCookieOptions(
-  crossSite: boolean,
-): {
-  httpOnly: true;
-  secure: boolean;
-  sameSite: 'none' | 'lax';
-  path: string;
-} {
-  return {
-    httpOnly: true,
-    secure: crossSite,
-    sameSite: crossSite ? 'none' : 'lax',
-    path: '/api',
-  };
-}
+const REFRESH_COOKIE_PATH = '/api/auth';
+const SESSION_COOKIE_PATH = '/';
 
 @Controller('auth')
 export class AuthController {
@@ -102,29 +77,33 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string): void {
-    const xs = useCrossSiteCookies();
     res.cookie(REFRESH_COOKIE, token, {
-      ...cookieOptions(xs),
+      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
+      path: REFRESH_COOKIE_PATH,
       maxAge: this.refreshCookieMaxAgeMs(),
     });
   }
 
   private setSessionCookie(res: Response, accessToken: string): void {
-    const xs = useCrossSiteCookies();
     res.cookie(SESSION_COOKIE, accessToken, {
-      ...sessionCookieOptions(xs),
+      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
+      path: SESSION_COOKIE_PATH,
       maxAge: this.sessionCookieMaxAgeMs(),
     });
   }
 
   private clearRefreshCookie(res: Response): void {
-    const xs = useCrossSiteCookies();
-    res.clearCookie(REFRESH_COOKIE, cookieOptions(xs));
+    res.clearCookie(REFRESH_COOKIE, {
+      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
+      path: REFRESH_COOKIE_PATH,
+    });
   }
 
   private clearSessionCookie(res: Response): void {
-    const xs = useCrossSiteCookies();
-    res.clearCookie(SESSION_COOKIE, sessionCookieOptions(xs));
+    res.clearCookie(SESSION_COOKIE, {
+      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
+      path: SESSION_COOKIE_PATH,
+    });
   }
 
   @Get('me')
