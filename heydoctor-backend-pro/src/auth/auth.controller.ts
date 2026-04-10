@@ -40,8 +40,16 @@ const SESSION_COOKIE = 'heydoctor_session';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 const DEFAULT_ACCESS_MS = 15 * 60 * 1000;
 
+/** Cookies cross-site (Vercel → API Railway): Secure + SameSite=None en prod o en Railway. */
+function crossSiteCookieMode(): boolean {
+  return (
+    process.env.NODE_ENV === 'production' ||
+    Boolean(process.env.RAILWAY_ENVIRONMENT?.trim())
+  );
+}
+
 function cookieOptions(
-  isProduction: boolean,
+  crossSite: boolean,
 ): {
   httpOnly: true;
   secure: boolean;
@@ -50,14 +58,14 @@ function cookieOptions(
 } {
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: crossSite,
+    sameSite: crossSite ? 'none' : 'lax',
     path: '/api/auth',
   };
 }
 
 function sessionCookieOptions(
-  isProduction: boolean,
+  crossSite: boolean,
 ): {
   httpOnly: true;
   secure: boolean;
@@ -66,8 +74,8 @@ function sessionCookieOptions(
 } {
   return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: crossSite,
+    sameSite: crossSite ? 'none' : 'lax',
     path: '/api',
   };
 }
@@ -101,29 +109,29 @@ export class AuthController {
   }
 
   private setRefreshCookie(res: Response, token: string): void {
-    const isProd = process.env.NODE_ENV === 'production';
+    const xs = crossSiteCookieMode();
     res.cookie(REFRESH_COOKIE, token, {
-      ...cookieOptions(isProd),
+      ...cookieOptions(xs),
       maxAge: this.refreshCookieMaxAgeMs(),
     });
   }
 
   private setSessionCookie(res: Response, accessToken: string): void {
-    const isProd = process.env.NODE_ENV === 'production';
+    const xs = crossSiteCookieMode();
     res.cookie(SESSION_COOKIE, accessToken, {
-      ...sessionCookieOptions(isProd),
+      ...sessionCookieOptions(xs),
       maxAge: this.sessionCookieMaxAgeMs(),
     });
   }
 
   private clearRefreshCookie(res: Response): void {
-    const isProd = process.env.NODE_ENV === 'production';
-    res.clearCookie(REFRESH_COOKIE, cookieOptions(isProd));
+    const xs = crossSiteCookieMode();
+    res.clearCookie(REFRESH_COOKIE, cookieOptions(xs));
   }
 
   private clearSessionCookie(res: Response): void {
-    const isProd = process.env.NODE_ENV === 'production';
-    res.clearCookie(SESSION_COOKIE, sessionCookieOptions(isProd));
+    const xs = crossSiteCookieMode();
+    res.clearCookie(SESSION_COOKIE, sessionCookieOptions(xs));
   }
 
   @Get('me')
@@ -220,6 +228,8 @@ export class AuthController {
   ) {
     const ctx = extractContext(req);
     const result = await this.authService.login(dto, ctx);
+    // Temporal (SOCIO / prod): verificar en logs Railway que el login llega a fijar cookies.
+    console.log('Setting cookies for user', result.user.id);
     const refreshToken = await this.authService.createRefreshToken(
       result.user.id,
       ctx,

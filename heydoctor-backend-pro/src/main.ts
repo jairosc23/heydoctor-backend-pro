@@ -73,16 +73,21 @@ async function bootstrap() {
     );
   }
 
-  // Credenciales cross-origin: lista explícita de orígenes (nunca '*' con credentials).
-  // `CORS_ORIGIN` en Railway puede ampliar o sustituir (coma-separada).
+  // Credenciales cross-origin: nunca '*' con `credentials: true`.
+  // En producción SIEMPRE incluir el front en Vercel; `CORS_ORIGIN` solo añade orígenes (previews, dominio custom).
+  // Si `CORS_ORIGIN` sustituía la lista y era incorrecto, el navegador bloqueaba la respuesta y no aplicaba Set-Cookie.
   const productionFrontendOrigins = ['https://heydoctor-frontend.vercel.app'];
   const localDevOrigins = ['http://localhost:3000'];
-  const corsOrigins =
-    envConfig.corsOrigin.length > 0
+  const corsOrigins = envConfig.isProduction
+    ? [
+        ...new Set([
+          ...productionFrontendOrigins,
+          ...envConfig.corsOrigin,
+        ]),
+      ]
+    : envConfig.corsOrigin.length > 0
       ? envConfig.corsOrigin
-      : envConfig.isProduction
-        ? productionFrontendOrigins
-        : localDevOrigins;
+      : localDevOrigins;
 
   app.enableCors({
     origin: corsOrigins,

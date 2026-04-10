@@ -15,11 +15,13 @@ export class CsrfService {
   }
 
   setCookie(res: Response, token: string): void {
-    const isProd = process.env.NODE_ENV === 'production';
+    const crossSite =
+      process.env.NODE_ENV === 'production' ||
+      Boolean(process.env.RAILWAY_ENVIRONMENT?.trim());
     res.cookie(CSRF_COOKIE_NAME, token, {
       httpOnly: false,
-      secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      secure: crossSite,
+      sameSite: crossSite ? 'none' : 'lax',
       path: '/api',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
