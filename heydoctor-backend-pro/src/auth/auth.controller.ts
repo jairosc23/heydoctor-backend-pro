@@ -195,21 +195,31 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ) {
+  ): Promise<{ success: true }> {
     const ctx = extractContext(req);
     const result = await this.authService.login(dto, ctx);
     const refreshToken = await this.authService.createRefreshToken(
       result.user.id,
       ctx,
     );
-    this.setRefreshCookie(res, refreshToken);
-    this.setSessionCookie(res, result.access_token);
-    const csrfToken = this.csrfService.attach(res);
-    return {
-      access_token: result.access_token,
-      user: result.user,
-      csrfToken,
-    };
+
+    res.cookie('heydoctor_session', result.access_token, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/',
+      maxAge: this.sessionCookieMaxAgeMs(),
+    });
+    res.cookie('refresh_token', refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      path: '/api/auth',
+      maxAge: this.refreshCookieMaxAgeMs(),
+    });
+    this.csrfService.attach(res);
+
+    return { success: true };
   }
 
   @Post('refresh')
