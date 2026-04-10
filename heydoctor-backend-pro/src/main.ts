@@ -73,18 +73,11 @@ async function bootstrap() {
     );
   }
 
-  // Credenciales cross-origin: nunca '*' con `credentials: true`.
-  // En producción SIEMPRE incluir el front en Vercel; `CORS_ORIGIN` solo añade orígenes (previews, dominio custom).
-  // Si `CORS_ORIGIN` sustituía la lista y era incorrecto, el navegador bloqueaba la respuesta y no aplicaba Set-Cookie.
+  // Producción: un solo origen explícito (credenciales); en dev localhost / CORS_ORIGIN opcional.
   const productionFrontendOrigins = ['https://heydoctor-frontend.vercel.app'];
   const localDevOrigins = ['http://localhost:3000'];
   const corsOrigins = envConfig.isProduction
-    ? [
-        ...new Set([
-          ...productionFrontendOrigins,
-          ...envConfig.corsOrigin,
-        ]),
-      ]
+    ? productionFrontendOrigins
     : envConfig.corsOrigin.length > 0
       ? envConfig.corsOrigin
       : localDevOrigins;
