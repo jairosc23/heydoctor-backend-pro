@@ -137,7 +137,7 @@ export class AuthService {
   async exchangeMagicLink(
     rawToken: string,
     ctx: RequestContext,
-  ): Promise<{ access_token: string; user: AuthUserView }> {
+  ): Promise<{ accessToken: string; user: AuthUserView }> {
     const trimmed = rawToken.trim();
     if (!trimmed) {
       throw new UnauthorizedException('Token required');
@@ -276,8 +276,8 @@ export class AuthService {
       email: publicUser.email,
       role: publicUser.role,
     };
-    const access_token = await this.jwtService.signAsync(payload);
-    return { access_token, user: publicUser };
+    const accessToken = await this.jwtService.signAsync(payload);
+    return { accessToken, user: publicUser };
   }
 
   // ── Refresh Token Management (rotación en cada uso) ───────────

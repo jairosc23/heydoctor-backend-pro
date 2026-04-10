@@ -159,10 +159,10 @@ export class AuthController {
       ctx,
     );
     this.setRefreshCookie(res, refreshToken);
-    this.setSessionCookie(res, result.access_token);
+    this.setSessionCookie(res, result.accessToken);
     const csrfToken = this.csrfService.attach(res);
     return {
-      access_token: result.access_token,
+      access_token: result.accessToken,
       user: result.user,
       csrfToken,
     };
@@ -181,10 +181,10 @@ export class AuthController {
       ctx,
     );
     this.setRefreshCookie(res, refreshToken);
-    this.setSessionCookie(res, result.access_token);
+    this.setSessionCookie(res, result.accessToken);
     const csrfToken = this.csrfService.attach(res);
     return {
-      access_token: result.access_token,
+      access_token: result.accessToken,
       user: result.user,
       csrfToken,
     };
@@ -203,7 +203,8 @@ export class AuthController {
       ctx,
     );
 
-    res.cookie('heydoctor_session', result.access_token, {
+    console.log('ACCESS TOKEN:', result.accessToken);
+    res.cookie('heydoctor_session', result.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
