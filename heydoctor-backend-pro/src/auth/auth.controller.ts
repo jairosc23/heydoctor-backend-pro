@@ -30,8 +30,8 @@ import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 import { CsrfService } from '../common/security/csrf.service';
 
 /**
- * Cookies host-only (sin `domain`): el navegador asigna el host de la respuesta (p. ej. pro-api.heydoctor.health).
- * Cross-site: `SameSite=None` + `Secure`. Sesión `path: /`; refresh `path: /api/auth`.
+ * Cookies host-only (sin `domain`). Cross-site: `SameSite=None` + `Secure`.
+ * Sesión `path: /api` (evita problemas con proxies y cookies `Path=/` en respuestas cross-site); refresh `path: /api/auth`.
  */
 const REFRESH_COOKIE = 'refresh_token';
 const SESSION_COOKIE = 'heydoctor_session';
@@ -45,7 +45,7 @@ const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
 };
 
 const REFRESH_COOKIE_PATH = '/api/auth';
-const SESSION_COOKIE_PATH = '/';
+const SESSION_COOKIE_PATH = '/api';
 
 @Controller('auth')
 export class AuthController {
@@ -196,7 +196,7 @@ export class AuthController {
     @Body() dto: LoginDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
-  ): Promise<{ success: true }> {
+  ) {
     const ctx = extractContext(req);
     const result = await this.authService.login(dto, ctx);
     const accessToken =
@@ -214,9 +214,14 @@ export class AuthController {
 
     this.setSessionCookie(res, accessToken);
     this.setRefreshCookie(res, refreshToken);
-    this.csrfService.attach(res);
+    const csrfToken = this.csrfService.attach(res);
 
-    return { success: true };
+    return {
+      success: true as const,
+      access_token: accessToken,
+      user: result.user,
+      csrfToken,
+    };
   }
 
   @Post('refresh')

@@ -73,11 +73,16 @@ async function bootstrap() {
     );
   }
 
-  // Producción: un solo origen explícito (credenciales); en dev localhost / CORS_ORIGIN opcional.
+  // Producción: origen de producción en Vercel + CORS_ORIGIN (p. ej. previews *.vercel.app).
   const productionFrontendOrigins = ['https://heydoctor-frontend.vercel.app'];
   const localDevOrigins = ['http://localhost:3000'];
   const corsOrigins = envConfig.isProduction
-    ? productionFrontendOrigins
+    ? [
+        ...productionFrontendOrigins,
+        ...envConfig.corsOrigin.filter(
+          (o) => !productionFrontendOrigins.includes(o),
+        ),
+      ]
     : envConfig.corsOrigin.length > 0
       ? envConfig.corsOrigin
       : localDevOrigins;
