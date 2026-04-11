@@ -7,6 +7,7 @@ import {
   Post,
   Req,
   Res,
+  InternalServerErrorException,
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
@@ -198,26 +199,21 @@ export class AuthController {
   ): Promise<{ success: true }> {
     const ctx = extractContext(req);
     const result = await this.authService.login(dto, ctx);
+    const accessToken =
+      typeof result.accessToken === 'string' ? result.accessToken.trim() : '';
+    if (!accessToken) {
+      throw new InternalServerErrorException(
+        'Access token missing after login',
+      );
+    }
+
     const refreshToken = await this.authService.createRefreshToken(
       result.user.id,
       ctx,
     );
 
-    console.log('ACCESS TOKEN:', result.accessToken);
-    res.cookie('heydoctor_session', result.accessToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/',
-      maxAge: this.sessionCookieMaxAgeMs(),
-    });
-    res.cookie('refresh_token', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'none',
-      path: '/api/auth',
-      maxAge: this.refreshCookieMaxAgeMs(),
-    });
+    this.setSessionCookie(res, accessToken);
+    this.setRefreshCookie(res, refreshToken);
     this.csrfService.attach(res);
 
     return { success: true };

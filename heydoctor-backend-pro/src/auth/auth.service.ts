@@ -240,7 +240,10 @@ export class AuthService {
     }
   }
 
-  async login(dto: LoginDto, ctx: RequestContext) {
+  async login(
+    dto: LoginDto,
+    ctx: RequestContext,
+  ): Promise<{ accessToken: string; user: AuthUserView }> {
     const user = await this.usersService.validateCredentials(
       dto.email,
       dto.password,
@@ -269,7 +272,9 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
-  private async buildAuthResponse(user: User) {
+  private async buildAuthResponse(
+    user: User,
+  ): Promise<{ accessToken: string; user: AuthUserView }> {
     const publicUser = this.toPublicUser(user);
     const payload: JwtPayload = {
       sub: publicUser.id,
