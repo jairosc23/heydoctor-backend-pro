@@ -44,7 +44,7 @@ export class PatientsService {
     const search = query?.search?.trim();
     if (search) {
       const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      qb.andWhere('(p.name ILIKE :s OR p.email ILIKE :s)', {
+      qb.andWhere('("p"."name" ILIKE :s OR "p"."email" ILIKE :s)', {
         s: `%${escaped}%`,
       });
     }

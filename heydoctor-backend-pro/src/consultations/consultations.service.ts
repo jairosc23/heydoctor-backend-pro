@@ -167,7 +167,7 @@ export class ConsultationsService {
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        '(patient.name ILIKE :q OR patient.email ILIKE :q)',
+        '("patient"."name" ILIKE :q OR "patient"."email" ILIKE :q)',
         { q: `%${escaped}%` },
       );
     }
