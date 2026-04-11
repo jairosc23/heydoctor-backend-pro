@@ -1,7 +1,7 @@
 /**
  * Auth API - Login contra el backend Nest (Railway).
  * Usa NEXT_PUBLIC_API_URL para todas las llamadas.
- * Sesión: cookies HttpOnly (`heydoctor_session`, `refresh_token`) con credentials: 'include'.
+ * Login: credentials: 'include' (refresh en API); access JWT en cuerpo / Bearer según cliente.
  */
 
 import { apiCredentialsInit } from './api-credentials';
