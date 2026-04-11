@@ -2,7 +2,6 @@ import {
   Body,
   Controller,
   Get,
-  Logger,
   Param,
   ParseUUIDPipe,
   Post,
@@ -31,13 +30,11 @@ import { RevokeAllRateLimitGuard } from './revoke-all-rate-limit.guard';
 import { CsrfService } from '../common/security/csrf.service';
 
 /**
- * Cookies host-only (sin `domain`). Cross-site: `SameSite=None` + `Secure`.
- * Sesión `path: /` (enviada en todas las rutas del API); refresh acotado a `path: /api/auth`.
+ * Cookie HttpOnly solo `refresh_token` (path `/`). El access JWT va en el cuerpo JSON y en `Authorization: Bearer`.
+ * Cross-site: `SameSite=None` + `Secure`, sin `domain` (host-only).
  */
 const REFRESH_COOKIE = 'refresh_token';
-const SESSION_COOKIE = 'heydoctor_session';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
-const DEFAULT_ACCESS_MS = 15 * 60 * 1000;
 
 const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
   httpOnly: true as const,
@@ -45,19 +42,10 @@ const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
   sameSite: 'none' as const,
 };
 
-const REFRESH_COOKIE_PATH = '/api/auth';
-const SESSION_COOKIE_PATH = '/';
-
-/** Opciones explícitas de la cookie de acceso (debe coincidir con clearSessionCookie). */
-const SESSION_COOKIE_OPTIONS_BASE = {
-  ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
-  path: SESSION_COOKIE_PATH,
-} as const;
+const REFRESH_COOKIE_PATH = '/';
 
 @Controller('auth')
 export class AuthController {
-  private readonly logger = new Logger(AuthController.name);
-
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
@@ -77,13 +65,6 @@ export class AuthController {
     );
   }
 
-  private sessionCookieMaxAgeMs(): number {
-    return jwtTtlToMs(
-      this.config.get<string>('JWT_ACCESS_TTL'),
-      DEFAULT_ACCESS_MS,
-    );
-  }
-
   private setRefreshCookie(res: Response, token: string): void {
     res.cookie(REFRESH_COOKIE, token, {
       ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
@@ -92,43 +73,10 @@ export class AuthController {
     });
   }
 
-  private setSessionCookie(res: Response, accessToken: string): void {
-    const token =
-      typeof accessToken === 'string' ? accessToken.trim() : '';
-    if (!token) {
-      throw new InternalServerErrorException(
-        'setSessionCookie: access token vacío o inválido',
-      );
-    }
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(
-        '[AuthController] setSessionCookie:',
-        SESSION_COOKIE,
-        'path=',
-        SESSION_COOKIE_PATH,
-        'jwtLength=',
-        token.length,
-      );
-      this.logger.debug(
-        `emitiendo ${SESSION_COOKIE} path=${SESSION_COOKIE_PATH} jwtLength=${token.length}`,
-      );
-    }
-    res.cookie(SESSION_COOKIE, token, {
-      ...SESSION_COOKIE_OPTIONS_BASE,
-      maxAge: this.sessionCookieMaxAgeMs(),
-    });
-  }
-
   private clearRefreshCookie(res: Response): void {
     res.clearCookie(REFRESH_COOKIE, {
       ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
       path: REFRESH_COOKIE_PATH,
-    });
-  }
-
-  private clearSessionCookie(res: Response): void {
-    res.clearCookie(SESSION_COOKIE, {
-      ...SESSION_COOKIE_OPTIONS_BASE,
     });
   }
 
@@ -187,7 +135,6 @@ export class AuthController {
       ctx,
     );
     this.setRefreshCookie(res, refreshToken);
-    this.setSessionCookie(res, result.accessToken);
     const csrfToken = this.csrfService.attach(res);
     return {
       access_token: result.accessToken,
@@ -209,7 +156,6 @@ export class AuthController {
       ctx,
     );
     this.setRefreshCookie(res, refreshToken);
-    this.setSessionCookie(res, result.accessToken);
     const csrfToken = this.csrfService.attach(res);
     return {
       access_token: result.accessToken,
@@ -239,14 +185,8 @@ export class AuthController {
       ctx,
     );
 
-    this.setSessionCookie(res, accessToken);
     this.setRefreshCookie(res, refreshToken);
-    // `csrfService.attach` solo añade la cookie `csrf_token` (nombre distinto); no toca heydoctor_session ni refresh_token.
     const csrfToken = this.csrfService.attach(res);
-
-    if (process.env.AUTH_DEBUG_RESEND_SESSION_COOKIE === '1') {
-      this.setSessionCookie(res, accessToken);
-    }
 
     return {
       success: true as const,
@@ -271,7 +211,6 @@ export class AuthController {
       await this.authService.validateAndRotateRefreshToken(rawToken, ctx);
 
     this.setRefreshCookie(res, newRefreshToken);
-    this.setSessionCookie(res, accessToken);
     const csrfToken = this.csrfService.attach(res);
     return { access_token: accessToken, csrfToken };
   }
@@ -285,7 +224,6 @@ export class AuthController {
     const rawToken = req.cookies?.[REFRESH_COOKIE];
     await this.authService.performLogout(rawToken, ctx);
     this.clearRefreshCookie(res);
-    this.clearSessionCookie(res);
     return { ok: true };
   }
 }

@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
-import type { Request } from 'express';
 import type { Cache } from 'cache-manager';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { maskEmail, maskUuid } from '../../common/observability/log-masking.util';
@@ -21,8 +20,6 @@ import { JwtPayload } from '../types/jwt-payload.interface';
 export type AuthenticatedUser = JwtPayload;
 
 const JWT_USER_CACHE_TTL_MS = 5 * 60 * 1000;
-
-const SESSION_COOKIE = 'heydoctor_session';
 
 type JwtValidateFailReason =
   | 'user_not_found'
@@ -39,13 +36,7 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {
     super({
-      jwtFromRequest: ExtractJwt.fromExtractors([
-        ExtractJwt.fromAuthHeaderAsBearerToken(),
-        (req: Request) => {
-          const raw = req?.cookies?.[SESSION_COOKIE];
-          return typeof raw === 'string' && raw.length > 0 ? raw : null;
-        },
-      ]),
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: resolveJwtSecret(configService),
     });
