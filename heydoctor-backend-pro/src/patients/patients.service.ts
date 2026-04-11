@@ -41,12 +41,17 @@ export class PatientsService {
       .where('"p"."clinic_id" = :clinicId', { clinicId })
       .orderBy('"p"."created_at"', 'DESC');
 
-    const search = query?.search?.trim();
-    if (search) {
-      const escaped = search.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
-      qb.andWhere('("p"."name" ILIKE :s OR "p"."email" ILIKE :s)', {
-        s: `%${escaped}%`,
-      });
+    const rawSearch = query?.search;
+    const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
+    if (search !== '') {
+      const escaped = search
+        .replace(/\\/g, '\\\\')
+        .replace(/%/g, '\\%')
+        .replace(/_/g, '\\_');
+      qb.andWhere(
+        '(COALESCE("p"."name", \'\') ILIKE :s OR COALESCE("p"."email", \'\') ILIKE :s)',
+        { s: `%${escaped}%` },
+      );
     }
 
     const paginate =
@@ -61,6 +66,7 @@ export class PatientsService {
       try {
         [data, total] = await qb.getManyAndCount();
       } catch (error) {
+        console.error('QUERY FAILED:', error);
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(
           JSON.stringify({
@@ -86,6 +92,7 @@ export class PatientsService {
     try {
       [data, total] = await qb.getManyAndCount();
     } catch (error) {
+      console.error('QUERY FAILED:', error);
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         JSON.stringify({

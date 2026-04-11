@@ -160,14 +160,16 @@ export class ConsultationsService {
       end.setUTCHours(23, 59, 59, 999);
       qb.andWhere('"c"."created_at" <= :to', { to: end });
     }
-    const consultSearch = query?.search?.trim();
-    if (consultSearch) {
+    const rawConsultSearch = query?.search;
+    const consultSearch =
+      typeof rawConsultSearch === 'string' ? rawConsultSearch.trim() : '';
+    if (consultSearch !== '') {
       const escaped = consultSearch
         .replace(/\\/g, '\\\\')
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        '("patient"."name" ILIKE :q OR "patient"."email" ILIKE :q)',
+        '(COALESCE("patient"."name", \'\') ILIKE :q OR COALESCE("patient"."email", \'\') ILIKE :q)',
         { q: `%${escaped}%` },
       );
     }
@@ -184,6 +186,7 @@ export class ConsultationsService {
       try {
         [data, total] = await qb.getManyAndCount();
       } catch (error) {
+        console.error('QUERY FAILED:', error);
         const message = error instanceof Error ? error.message : String(error);
         this.logger.error(
           JSON.stringify({
@@ -209,6 +212,7 @@ export class ConsultationsService {
     try {
       [data, total] = await qb.getManyAndCount();
     } catch (error) {
+      console.error('QUERY FAILED:', error);
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         JSON.stringify({
