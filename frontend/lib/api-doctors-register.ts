@@ -1,3 +1,5 @@
+import { apiCredentialsInit } from './api-credentials';
+
 export type RegisterDoctorPayload = {
   name: string;
   email: string;
@@ -22,12 +24,12 @@ export async function registerDoctor(
     backendOrigin.replace(/\/$/, ''),
   );
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
     },
-    credentials: 'include',
     body: JSON.stringify(payload),
   });
   if (!res.ok) {

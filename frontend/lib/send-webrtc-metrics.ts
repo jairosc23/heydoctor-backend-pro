@@ -1,3 +1,4 @@
+import { apiCredentialsInit } from './api-credentials';
 import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
 
 export type SendCallMetricsInput = {
@@ -52,13 +53,13 @@ export async function sendCallMetrics(
   if (turnRegion !== undefined) body.turnRegion = turnRegion;
 
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json',
       ...heyDoctorTraceHeaders(consultationId, callId),
     },
-    credentials: 'include',
     body: JSON.stringify(body),
   });
 

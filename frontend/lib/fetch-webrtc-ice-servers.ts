@@ -4,6 +4,7 @@
  * Auth: cookie `heydoctor_session` (credentials: 'include').
  */
 
+import { apiCredentialsInit } from './api-credentials';
 import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
 
 export type IceServersResponse = {
@@ -20,12 +21,12 @@ export async function fetchWebrtcIceServers(params: {
   url.searchParams.set('consultationId', consultationId);
 
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     method: 'GET',
     headers: {
       Accept: 'application/json',
       ...heyDoctorTraceHeaders(consultationId, callId),
     },
-    credentials: 'include',
   });
 
   if (!res.ok) {

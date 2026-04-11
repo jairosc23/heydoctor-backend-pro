@@ -1,3 +1,4 @@
+import { apiCredentialsInit } from './api-credentials';
 import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
 
 export type RecordingApiInput = {
@@ -55,9 +56,9 @@ export async function requestRecordingStart(
     input.backendOrigin.replace(/\/$/, ''),
   );
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: postHeaders(input.consultationId, input.callId),
-    credentials: 'include',
     body: JSON.stringify({
       consultationId: input.consultationId,
       userConsent: input.userConsent,
@@ -78,9 +79,9 @@ export async function requestRecordingStop(
     input.backendOrigin.replace(/\/$/, ''),
   );
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     method: 'POST',
     headers: postHeaders(input.consultationId, input.callId),
-    credentials: 'include',
     body: JSON.stringify({
       consultationId: input.consultationId,
       userConsent: input.userConsent,
@@ -120,8 +121,8 @@ export async function fetchRecordingStatus(params: {
   );
   url.searchParams.set('consultationId', params.consultationId);
   const res = await fetch(url.toString(), {
+    ...apiCredentialsInit,
     headers: getHeaders(params.consultationId, params.callId),
-    credentials: 'include',
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

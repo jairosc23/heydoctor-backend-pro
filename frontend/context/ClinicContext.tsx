@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import { apiCredentialsInit } from '../lib/api-credentials';
 
 export interface Clinic {
   id: number;
@@ -35,7 +36,7 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
       try {
         const base = getApiBase();
         const res = await fetch(`${base}/api/clinics/me`, {
-          credentials: 'include',
+          ...apiCredentialsInit,
           headers: { Accept: 'application/json' },
         });
         if (res.ok) {
