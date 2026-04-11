@@ -6,7 +6,8 @@ import { CSRF_COOKIE_NAME } from './csrf.constants';
 @Injectable()
 export class CsrfService {
   /**
-   * Genera token, fija cookie no-httpOnly y devuelve el mismo valor (double-submit).
+   * Genera token, añade **solo** la cookie `csrf_token` (nombre distinto a sesión/refresh).
+   * No modifica ni sustituye otras `Set-Cookie` ya emitidas en la misma respuesta.
    */
   attach(res: Response): string {
     const token = randomBytes(32).toString('hex');

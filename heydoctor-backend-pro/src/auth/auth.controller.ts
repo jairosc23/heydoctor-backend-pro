@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   ParseUUIDPipe,
   Post,
@@ -31,7 +32,7 @@ import { CsrfService } from '../common/security/csrf.service';
 
 /**
  * Cookies host-only (sin `domain`). Cross-site: `SameSite=None` + `Secure`.
- * Sesión `path: /api` (evita problemas con proxies y cookies `Path=/` en respuestas cross-site); refresh `path: /api/auth`.
+ * Sesión `path: /` (enviada en todas las rutas del API); refresh acotado a `path: /api/auth`.
  */
 const REFRESH_COOKIE = 'refresh_token';
 const SESSION_COOKIE = 'heydoctor_session';
@@ -45,10 +46,18 @@ const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
 };
 
 const REFRESH_COOKIE_PATH = '/api/auth';
-const SESSION_COOKIE_PATH = '/api';
+const SESSION_COOKIE_PATH = '/';
+
+/** Opciones explícitas de la cookie de acceso (debe coincidir con clearSessionCookie). */
+const SESSION_COOKIE_OPTIONS_BASE = {
+  ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
+  path: SESSION_COOKIE_PATH,
+} as const;
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
@@ -84,9 +93,28 @@ export class AuthController {
   }
 
   private setSessionCookie(res: Response, accessToken: string): void {
-    res.cookie(SESSION_COOKIE, accessToken, {
-      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
-      path: SESSION_COOKIE_PATH,
+    const token =
+      typeof accessToken === 'string' ? accessToken.trim() : '';
+    if (!token) {
+      throw new InternalServerErrorException(
+        'setSessionCookie: access token vacío o inválido',
+      );
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(
+        '[AuthController] setSessionCookie:',
+        SESSION_COOKIE,
+        'path=',
+        SESSION_COOKIE_PATH,
+        'jwtLength=',
+        token.length,
+      );
+      this.logger.debug(
+        `emitiendo ${SESSION_COOKIE} path=${SESSION_COOKIE_PATH} jwtLength=${token.length}`,
+      );
+    }
+    res.cookie(SESSION_COOKIE, token, {
+      ...SESSION_COOKIE_OPTIONS_BASE,
       maxAge: this.sessionCookieMaxAgeMs(),
     });
   }
@@ -100,8 +128,7 @@ export class AuthController {
 
   private clearSessionCookie(res: Response): void {
     res.clearCookie(SESSION_COOKIE, {
-      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
-      path: SESSION_COOKIE_PATH,
+      ...SESSION_COOKIE_OPTIONS_BASE,
     });
   }
 
@@ -214,7 +241,12 @@ export class AuthController {
 
     this.setSessionCookie(res, accessToken);
     this.setRefreshCookie(res, refreshToken);
+    // `csrfService.attach` solo añade la cookie `csrf_token` (nombre distinto); no toca heydoctor_session ni refresh_token.
     const csrfToken = this.csrfService.attach(res);
+
+    if (process.env.AUTH_DEBUG_RESEND_SESSION_COOKIE === '1') {
+      this.setSessionCookie(res, accessToken);
+    }
 
     return {
       success: true as const,
