@@ -6,7 +6,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
 } from 'typeorm';
 import { Clinic } from '../clinic/clinic.entity';
 
@@ -20,8 +19,8 @@ export class Patient {
   @JoinColumn({ name: 'clinic_id' })
   clinic: Clinic;
 
-  /** FK `clinic_id` — read-only mirror for queries and tenant filters. */
-  @RelationId((patient: Patient) => patient.clinic)
+  /** Misma columna que `clinic`; `@Column` evita EntityPropertyNotFoundError en QueryBuilder. */
+  @Column({ name: 'clinic_id', type: 'uuid' })
   clinicId: string;
 
   @Column({ type: 'varchar', length: 200 })

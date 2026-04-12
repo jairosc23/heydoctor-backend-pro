@@ -6,7 +6,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
   UpdateDateColumn,
 } from 'typeorm';
 import { Clinic } from '../clinic/clinic.entity';
@@ -15,9 +14,11 @@ import { Patient } from '../patients/patient.entity';
 import { ConsultationStatus } from './consultation-status.enum';
 
 /**
- * Columnas clínicas en PostgreSQL: `chief_complaint`, `treatment_plan`, `status` → tipo
- * `consultations_status_enum`. Las migraciones renombran `reason`/`treatment` legados de
- * forma idempotente; en QueryBuilder usar columnas SQL (`clinic_id`, …), no rutas `@RelationId`.
+ * FKs duplicadas como `@Column` + `@JoinColumn` (misma columna física): TypeORM registra
+ * `patientId` / `clinicId` / `consentId` en metadata; `@RelationId` no y provoca
+ * EntityPropertyNotFoundError en QueryBuilder / find.
+ *
+ * Columnas clínicas: `chief_complaint`, `treatment_plan`; `status` → `consultations_status_enum`.
  */
 @Index(['clinic', 'createdAt'])
 @Entity('consultations')
@@ -29,14 +30,14 @@ export class Consultation {
   @JoinColumn({ name: 'patient_id' })
   patient: Patient;
 
-  @RelationId((c: Consultation) => c.patient)
+  @Column({ name: 'patient_id', type: 'uuid' })
   patientId: string;
 
   @ManyToOne(() => Clinic, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'clinic_id' })
   clinic: Clinic;
 
-  @RelationId((c: Consultation) => c.clinic)
+  @Column({ name: 'clinic_id', type: 'uuid' })
   clinicId: string;
 
   /** Consentimiento de telemedicina vigente al crear la consulta (trazabilidad legal). */
@@ -47,7 +48,7 @@ export class Consultation {
   @JoinColumn({ name: 'consent_id' })
   consent: TelemedicineConsent | null;
 
-  @RelationId((c: Consultation) => c.consent)
+  @Column({ name: 'consent_id', type: 'uuid', nullable: true })
   consentId: string | null;
 
   /**
