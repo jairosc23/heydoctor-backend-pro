@@ -7,7 +7,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
 } from 'typeorm';
 import { Clinic } from '../clinic/clinic.entity';
 import { UserRole } from './user-role.enum';
@@ -40,8 +39,8 @@ export class User {
   @JoinColumn({ name: 'clinic_id' })
   clinic: Clinic;
 
-  /** FK column `clinic_id` (read-only mirror for queries / future JWT). */
-  @RelationId((user: User) => user.clinic)
+  /** Misma columna que `clinic`; FK explícita para metadata TypeORM (Find / QueryBuilder). */
+  @Column({ name: 'clinic_id', type: 'uuid' })
   clinicId: string;
 
   @Column({ name: 'is_active', default: true })

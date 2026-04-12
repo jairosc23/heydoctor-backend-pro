@@ -82,7 +82,7 @@ export class ConsultationsService {
     clinicId: string,
   ): Promise<Consultation | null> {
     return this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
     });
   }
 
@@ -158,7 +158,7 @@ export class ConsultationsService {
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
-      .leftJoin('c.clinic', 'clinic')
+      .innerJoin('c.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })
       .orderBy('c.createdAt', 'DESC');
 
@@ -226,21 +226,11 @@ export class ConsultationsService {
           ? (page - 1) * limit
           : undefined;
 
-    const runQuery = async (): Promise<[Consultation[], number]> => {
-      const total = await qb.clone().getCount();
-      if (total === 0) {
-        return [[], 0];
-      }
-      const dataQb = qb.clone();
-      if (paginate && skip !== undefined && limit !== undefined) {
-        dataQb.skip(skip).take(limit);
-      }
-      const data = await dataQb.getMany();
-      return [data, total];
-    };
-
     try {
-      const [data, total] = await runQuery();
+      if (paginate && skip !== undefined && limit !== undefined) {
+        qb.skip(skip).take(limit);
+      }
+      const [data, total] = await qb.getManyAndCount();
 
       if (!paginate) {
         return { data, total, page: 1, limit: total };
@@ -273,7 +263,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
       relations: { patient: true },
     });
     if (!consultation) {
@@ -305,7 +295,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const row = await this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
       select: {
         id: true,
         aiSummary: true,
@@ -344,7 +334,7 @@ export class ConsultationsService {
     }
 
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -389,7 +379,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -469,7 +459,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -665,7 +655,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinicId },
+      where: { id, clinic: { id: clinicId } },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');

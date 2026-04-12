@@ -37,7 +37,7 @@ export class PatientsService {
 
     const qb = this.patientsRepository
       .createQueryBuilder('p')
-      .leftJoin('p.clinic', 'clinic')
+      .innerJoin('p.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })
       .orderBy('p.createdAt', 'DESC');
 
@@ -70,21 +70,11 @@ export class PatientsService {
           ? (page - 1) * limit
           : undefined;
 
-    const runQuery = async (): Promise<[Patient[], number]> => {
-      const total = await qb.clone().getCount();
-      if (total === 0) {
-        return [[], 0];
-      }
-      const dataQb = qb.clone();
-      if (paginate && skip !== undefined && limit !== undefined) {
-        dataQb.skip(skip).take(limit);
-      }
-      const data = await dataQb.getMany();
-      return [data, total];
-    };
-
     try {
-      const [data, total] = await runQuery();
+      if (paginate && skip !== undefined && limit !== undefined) {
+        qb.skip(skip).take(limit);
+      }
+      const [data, total] = await qb.getManyAndCount();
 
       if (!paginate) {
         return { data, total, page: 1, limit: total };
@@ -123,7 +113,7 @@ export class PatientsService {
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.patientsRepository.findOne({
-      where: { clinicId, email },
+      where: { clinic: { id: clinicId }, email },
     });
     if (existing) {
       this.logger.warn('Business rule violation', {

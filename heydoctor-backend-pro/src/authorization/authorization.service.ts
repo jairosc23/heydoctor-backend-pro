@@ -82,13 +82,10 @@ export class AuthorizationService {
     const { clinicId } = await this.getUserWithClinic(authUser);
 
     const patient = await this.patientsRepository.findOne({
-      where: { id: patientId },
+      where: { id: patientId, clinic: { id: clinicId } },
     });
     if (!patient) {
       throw new NotFoundException('Patient not found');
-    }
-    if (patient.clinicId !== clinicId) {
-      throw new ForbiddenException('Access denied for this patient');
     }
 
     await this.assertPatientOwnership(authUser, patient);

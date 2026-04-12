@@ -5,7 +5,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  RelationId,
   UpdateDateColumn,
 } from 'typeorm';
 import { Clinic } from '../clinic/clinic.entity';
@@ -22,21 +21,21 @@ export class Appointment {
   @JoinColumn({ name: 'clinic_id' })
   clinic: Clinic;
 
-  @RelationId((a: Appointment) => a.clinic)
+  @Column({ name: 'clinic_id', type: 'uuid' })
   clinicId: string;
 
   @ManyToOne(() => Patient, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'patient_id' })
   patient: Patient;
 
-  @RelationId((a: Appointment) => a.patient)
+  @Column({ name: 'patient_id', type: 'uuid' })
   patientId: string;
 
   @ManyToOne(() => User, { nullable: false, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'doctor_id' })
   doctor: User;
 
-  @RelationId((a: Appointment) => a.doctor)
+  @Column({ name: 'doctor_id', type: 'uuid' })
   doctorId: string;
 
   @Column({ name: 'starts_at', type: 'timestamptz' })

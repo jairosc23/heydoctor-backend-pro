@@ -70,7 +70,7 @@ export class GdprService {
     });
 
     const patients = await this.patientsRepo.find({
-      where: { clinicId: user.clinicId },
+      where: { clinic: { id: user.clinicId } },
       select: ['id', 'name', 'email', 'createdAt'],
     });
 
@@ -284,7 +284,7 @@ export class GdprService {
 
     // 2. Anonymize patients belonging to user's clinic
     const patients = await this.patientsRepo.find({
-      where: { clinicId: user.clinicId },
+      where: { clinic: { id: user.clinicId } },
     });
     for (const patient of patients) {
       await this.patientsRepo.update(patient.id, {
