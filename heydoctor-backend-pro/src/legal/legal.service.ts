@@ -44,9 +44,10 @@ export class LegalService {
 
     const raw = await this.consultationsRepository
       .createQueryBuilder('c')
+      .leftJoin('c.clinic', 'clinic')
       .leftJoin('c.consent', 'tc')
       .leftJoin(User, 'doctor', 'doctor.id = "c"."doctor_id"')
-      .where('"c"."clinic_id" = :clinicId', { clinicId })
+      .where('clinic.id = :clinicId', { clinicId })
       .select('"c"."id"', 'consultationId')
       .addSelect('"c"."created_at"', 'createdAt')
       .addSelect('"c"."doctor_id"', 'doctorId')

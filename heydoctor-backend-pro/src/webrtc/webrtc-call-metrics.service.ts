@@ -200,7 +200,8 @@ export class WebrtcCallMetricsService {
     const base = this.repo
       .createQueryBuilder('m')
       .innerJoin(Consultation, 'c', 'c.id = m.consultation_id')
-      .where('"c"."clinic_id" = :clinicId', { clinicId })
+      .leftJoin('c.clinic', 'clinic')
+      .where('clinic.id = :clinicId', { clinicId })
       .andWhere('m.recorded_at >= :since', { since });
 
     const totals = await base
