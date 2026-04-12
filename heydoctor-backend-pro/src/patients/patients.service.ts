@@ -35,13 +35,11 @@ export class PatientsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    /**
-     * Nombres de columna SQL: en algunos entornos `p.clinicId` falla con
-     * EntityPropertyNotFoundError si el metadata no expone la FK como propiedad de QB.
-     */
+    /** Filtro por clínica vía relación (evita `p.clinicId` / RelationId en QueryBuilder). */
     const qb = this.patientsRepository
       .createQueryBuilder('p')
-      .where('p.clinic_id = :clinicId', { clinicId })
+      .leftJoin('p.clinic', 'clinic')
+      .where('clinic.id = :clinicId', { clinicId })
       .orderBy('p.created_at', 'DESC');
 
     const rawSearch = query?.search;

@@ -153,17 +153,23 @@ export class ConsultationsService {
     /** Join a patient solo si hace falta filtrar por nombre/email (evita getManyAndCount+join con 0 filas). */
     const needsPatientJoin = consultSearch !== '';
 
+    /**
+     * Filtro por clínica vía relación (no `c.clinicId` en QB). Mismo patrón para `patient.id`.
+     */
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
-      .where('c.clinicId = :clinicId', { clinicId })
-      .orderBy('c.createdAt', 'DESC');
+      .leftJoin('c.clinic', 'clinic')
+      .where('clinic.id = :clinicId', { clinicId })
+      .orderBy('c.created_at', 'DESC');
 
     if (needsPatientJoin) {
       qb.leftJoinAndSelect('c.patient', 'patient');
+    } else if (query?.patientId) {
+      qb.innerJoin('c.patient', 'patient');
     }
 
     if (query?.patientId) {
-      qb.andWhere('c.patientId = :patientId', {
+      qb.andWhere('patient.id = :patientId', {
         patientId: query.patientId,
       });
     }
@@ -182,19 +188,19 @@ export class ConsultationsService {
       }
     }
     if (query?.doctorId) {
-      qb.andWhere('c.doctorId = :doctorId', { doctorId: query.doctorId });
+      qb.andWhere('c.doctor_id = :doctorId', { doctorId: query.doctorId });
     }
     if (query?.from) {
       const from = new Date(query.from);
       if (isValidDate(from)) {
-        qb.andWhere('c.createdAt >= :from', { from });
+        qb.andWhere('c.created_at >= :from', { from });
       }
     }
     if (query?.to) {
       const end = new Date(query.to);
       if (isValidDate(end)) {
         end.setUTCHours(23, 59, 59, 999);
-        qb.andWhere('c.createdAt <= :to', { to: end });
+        qb.andWhere('c.created_at <= :to', { to: end });
       }
     }
     if (needsPatientJoin) {
