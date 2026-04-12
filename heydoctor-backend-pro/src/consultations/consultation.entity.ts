@@ -74,7 +74,7 @@ export class Consultation {
   doctorId: string;
 
   /** Motivo de consulta / chief complaint (obligatorio al crear). */
-  @Column({ name: 'reason', type: 'text' })
+  @Column({ name: 'chief_complaint', type: 'text' })
   chiefComplaint: string;
 
   @Column({ type: 'text', nullable: true })
@@ -83,7 +83,7 @@ export class Consultation {
   @Column({ type: 'text', nullable: true })
   diagnosis: string | null;
 
-  @Column({ name: 'treatment', type: 'text', nullable: true })
+  @Column({ name: 'treatment_plan', type: 'text', nullable: true })
   treatmentPlan: string | null;
 
   @Column({ type: 'text', nullable: true })
