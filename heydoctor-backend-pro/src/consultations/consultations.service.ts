@@ -48,6 +48,15 @@ function normalizeSignature(signature: string): string {
   return base64;
 }
 
+/** Alineado con PostgreSQL `consultations_status_enum` (migración inicial). */
+const CONSULTATION_STATUS_VALUES = new Set<string>(
+  Object.values(ConsultationStatus),
+);
+
+function isConsultationStatusValue(value: unknown): value is ConsultationStatus {
+  return typeof value === 'string' && CONSULTATION_STATUS_VALUES.has(value);
+}
+
 @Injectable()
 export class ConsultationsService {
   constructor(
@@ -146,8 +155,19 @@ export class ConsultationsService {
         patientId: query.patientId,
       });
     }
-    if (query?.status) {
-      qb.andWhere('c.status = :status', { status: query.status });
+    const statusFilter = query?.status as ConsultationStatus | string | undefined;
+    if (statusFilter !== undefined && statusFilter !== null) {
+      if (isConsultationStatusValue(statusFilter)) {
+        qb.andWhere('c.status = :status', { status: statusFilter });
+      } else if (String(statusFilter).trim() !== '') {
+        this.logger.warn(
+          JSON.stringify({
+            msg: 'consultations.findAll.invalid_status_ignored',
+            status: statusFilter,
+            allowed: [...CONSULTATION_STATUS_VALUES],
+          }),
+        );
+      }
     }
     if (query?.doctorId) {
       qb.andWhere('c.doctorId = :doctorId', { doctorId: query.doctorId });
