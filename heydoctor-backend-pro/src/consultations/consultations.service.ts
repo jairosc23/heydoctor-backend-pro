@@ -134,31 +134,31 @@ export class ConsultationsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    /** Columnas DB reales (quoted): evita EntityPropertyNotFoundError con @RelationId. */
+    /** Propiedades de entidad (TypeORM resuelve a columnas snake_case del mapping). */
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
-      .where('"c"."clinic_id" = :clinicId', { clinicId })
-      .orderBy('"c"."created_at"', 'DESC');
+      .where('c.clinicId = :clinicId', { clinicId })
+      .orderBy('c.createdAt', 'DESC');
 
     if (query?.patientId) {
-      qb.andWhere('"c"."patient_id" = :patientId', {
+      qb.andWhere('c.patientId = :patientId', {
         patientId: query.patientId,
       });
     }
     if (query?.status) {
-      qb.andWhere('"c"."status" = :status', { status: query.status });
+      qb.andWhere('c.status = :status', { status: query.status });
     }
     if (query?.doctorId) {
-      qb.andWhere('"c"."doctor_id" = :doctorId', { doctorId: query.doctorId });
+      qb.andWhere('c.doctorId = :doctorId', { doctorId: query.doctorId });
     }
     if (query?.from) {
-      qb.andWhere('"c"."created_at" >= :from', { from: new Date(query.from) });
+      qb.andWhere('c.createdAt >= :from', { from: new Date(query.from) });
     }
     if (query?.to) {
       const end = new Date(query.to);
       end.setUTCHours(23, 59, 59, 999);
-      qb.andWhere('"c"."created_at" <= :to', { to: end });
+      qb.andWhere('c.createdAt <= :to', { to: end });
     }
     const rawConsultSearch = query?.search;
     const consultSearch =
@@ -169,7 +169,7 @@ export class ConsultationsService {
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        '(COALESCE("patient"."name", \'\') ILIKE :q OR COALESCE("patient"."email", \'\') ILIKE :q)',
+        '(COALESCE(patient.name, \'\') ILIKE :q OR COALESCE(patient.email, \'\') ILIKE :q)',
         { q: `%${escaped}%` },
       );
     }
