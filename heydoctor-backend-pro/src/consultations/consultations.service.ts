@@ -8,7 +8,7 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AiService } from '../ai/ai.service';
 import { AuditService } from '../audit/audit.service';
@@ -147,26 +147,20 @@ export class ConsultationsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    const rawConsultSearch = query?.search;
-    const consultSearch =
-      typeof rawConsultSearch === 'string' ? rawConsultSearch.trim() : '';
-    /** Join a patient solo si hace falta filtrar por nombre/email (evita getManyAndCount+join con 0 filas). */
-    const needsPatientJoin = consultSearch !== '';
+    const rawSearch = query?.search;
+    const search =
+      typeof rawSearch === 'string' ? rawSearch.trim() : '';
 
     /**
-     * Filtro por clínica vía relación (no `c.clinicId` en QB). Mismo patrón para `patient.id`.
+     * Sin `c.clinicId` / `c.patientId` en QB: clínica y paciente vía joins y `clinic.id` / `patient.id`.
+     * `doctorId` es columna mapeada en entidad (`@Column`), válida como `c.doctorId`.
      */
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
+      .leftJoinAndSelect('c.patient', 'patient')
       .leftJoin('c.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })
-      .orderBy('c.created_at', 'DESC');
-
-    if (needsPatientJoin) {
-      qb.leftJoinAndSelect('c.patient', 'patient');
-    } else if (query?.patientId) {
-      qb.innerJoin('c.patient', 'patient');
-    }
+      .orderBy('c.createdAt', 'DESC');
 
     if (query?.patientId) {
       qb.andWhere('patient.id = :patientId', {
@@ -188,28 +182,30 @@ export class ConsultationsService {
       }
     }
     if (query?.doctorId) {
-      qb.andWhere('c.doctor_id = :doctorId', { doctorId: query.doctorId });
+      qb.andWhere('c.doctorId = :doctorId', {
+        doctorId: query.doctorId,
+      });
     }
     if (query?.from) {
       const from = new Date(query.from);
       if (isValidDate(from)) {
-        qb.andWhere('c.created_at >= :from', { from });
+        qb.andWhere('c.createdAt >= :from', { from });
       }
     }
     if (query?.to) {
       const end = new Date(query.to);
       if (isValidDate(end)) {
         end.setUTCHours(23, 59, 59, 999);
-        qb.andWhere('c.created_at <= :to', { to: end });
+        qb.andWhere('c.createdAt <= :to', { to: end });
       }
     }
-    if (needsPatientJoin) {
-      const escaped = consultSearch
+    if (search !== '') {
+      const escaped = search
         .replace(/\\/g, '\\\\')
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        '(COALESCE(patient.name, \'\') ILIKE :q OR COALESCE(patient.email, \'\') ILIKE :q)',
+        `(COALESCE(patient.name, '') ILIKE :q OR COALESCE(patient.email, '') ILIKE :q)`,
         { q: `%${escaped}%` },
       );
     }
@@ -239,18 +235,7 @@ export class ConsultationsService {
       if (paginate && skip !== undefined && limit !== undefined) {
         dataQb.skip(skip).take(limit);
       }
-      let data = await dataQb.getMany();
-      if (!needsPatientJoin && data.length > 0) {
-        const ids = data.map((c) => c.id);
-        const loaded = await this.consultationsRepository.find({
-          where: { id: In(ids) },
-          relations: { patient: true },
-        });
-        const byId = new Map(loaded.map((c) => [c.id, c]));
-        data = ids
-          .map((id) => byId.get(id))
-          .filter((c): c is Consultation => c !== undefined);
-      }
+      const data = await dataQb.getMany();
       return [data, total];
     };
 

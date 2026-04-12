@@ -35,12 +35,11 @@ export class PatientsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    /** Filtro por clínica vía relación (evita `p.clinicId` / RelationId en QueryBuilder). */
     const qb = this.patientsRepository
       .createQueryBuilder('p')
       .leftJoin('p.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })
-      .orderBy('p.created_at', 'DESC');
+      .orderBy('p.createdAt', 'DESC');
 
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
@@ -50,8 +49,8 @@ export class PatientsService {
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        '(COALESCE(p.name, \'\') ILIKE :s OR COALESCE(p.email, \'\') ILIKE :s)',
-        { s: `%${escaped}%` },
+        `(COALESCE(p.name, '') ILIKE :q OR COALESCE(p.email, '') ILIKE :q)`,
+        { q: `%${escaped}%` },
       );
     }
 
