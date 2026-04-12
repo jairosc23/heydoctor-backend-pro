@@ -35,11 +35,14 @@ export class PatientsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    /** Propiedades de entidad (TypeORM → columnas snake_case del mapping). */
+    /**
+     * Columnas SQL (`clinic_id`, `created_at`): `@RelationId` (`clinicId`) no es válido
+     * en QueryBuilder → EntityPropertyNotFoundError.
+     */
     const qb = this.patientsRepository
       .createQueryBuilder('p')
-      .where('p.clinicId = :clinicId', { clinicId })
-      .orderBy('p.createdAt', 'DESC');
+      .where('p.clinic_id = :clinicId', { clinicId })
+      .orderBy('p.created_at', 'DESC');
 
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
