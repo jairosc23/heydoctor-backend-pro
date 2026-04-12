@@ -14,6 +14,11 @@ import { TelemedicineConsent } from '../consents/consent.entity';
 import { Patient } from '../patients/patient.entity';
 import { ConsultationStatus } from './consultation-status.enum';
 
+/**
+ * Columnas clínicas en PostgreSQL: `chief_complaint`, `treatment_plan`, `status` → tipo
+ * `consultations_status_enum`. Las migraciones renombran `reason`/`treatment` legados de
+ * forma idempotente; en QueryBuilder usar columnas SQL (`clinic_id`, …), no rutas `@RelationId`.
+ */
 @Index(['clinic', 'createdAt'])
 @Entity('consultations')
 export class Consultation {
