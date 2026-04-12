@@ -200,7 +200,7 @@ export class WebrtcCallMetricsService {
     const base = this.repo
       .createQueryBuilder('m')
       .innerJoin(Consultation, 'c', 'c.id = m.consultation_id')
-      .leftJoin('c.clinic', 'clinic')
+      .innerJoin('c.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })
       .andWhere('m.recorded_at >= :since', { since });
 

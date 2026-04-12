@@ -44,7 +44,7 @@ export class LegalService {
 
     const raw = await this.consultationsRepository
       .createQueryBuilder('c')
-      .leftJoin('c.clinic', 'clinic')
+      .innerJoin('c.clinic', 'clinic')
       .leftJoin('c.consent', 'tc')
       .leftJoin(User, 'doctor', 'doctor.id = "c"."doctor_id"')
       .where('clinic.id = :clinicId', { clinicId })

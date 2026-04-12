@@ -82,7 +82,7 @@ export class AuthorizationService {
     const { clinicId } = await this.getUserWithClinic(authUser);
 
     const patient = await this.patientsRepository.findOne({
-      where: { id: patientId, clinic: { id: clinicId } },
+      where: { id: patientId, clinicId },
     });
     if (!patient) {
       throw new NotFoundException('Patient not found');

@@ -113,7 +113,7 @@ export class PatientsService {
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.patientsRepository.findOne({
-      where: { clinic: { id: clinicId }, email },
+      where: { clinicId, email },
     });
     if (existing) {
       this.logger.warn('Business rule violation', {
@@ -127,7 +127,7 @@ export class PatientsService {
     const entity = this.patientsRepository.create({
       name: dto.name.trim(),
       email,
-      clinic: { id: clinicId },
+      clinicId,
     });
     const saved = await this.patientsRepository.save(entity);
 

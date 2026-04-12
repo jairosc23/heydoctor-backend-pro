@@ -60,7 +60,7 @@ export class UsersService {
     return this.usersRepository.findOne({
       where: {
         email: normalized,
-        clinic: { id: clinicId },
+        clinicId,
       },
     });
   }
@@ -220,7 +220,7 @@ export class UsersService {
       passwordHash,
       role: params.role,
       isActive: true,
-      clinic: { id: clinicId },
+      clinicId,
     });
     const saved = await this.usersRepository.save(entity);
     const user = await this.findById(saved.id);

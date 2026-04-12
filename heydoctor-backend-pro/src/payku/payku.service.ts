@@ -83,7 +83,7 @@ export class PaykuService {
       await this.authorizationService.getUserWithClinic(authUser);
 
     const consultation = await this.consultationsRepository.findOne({
-      where: { id: consultationId, clinic: { id: clinicId } },
+      where: { id: consultationId, clinicId },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');

@@ -83,9 +83,9 @@ export class AppointmentsService {
     const confirmationTokenExpiresAt = new Date(Date.now() + TOKEN_TTL_MS);
 
     const entity = this.appointmentsRepository.create({
-      patient: { id: dto.patientId },
-      clinic: { id: clinicId },
-      doctor: { id: doctorId },
+      patientId: dto.patientId,
+      clinicId,
+      doctorId,
       startsAt,
       status: AppointmentStatus.PENDING,
       confirmationToken,

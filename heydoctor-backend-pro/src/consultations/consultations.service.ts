@@ -82,7 +82,7 @@ export class ConsultationsService {
     clinicId: string,
   ): Promise<Consultation | null> {
     return this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
     });
   }
 
@@ -105,8 +105,8 @@ export class ConsultationsService {
     }
 
     const entity = this.consultationsRepository.create({
-      patient: { id: dto.patientId },
-      clinic: { id: clinicId },
+      patientId: dto.patientId,
+      clinicId,
       consent: { id: consent.id },
       consentVersion: consent.version,
       consentGivenAt: consent.consentGivenAt,
@@ -263,7 +263,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
       relations: { patient: true },
     });
     if (!consultation) {
@@ -295,7 +295,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const row = await this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
       select: {
         id: true,
         aiSummary: true,
@@ -334,7 +334,7 @@ export class ConsultationsService {
     }
 
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -379,7 +379,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -459,7 +459,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -655,7 +655,7 @@ export class ConsultationsService {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
     const consultation = await this.consultationsRepository.findOne({
-      where: { id, clinic: { id: clinicId } },
+      where: { id, clinicId },
     });
     if (!consultation) {
       throw new NotFoundException('Consultation not found');

@@ -65,7 +65,7 @@ export class LegalPdfService {
       await this.authorizationService.getUserWithClinic(authUser);
 
     const row = await this.consultationsRepo.findOne({
-      where: { id: consultationId, clinic: { id: clinicId } },
+      where: { id: consultationId, clinicId },
     });
     if (!row) throw new NotFoundException('Consultation not found');
 
