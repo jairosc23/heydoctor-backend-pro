@@ -1,4 +1,5 @@
 import { apiCredentialsInit } from './api-credentials';
+import { requireBearerHeaders } from './heydoctor-api';
 
 export type PlatformGlobalMetrics = {
   windowDays: number;
@@ -51,7 +52,7 @@ export async function fetchPlatformGlobalMetrics(params: {
   url.searchParams.set('windowDays', String(windowDays));
   const res = await fetch(url.toString(), {
     ...apiCredentialsInit,
-    headers: { Accept: 'application/json' },
+    headers: requireBearerHeaders(),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => '');

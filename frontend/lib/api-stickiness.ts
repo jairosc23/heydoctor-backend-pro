@@ -3,18 +3,12 @@
  */
 
 import { apiCredentialsInit } from './api-credentials';
+import { requireBearerHeaders, requireHeydoctorApiBase } from './heydoctor-api';
 
-const getApiBase = () =>
-  (typeof window !== 'undefined' && (window as any).__API_URL__) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
+const getHeaders = () => requireBearerHeaders();
 
-const getHeaders = () => ({ Accept: 'application/json' });
-
-const jsonHeaders = () => ({
-  ...getHeaders(),
-  'Content-Type': 'application/json',
-});
+const jsonHeaders = () =>
+  requireBearerHeaders({ 'Content-Type': 'application/json' });
 
 const toData = (body: any) => (body?.data ? body : { data: body });
 
@@ -28,7 +22,7 @@ export interface TemplateData {
 }
 
 export async function fetchTemplates() {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/templates`, {
     ...apiCredentialsInit,
     headers: getHeaders(),
@@ -39,7 +33,7 @@ export async function fetchTemplates() {
 }
 
 export async function createTemplate(data: TemplateData) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/templates`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -51,7 +45,7 @@ export async function createTemplate(data: TemplateData) {
 }
 
 export async function updateTemplate(id: number | string, data: Partial<TemplateData>) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/templates/${id}`, {
     ...apiCredentialsInit,
     method: 'PUT',
@@ -63,7 +57,7 @@ export async function updateTemplate(id: number | string, data: Partial<Template
 }
 
 export async function deleteTemplate(id: number | string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/templates/${id}`, {
     ...apiCredentialsInit,
     method: 'DELETE',
@@ -85,7 +79,7 @@ export interface FavoriteOrderData {
 }
 
 export async function fetchFavoriteOrders() {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/favorite-orders`, {
     ...apiCredentialsInit,
     headers: getHeaders(),
@@ -96,7 +90,7 @@ export async function fetchFavoriteOrders() {
 }
 
 export async function createFavoriteOrder(data: FavoriteOrderData) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/favorite-orders`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -108,7 +102,7 @@ export async function createFavoriteOrder(data: FavoriteOrderData) {
 }
 
 export async function deleteFavoriteOrder(id: number | string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/favorite-orders/${id}`, {
     ...apiCredentialsInit,
     method: 'DELETE',
@@ -127,7 +121,7 @@ export interface PatientReminderData {
 }
 
 export async function fetchPatientReminders(patientId?: number | string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const params = patientId ? `?filters[patient][id][$eq]=${patientId}` : '';
   const res = await fetch(`${base}/api/patient-reminders${params}`, {
     ...apiCredentialsInit,
@@ -139,7 +133,7 @@ export async function fetchPatientReminders(patientId?: number | string) {
 }
 
 export async function createPatientReminder(data: PatientReminderData) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/patient-reminders`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -151,7 +145,7 @@ export async function createPatientReminder(data: PatientReminderData) {
 }
 
 export async function updatePatientReminder(id: number | string, data: Partial<PatientReminderData> & { status?: string }) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/patient-reminders/${id}`, {
     ...apiCredentialsInit,
     method: 'PUT',

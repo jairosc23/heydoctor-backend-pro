@@ -4,22 +4,16 @@
  */
 
 import { apiCredentialsInit } from './api-credentials';
+import { requireBearerHeaders, requireHeydoctorApiBase } from './heydoctor-api';
 
-const getApiBase = () =>
-  (typeof window !== 'undefined' && (window as any).__API_URL__) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
+const getHeaders = () => requireBearerHeaders();
 
-const getHeaders = () => ({ Accept: 'application/json' });
-
-const jsonHeaders = () => ({
-  ...getHeaders(),
-  'Content-Type': 'application/json',
-});
+const jsonHeaders = () =>
+  requireBearerHeaders({ 'Content-Type': 'application/json' });
 
 /** Copilot: sugerencias durante consulta activa */
 export async function fetchCopilotSuggestions(consultationId: number | string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(
     `${base}/api/copilot/suggestions?consultationId=${consultationId}`,
     { ...apiCredentialsInit, headers: getHeaders() },
@@ -30,7 +24,7 @@ export async function fetchCopilotSuggestions(consultationId: number | string) {
 
 /** CDSS: evaluación clínica completa */
 export async function evaluateCdss(symptoms: string[], context?: Record<string, unknown>) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/cdss/evaluate`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -43,7 +37,7 @@ export async function evaluateCdss(symptoms: string[], context?: Record<string, 
 
 /** Predictive Medicine: riesgos y acciones preventivas */
 export async function fetchPredictiveRisk(symptoms: string[], context?: Record<string, unknown>) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/predictive-medicine/risk`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -56,7 +50,7 @@ export async function fetchPredictiveRisk(symptoms: string[], context?: Record<s
 
 /** Clinical Intelligence: sugerencias basadas en datos históricos */
 export async function fetchClinicalSuggestions(symptoms: string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(
     `${base}/api/clinical-intelligence/suggest?symptoms=${encodeURIComponent(symptoms)}`,
     { ...apiCredentialsInit, headers: getHeaders() },
@@ -70,7 +64,7 @@ export async function searchMedical(
   query: string,
   type: 'patient' | 'doctor' | 'diagnostic' = 'patient',
 ) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(
     `${base}/api/search?q=${encodeURIComponent(query)}&type=${type}`,
     { ...apiCredentialsInit, headers: getHeaders() },
@@ -87,7 +81,7 @@ export async function generateClinicalNote(params: {
   patientHistory?: Record<string, unknown>;
   messages?: Array<{ role: string; content: string }>;
 }) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/copilot/generate-clinical-note`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -114,7 +108,7 @@ export async function createLabOrder(data: {
   status?: string;
   appointment?: number;
 }) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/lab-orders`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -126,7 +120,7 @@ export async function createLabOrder(data: {
 }
 
 export async function fetchLabOrdersByPatient(patientId: number | string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/lab-orders/patient/${patientId}`, {
     ...apiCredentialsInit,
     headers: getHeaders(),
@@ -136,7 +130,7 @@ export async function fetchLabOrdersByPatient(patientId: number | string) {
 }
 
 export async function suggestLabTests(diagnosis?: string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const q = diagnosis ? `?diagnosis=${encodeURIComponent(diagnosis)}` : '';
   const res = await fetch(`${base}/api/lab-orders/suggest-tests${q}`, {
     ...apiCredentialsInit,
@@ -155,7 +149,7 @@ export async function createPrescription(data: {
   instructions?: string;
   appointment?: number;
 }) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/prescriptions`, {
     ...apiCredentialsInit,
     method: 'POST',
@@ -167,7 +161,7 @@ export async function createPrescription(data: {
 }
 
 export async function fetchPrescriptionsByPatient(patientId: number | string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/prescriptions/patient/${patientId}`, {
     ...apiCredentialsInit,
     headers: getHeaders(),
@@ -177,7 +171,7 @@ export async function fetchPrescriptionsByPatient(patientId: number | string) {
 }
 
 export async function suggestMedications(diagnosis?: string) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const q = diagnosis ? `?diagnosis=${encodeURIComponent(diagnosis)}` : '';
   const res = await fetch(`${base}/api/prescriptions/suggest-medications${q}`, {
     ...apiCredentialsInit,
@@ -189,7 +183,7 @@ export async function suggestMedications(diagnosis?: string) {
 
 /** Clinical Insights: insights clínicos del paciente */
 export async function fetchClinicalInsights(patientId: number | string, symptoms?: string[]) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const q = symptoms?.length ? `?symptoms=${symptoms.map(encodeURIComponent).join(',')}` : '';
   const res = await fetch(`${base}/api/clinical-insight/patient/${patientId}${q}`, {
     ...apiCredentialsInit,
@@ -201,7 +195,7 @@ export async function fetchClinicalInsights(patientId: number | string, symptoms
 
 /** Clinical Apps: lista de apps disponibles para la clínica */
 export async function fetchClinicalApps(clinicId?: number | null) {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const q = clinicId != null ? `?clinicId=${clinicId}` : '';
   const res = await fetch(`${base}/api/clinical-apps${q}`, {
     ...apiCredentialsInit,

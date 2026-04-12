@@ -1,15 +1,14 @@
 /**
  * Auth API - Login contra el backend Nest (Railway).
- * Usa NEXT_PUBLIC_API_URL para todas las llamadas.
- * Login: credentials: 'include' (refresh en API); access JWT en cuerpo / Bearer según cliente.
+ * Tras login se guarda `access_token` en localStorage para `Authorization: Bearer`.
  */
 
 import { apiCredentialsInit } from './api-credentials';
-
-const getApiBase = () =>
-  (typeof window !== 'undefined' && (window as any).__API_URL__) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
+import {
+  requireHeydoctorApiBase,
+  setStoredAccessToken,
+  clearStoredAccessToken,
+} from './heydoctor-api';
 
 export interface LoginCredentials {
   email: string;
@@ -30,11 +29,13 @@ export interface LoginResponse {
  * Login contra el backend Nest en Railway.
  * POST /api/auth/login
  */
+/** Cierra sesión en el cliente (borra el JWT almacenado). */
+export function logout(): void {
+  clearStoredAccessToken();
+}
+
 export async function login(credentials: LoginCredentials): Promise<LoginResponse> {
-  const base = getApiBase();
-  if (!base) {
-    throw new Error('NEXT_PUBLIC_API_URL is not configured');
-  }
+  const base = requireHeydoctorApiBase();
 
   const res = await fetch(`${base}/api/auth/login`, {
     ...apiCredentialsInit,
@@ -51,5 +52,7 @@ export async function login(credentials: LoginCredentials): Promise<LoginRespons
     throw new Error(err.message || 'Login failed');
   }
 
-  return res.json() as Promise<LoginResponse>;
+  const data = (await res.json()) as LoginResponse;
+  setStoredAccessToken(data.access_token);
+  return data;
 }

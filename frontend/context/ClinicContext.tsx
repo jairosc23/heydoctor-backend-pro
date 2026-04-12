@@ -2,6 +2,11 @@
 
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { apiCredentialsInit } from '../lib/api-credentials';
+import {
+  getHeydoctorApiBase,
+  getStoredAccessToken,
+  requireBearerHeaders,
+} from '../lib/heydoctor-api';
 
 export interface Clinic {
   id: number;
@@ -22,11 +27,6 @@ interface ClinicContextValue {
 
 const ClinicContext = createContext<ClinicContextValue | undefined>(undefined);
 
-const getApiBase = () =>
-  (typeof window !== 'undefined' && (window as any).__API_URL__) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
-
 export function ClinicProvider({ children }: { children: React.ReactNode }) {
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,10 +34,18 @@ export function ClinicProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const fetchClinic = async () => {
       try {
-        const base = getApiBase();
+        if (!getStoredAccessToken()) {
+          setClinic(null);
+          return;
+        }
+        const base = getHeydoctorApiBase();
+        if (!base) {
+          setClinic(null);
+          return;
+        }
         const res = await fetch(`${base}/api/clinics/me`, {
           ...apiCredentialsInit,
-          headers: { Accept: 'application/json' },
+          headers: requireBearerHeaders(),
         });
         if (res.ok) {
           const json = await res.json();

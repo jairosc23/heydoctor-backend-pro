@@ -1,4 +1,5 @@
 import { apiCredentialsInit } from './api-credentials';
+import { requireBearerHeaders } from './heydoctor-api';
 
 export type CreatePaymentSessionPayload = {
   consultationId: string;
@@ -29,10 +30,9 @@ export async function createPaymentSession(
   const res = await fetch(url.toString(), {
     ...apiCredentialsInit,
     method: 'POST',
-    headers: {
+    headers: requireBearerHeaders({
       'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
+    }),
     body: JSON.stringify(payload),
   });
   if (!res.ok) {

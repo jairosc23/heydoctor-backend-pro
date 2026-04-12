@@ -1,5 +1,6 @@
 import { apiCredentialsInit } from './api-credentials';
 import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
+import { requireBearerHeaders } from './heydoctor-api';
 
 export type SendCallMetricsInput = {
   backendOrigin: string;
@@ -56,8 +57,7 @@ export async function sendCallMetrics(
     ...apiCredentialsInit,
     method: 'POST',
     headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
+      ...requireBearerHeaders({ 'Content-Type': 'application/json' }),
       ...heyDoctorTraceHeaders(consultationId, callId),
     },
     body: JSON.stringify(body),

@@ -3,18 +3,10 @@
  */
 
 import { apiCredentialsInit } from './api-credentials';
+import { requireBearerHeaders, requireHeydoctorApiBase } from './heydoctor-api';
 
-const getApiBase = () =>
-  (typeof window !== 'undefined' && (window as unknown as { __API_URL__?: string }).__API_URL__) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
-
-const getHeaders = () => ({ Accept: 'application/json' });
-
-const jsonHeaders = () => ({
-  ...getHeaders(),
-  'Content-Type': 'application/json',
-});
+const jsonHeaders = () =>
+  requireBearerHeaders({ 'Content-Type': 'application/json' });
 
 export type ConsultationStatus =
   | 'draft'
@@ -49,10 +41,10 @@ export type PatchConsultationPayload = Partial<{
 }>;
 
 export async function fetchConsultation(consultationId: string): Promise<Consultation> {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/consultations/${consultationId}`, {
     ...apiCredentialsInit,
-    headers: getHeaders(),
+    headers: requireBearerHeaders(),
   });
   if (!res.ok) throw new Error('No se pudo cargar la consulta');
   return res.json() as Promise<Consultation>;
@@ -62,7 +54,7 @@ export async function patchConsultation(
   consultationId: string,
   body: PatchConsultationPayload,
 ): Promise<Consultation> {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/consultations/${consultationId}`, {
     ...apiCredentialsInit,
     method: 'PATCH',

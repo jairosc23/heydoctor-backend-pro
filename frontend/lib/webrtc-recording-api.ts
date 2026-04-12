@@ -1,5 +1,6 @@
 import { apiCredentialsInit } from './api-credentials';
 import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
+import { requireBearerHeaders } from './heydoctor-api';
 
 export type RecordingApiInput = {
   backendOrigin: string;
@@ -36,14 +37,14 @@ export type RecordingStopResult = {
 
 function postHeaders(consultationId: string, callId: string): Record<string, string> {
   return {
-    'Content-Type': 'application/json',
+    ...requireBearerHeaders({ 'Content-Type': 'application/json' }),
     ...heyDoctorTraceHeaders(consultationId, callId),
   };
 }
 
 function getHeaders(consultationId: string, callId: string): Record<string, string> {
   return {
-    Accept: 'application/json',
+    ...requireBearerHeaders(),
     ...heyDoctorTraceHeaders(consultationId, callId),
   };
 }

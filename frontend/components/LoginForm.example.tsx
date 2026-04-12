@@ -7,8 +7,8 @@
  * Uso:
  * 1. Importa: import { login } from '@/lib/api-auth';
  * 2. En onSubmit: await login({ email, password }) con credentials: 'include' (ya en api-auth).
- * 3. No guardes el JWT en localStorage: la sesión va en cookies HttpOnly (`heydoctor_session`, `refresh_token`).
- * 4. Redirige al dashboard; las siguientes peticiones deben usar fetch(..., { credentials: 'include' }).
+ * 3. Tras login, `api-auth` guarda el access JWT en localStorage para `Authorization: Bearer`.
+ * 4. Las peticiones protegidas usan `requireBearerHeaders()` / clientes en `lib/api-*.ts`.
  */
 import React, { useState } from 'react';
 import { login } from '../lib/api-auth';

@@ -1,11 +1,12 @@
 /**
  * Fetches ephemeral ICE servers (STUN/TURN) from the Nest API.
  * TURN credentials must never be static in the client bundle.
- * Auth: cookie `heydoctor_session` (credentials: 'include').
+ * Auth: JWT Bearer + optional cookies (credentials: 'include').
  */
 
 import { apiCredentialsInit } from './api-credentials';
 import { heyDoctorTraceHeaders } from './heydoctor-trace-headers';
+import { requireBearerHeaders } from './heydoctor-api';
 
 export type IceServersResponse = {
   iceServers: RTCIceServer[];
@@ -24,7 +25,7 @@ export async function fetchWebrtcIceServers(params: {
     ...apiCredentialsInit,
     method: 'GET',
     headers: {
-      Accept: 'application/json',
+      ...requireBearerHeaders(),
       ...heyDoctorTraceHeaders(consultationId, callId),
     },
   });

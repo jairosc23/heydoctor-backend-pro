@@ -3,11 +3,7 @@
  */
 
 import { apiCredentialsInit } from './api-credentials';
-
-const getApiBase = () =>
-  (typeof window !== 'undefined' && (window as any).__API_URL__) ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  '';
+import { requireBearerHeaders, requireHeydoctorApiBase } from './heydoctor-api';
 
 export interface DoctorAdoptionMetrics {
   daily_active_doctors: number;
@@ -21,10 +17,10 @@ export interface DoctorAdoptionMetrics {
 }
 
 export async function fetchDoctorAdoptionMetrics(days = 7): Promise<DoctorAdoptionMetrics> {
-  const base = getApiBase();
+  const base = requireHeydoctorApiBase();
   const res = await fetch(`${base}/api/analytics/doctor-adoption?days=${days}`, {
     ...apiCredentialsInit,
-    headers: { Accept: 'application/json' },
+    headers: requireBearerHeaders(),
   });
   if (!res.ok) throw new Error('Failed to fetch doctor adoption metrics');
   const json = await res.json();
