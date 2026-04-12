@@ -92,6 +92,7 @@ export class Consultation {
   @Column({
     type: 'enum',
     enum: ConsultationStatus,
+    enumName: 'consultations_status_enum',
     default: ConsultationStatus.DRAFT,
   })
   status: ConsultationStatus;

@@ -57,6 +57,10 @@ function isConsultationStatusValue(value: unknown): value is ConsultationStatus 
   return typeof value === 'string' && CONSULTATION_STATUS_VALUES.has(value);
 }
 
+function isValidDate(value: Date): boolean {
+  return !Number.isNaN(value.getTime());
+}
+
 @Injectable()
 export class ConsultationsService {
   constructor(
@@ -182,12 +186,17 @@ export class ConsultationsService {
       qb.andWhere('c.doctorId = :doctorId', { doctorId: query.doctorId });
     }
     if (query?.from) {
-      qb.andWhere('c.createdAt >= :from', { from: new Date(query.from) });
+      const from = new Date(query.from);
+      if (isValidDate(from)) {
+        qb.andWhere('c.createdAt >= :from', { from });
+      }
     }
     if (query?.to) {
       const end = new Date(query.to);
-      end.setUTCHours(23, 59, 59, 999);
-      qb.andWhere('c.createdAt <= :to', { to: end });
+      if (isValidDate(end)) {
+        end.setUTCHours(23, 59, 59, 999);
+        qb.andWhere('c.createdAt <= :to', { to: end });
+      }
     }
     if (needsPatientJoin) {
       const escaped = consultSearch

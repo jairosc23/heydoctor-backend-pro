@@ -35,11 +35,11 @@ export class PatientsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
-    /** Columnas DB reales (quoted): @RelationId no es columna mapeada en QueryBuilder. */
+    /** Propiedades de entidad (TypeORM → columnas snake_case del mapping). */
     const qb = this.patientsRepository
       .createQueryBuilder('p')
-      .where('"p"."clinic_id" = :clinicId', { clinicId })
-      .orderBy('"p"."created_at"', 'DESC');
+      .where('p.clinicId = :clinicId', { clinicId })
+      .orderBy('p.createdAt', 'DESC');
 
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
@@ -49,7 +49,7 @@ export class PatientsService {
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        '(COALESCE("p"."name", \'\') ILIKE :s OR COALESCE("p"."email", \'\') ILIKE :s)',
+        '(COALESCE(p.name, \'\') ILIKE :s OR COALESCE(p.email, \'\') ILIKE :s)',
         { s: `%${escaped}%` },
       );
     }
@@ -60,55 +60,54 @@ export class PatientsService {
         query.limit !== undefined ||
         query.offset !== undefined);
 
-    if (!paginate) {
-      let data: Patient[];
-      let total: number;
-      try {
-        [data, total] = await qb.getManyAndCount();
-      } catch (error) {
-        console.error('QUERY FAILED:', error);
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          JSON.stringify({
-            msg: 'query_failed',
-            context: 'patients.findAll',
-            error: message,
-          }),
-        );
-        throw new InternalServerErrorException('Query failed');
-      }
-      return { data, total, page: 1, limit: total };
-    }
-
-    const limit = Math.min(query!.limit ?? 20, 100);
-    const page = query!.page ?? 1;
-    const offset = query!.offset;
+    const limit = paginate ? Math.min(query!.limit ?? 20, 100) : undefined;
+    const page = paginate ? (query!.page ?? 1) : 1;
+    const offset = paginate ? query!.offset : undefined;
     const skip =
-      offset !== undefined && offset >= 0 ? offset : (page - 1) * limit;
-    qb.skip(skip).take(limit);
+      paginate && offset !== undefined && offset >= 0
+        ? offset
+        : paginate && limit !== undefined
+          ? (page - 1) * limit
+          : undefined;
 
-    let data: Patient[];
-    let total: number;
+    const runQuery = async (): Promise<[Patient[], number]> => {
+      const total = await qb.clone().getCount();
+      if (total === 0) {
+        return [[], 0];
+      }
+      const dataQb = qb.clone();
+      if (paginate && skip !== undefined && limit !== undefined) {
+        dataQb.skip(skip).take(limit);
+      }
+      const data = await dataQb.getMany();
+      return [data, total];
+    };
+
     try {
-      [data, total] = await qb.getManyAndCount();
+      const [data, total] = await runQuery();
+
+      if (!paginate) {
+        return { data, total, page: 1, limit: total };
+      }
+
+      const resolvedPage =
+        offset !== undefined && limit !== undefined && limit > 0
+          ? Math.floor(offset / limit) + 1
+          : page;
+
+      return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
       console.error('QUERY FAILED:', error);
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
-          context: 'patients.findAll.paginated',
+          context: paginate ? 'patients.findAll.paginated' : 'patients.findAll',
           error: message,
         }),
       );
       throw new InternalServerErrorException('Query failed');
     }
-    const resolvedPage =
-      offset !== undefined && limit > 0
-        ? Math.floor(offset / limit) + 1
-        : page;
-
-    return { data, total, page: resolvedPage, limit };
   }
 
   async findOne(id: string, authUser: AuthenticatedUser): Promise<Patient> {
