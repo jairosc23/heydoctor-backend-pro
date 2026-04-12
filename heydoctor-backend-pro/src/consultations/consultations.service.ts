@@ -8,7 +8,7 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AiService } from '../ai/ai.service';
 import { AuditService } from '../audit/audit.service';
@@ -143,12 +143,21 @@ export class ConsultationsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
+    const rawConsultSearch = query?.search;
+    const consultSearch =
+      typeof rawConsultSearch === 'string' ? rawConsultSearch.trim() : '';
+    /** Join a patient solo si hace falta filtrar por nombre/email (evita getManyAndCount+join con 0 filas). */
+    const needsPatientJoin = consultSearch !== '';
+
     /** Propiedades de entidad (TypeORM resuelve a columnas snake_case del mapping). */
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
-      .leftJoinAndSelect('c.patient', 'patient')
       .where('c.clinicId = :clinicId', { clinicId })
       .orderBy('c.createdAt', 'DESC');
+
+    if (needsPatientJoin) {
+      qb.leftJoinAndSelect('c.patient', 'patient');
+    }
 
     if (query?.patientId) {
       qb.andWhere('c.patientId = :patientId', {
@@ -180,10 +189,7 @@ export class ConsultationsService {
       end.setUTCHours(23, 59, 59, 999);
       qb.andWhere('c.createdAt <= :to', { to: end });
     }
-    const rawConsultSearch = query?.search;
-    const consultSearch =
-      typeof rawConsultSearch === 'string' ? rawConsultSearch.trim() : '';
-    if (consultSearch !== '') {
+    if (needsPatientJoin) {
       const escaped = consultSearch
         .replace(/\\/g, '\\\\')
         .replace(/%/g, '\\%')
@@ -200,55 +206,65 @@ export class ConsultationsService {
         query.limit !== undefined ||
         query.offset !== undefined);
 
-    if (!paginate) {
-      let data: Consultation[];
-      let total: number;
-      try {
-        [data, total] = await qb.getManyAndCount();
-      } catch (error) {
-        console.error('QUERY FAILED:', error);
-        const message = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          JSON.stringify({
-            msg: 'query_failed',
-            context: 'consultations.findAll',
-            error: message,
-          }),
-        );
-        throw new InternalServerErrorException('Query failed');
-      }
-      return { data, total, page: 1, limit: total };
-    }
-
-    const limit = Math.min(query!.limit ?? 20, 100);
-    const page = query!.page ?? 1;
-    const offset = query!.offset;
+    const limit = paginate ? Math.min(query!.limit ?? 20, 100) : undefined;
+    const page = paginate ? (query!.page ?? 1) : 1;
+    const offset = paginate ? query!.offset : undefined;
     const skip =
-      offset !== undefined && offset >= 0 ? offset : (page - 1) * limit;
-    qb.skip(skip).take(limit);
+      paginate && offset !== undefined && offset >= 0
+        ? offset
+        : paginate && limit !== undefined
+          ? (page - 1) * limit
+          : undefined;
 
-    let data: Consultation[];
-    let total: number;
+    const runQuery = async (): Promise<[Consultation[], number]> => {
+      const total = await qb.clone().getCount();
+      if (total === 0) {
+        return [[], 0];
+      }
+      const dataQb = qb.clone();
+      if (paginate && skip !== undefined && limit !== undefined) {
+        dataQb.skip(skip).take(limit);
+      }
+      let data = await dataQb.getMany();
+      if (!needsPatientJoin && data.length > 0) {
+        const ids = data.map((c) => c.id);
+        const loaded = await this.consultationsRepository.find({
+          where: { id: In(ids) },
+          relations: { patient: true },
+        });
+        const byId = new Map(loaded.map((c) => [c.id, c]));
+        data = ids
+          .map((id) => byId.get(id))
+          .filter((c): c is Consultation => c !== undefined);
+      }
+      return [data, total];
+    };
+
     try {
-      [data, total] = await qb.getManyAndCount();
+      const [data, total] = await runQuery();
+
+      if (!paginate) {
+        return { data, total, page: 1, limit: total };
+      }
+
+      const resolvedPage =
+        offset !== undefined && limit !== undefined && limit > 0
+          ? Math.floor(offset / limit) + 1
+          : page;
+
+      return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
       console.error('QUERY FAILED:', error);
       const message = error instanceof Error ? error.message : String(error);
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
-          context: 'consultations.findAll.paginated',
+          context: paginate ? 'consultations.findAll.paginated' : 'consultations.findAll',
           error: message,
         }),
       );
       throw new InternalServerErrorException('Query failed');
     }
-    const resolvedPage =
-      offset !== undefined && limit > 0
-        ? Math.floor(offset / limit) + 1
-        : page;
-
-    return { data, total, page: resolvedPage, limit };
   }
 
   async findOne(
