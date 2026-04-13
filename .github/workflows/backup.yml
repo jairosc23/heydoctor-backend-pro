@@ -23,6 +23,8 @@ env:
   BACKUP_RETENTION_DAYS: "30"
   # Opcional: timeout de conexión libpq (segundos)
   PGCONNECT_TIMEOUT: "30"
+  # Evita avisos de deprecación Node 20 en actions/checkout (transición a Node 24 en runners).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   backup:
@@ -30,17 +32,19 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      # Ubuntu 24.04 (Noble): el paquete apt `awscli` v1 ya no tiene candidato; usamos AWS CLI v2 oficial.
-      - name: Install PostgreSQL client and AWS CLI
+      # Solo cliente Postgres por apt. En Ubuntu 24.04 Noble NO usar `apt install awscli` (sin candidato).
+      - name: Install PostgreSQL client
         run: |
           sudo apt-get update
-          sudo apt-get install -y postgresql-client unzip curl
-          curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-          unzip -q /tmp/awscliv2.zip -d /tmp
-          sudo /tmp/aws/install --update
-          rm -rf /tmp/aws /tmp/awscliv2.zip
+          sudo apt-get install -y postgresql-client
+
+      # AWS CLI v2 sin apt: instalación mantenida para runners ubuntu-latest.
+      - name: Install AWS CLI v2
+        uses: unfor19/install-aws-cli-action@v1
+        with:
+          version: "2"
 
       - name: Verify tools
         run: |
