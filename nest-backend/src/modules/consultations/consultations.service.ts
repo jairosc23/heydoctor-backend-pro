@@ -33,6 +33,7 @@ export class ConsultationsService {
   ): Promise<{ data: Consultation[]; total: number }> {
     const cid = requireClinicId(clinicId);
     const doctor = await this.authz.resolveDoctorForUser(actor.userId, cid);
+
     const qb = this.consultationRepo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
@@ -40,20 +41,37 @@ export class ConsultationsService {
       .leftJoinAndSelect('c.clinic', 'clinic')
       .leftJoinAndSelect('c.clinical_record', 'clinical_record')
       .leftJoinAndSelect('c.diagnostic', 'diagnostic')
-      .where('c.clinicId = :clinicId', { clinicId: cid })
-      .andWhere('c.doctorId = :doctorId', { doctorId: doctor.id });
+      // ✅ FIX RELACIONES (NO usar c.clinicId)
+      .where('clinic.id = :clinicId', { clinicId: cid })
+      .andWhere('doctor.id = :doctorId', { doctorId: doctor.id });
+
+    // ✅ FILTROS SEGUROS
 
     if (filters?.patientId) {
-      qb.andWhere('c.patientId = :patientId', { patientId: filters.patientId });
+      qb.andWhere('patient.id = :patientId', {
+        patientId: filters.patientId,
+      });
     }
+
     if (filters?.status) {
-      qb.andWhere('c.status = :status', { status: filters.status });
+      qb.andWhere('LOWER(c.status) = LOWER(:status)', {
+        status: filters.status,
+      });
     }
+
     if (filters?.from) {
-      qb.andWhere('c.date >= :from', { from: filters.from });
+      qb.andWhere('c.date >= :from', {
+        from: new Date(filters.from),
+      });
     }
+
     if (filters?.to) {
-      qb.andWhere('c.date <= :to', { to: filters.to });
+      const end = new Date(filters.to);
+      end.setHours(23, 59, 59, 999);
+
+      qb.andWhere('c.date <= :to', {
+        to: end,
+      });
     }
 
     const { limit, offset } = clampListPagination(
@@ -76,6 +94,7 @@ export class ConsultationsService {
     actor: AuthActor,
   ): Promise<{ data: Consultation }> {
     const cid = requireClinicId(clinicId);
+
     const consultation = await this.consultationRepo.findOne({
       where: { id },
       relations: [
@@ -91,13 +110,16 @@ export class ConsultationsService {
         'prescriptions.diagnosis',
       ],
     });
+
     if (!consultation) {
       throw new NotFoundException(`Consultation with id ${id} not found`);
     }
+
     await this.authz.assertOwnership(
       { type: 'consultation', entity: consultation },
       actor,
     );
+
     return { data: consultation };
   }
 
@@ -108,6 +130,7 @@ export class ConsultationsService {
   ): Promise<{ data: Consultation }> {
     const cid = requireClinicId(clinicId);
     const doctor = await this.authz.resolveDoctorForUser(actor.userId, cid);
+
     await this.authz.assertPatientInClinic(dto.patientId, cid);
 
     const consultation = this.consultationRepo.create({
@@ -124,7 +147,9 @@ export class ConsultationsService {
       files: dto.files ?? null,
       active: dto.active ?? true,
     });
+
     const saved = await this.consultationRepo.save(consultation);
+
     return { data: saved };
   }
 
@@ -135,10 +160,13 @@ export class ConsultationsService {
     actor: AuthActor,
   ): Promise<{ data: Consultation }> {
     const cid = requireClinicId(clinicId);
+
     const consultation = await this.consultationRepo.findOne({ where: { id } });
+
     if (!consultation) {
       throw new NotFoundException(`Consultation with id ${id} not found`);
     }
+
     await this.authz.assertOwnership(
       { type: 'consultation', entity: consultation },
       actor,
@@ -156,10 +184,13 @@ export class ConsultationsService {
 
     Object.assign(consultation, dto);
     consultation.clinicId = cid;
+
     if (dto.date) {
       consultation.date = new Date(dto.date);
     }
+
     const saved = await this.consultationRepo.save(consultation);
+
     return { data: saved };
   }
 
@@ -169,20 +200,26 @@ export class ConsultationsService {
     actor: AuthActor,
   ): Promise<{ data: Consultation }> {
     const cid = requireClinicId(clinicId);
+
     const consultation = await this.consultationRepo.findOne({ where: { id } });
+
     if (!consultation) {
       throw new NotFoundException(`Consultation with id ${id} not found`);
     }
+
     await this.authz.assertOwnership(
       { type: 'consultation', entity: consultation },
       actor,
     );
+
     if (consultation.status === 'locked') {
       throw new ForbiddenException(
         'Consultation is locked and cannot be deleted',
       );
     }
+
     await this.consultationRepo.remove(consultation);
+
     return { data: consultation };
   }
 }
