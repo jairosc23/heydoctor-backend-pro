@@ -204,8 +204,9 @@ export class ConsultationsService {
         .replace(/\\/g, '\\\\')
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
+      // PostgreSQL: sin ESCAPE, `\` no trata `%`/`_` como literales; evita patrones rotos y 500 en la query.
       qb.andWhere(
-        `(COALESCE(patient.name, '') ILIKE :q OR COALESCE(patient.email, '') ILIKE :q)`,
+        `(COALESCE(patient.name, '') ILIKE :q ESCAPE '\\' OR COALESCE(patient.email, '') ILIKE :q ESCAPE '\\')`,
         { q: `%${escaped}%` },
       );
     }
@@ -243,14 +244,15 @@ export class ConsultationsService {
 
       return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
-      console.error('QUERY FAILED:', error);
       const message = error instanceof Error ? error.message : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
           context: paginate ? 'consultations.findAll.paginated' : 'consultations.findAll',
           error: message,
         }),
+        stack,
       );
       throw new InternalServerErrorException('Query failed');
     }
