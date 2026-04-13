@@ -8,7 +8,7 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AiService } from '../ai/ai.service';
 import { AuditService } from '../audit/audit.service';
@@ -228,10 +228,14 @@ export class ConsultationsService {
           : undefined;
 
     try {
+      // `getManyAndCount()` con varios joins a veces genera SQL de conteo inválido en Postgres;
+      // `getCount()` + `getMany()` es más estable.
+      const total = await qb.clone().getCount();
+
       if (paginate && skip !== undefined && limit !== undefined) {
         qb.skip(skip).take(limit);
       }
-      const [data, total] = await qb.getManyAndCount();
+      const data = await qb.getMany();
 
       if (!paginate) {
         return { data, total, page: 1, limit: total };
@@ -244,13 +248,19 @@ export class ConsultationsService {
 
       return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
+      const pgDetail =
+        error instanceof QueryFailedError
+          ? String((error as QueryFailedError & { driverError?: { message?: string } })
+              .driverError?.message ?? error.message)
+          : error instanceof Error
+            ? error.message
+            : String(error);
       const stack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
           context: paginate ? 'consultations.findAll.paginated' : 'consultations.findAll',
-          error: message,
+          error: pgDetail,
         }),
         stack,
       );

@@ -6,7 +6,7 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
@@ -49,7 +49,7 @@ export class PatientsService {
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        `(COALESCE(p.name, '') ILIKE :q OR COALESCE(p.email, '') ILIKE :q)`,
+        `(COALESCE(p.name, '') ILIKE :q ESCAPE '\\' OR COALESCE(p.email, '') ILIKE :q ESCAPE '\\')`,
         { q: `%${escaped}%` },
       );
     }
@@ -71,10 +71,12 @@ export class PatientsService {
           : undefined;
 
     try {
+      const total = await qb.clone().getCount();
+
       if (paginate && skip !== undefined && limit !== undefined) {
         qb.skip(skip).take(limit);
       }
-      const [data, total] = await qb.getManyAndCount();
+      const data = await qb.getMany();
 
       if (!paginate) {
         return { data, total, page: 1, limit: total };
@@ -87,14 +89,21 @@ export class PatientsService {
 
       return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
-      console.error('QUERY FAILED:', error);
-      const message = error instanceof Error ? error.message : String(error);
+      const pgDetail =
+        error instanceof QueryFailedError
+          ? String((error as QueryFailedError & { driverError?: { message?: string } })
+              .driverError?.message ?? error.message)
+          : error instanceof Error
+            ? error.message
+            : String(error);
+      const stack = error instanceof Error ? error.stack : undefined;
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
           context: paginate ? 'patients.findAll.paginated' : 'patients.findAll',
-          error: message,
+          error: pgDetail,
         }),
+        stack,
       );
       throw new InternalServerErrorException('Query failed');
     }
