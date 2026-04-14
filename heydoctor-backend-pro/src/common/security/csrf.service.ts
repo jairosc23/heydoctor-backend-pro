@@ -44,6 +44,17 @@ export class CsrfService {
     if (path.endsWith('/auth/magic-link')) {
       return true;
     }
+    /**
+     * El SPA (Vercel) llama refresh/logout con `credentials: include` y la cookie HttpOnly
+     * `refresh_token`, pero sin cabecera `X-CSRF-Token` (igual patrón que login). Sin exención,
+     * `CsrfMiddleware` responde 403 y la sesión parece “rota”.
+     */
+    if (path.endsWith('/auth/refresh')) {
+      return true;
+    }
+    if (path.endsWith('/auth/logout')) {
+      return true;
+    }
     if (path.endsWith('/payku/webhook')) {
       return true;
     }
