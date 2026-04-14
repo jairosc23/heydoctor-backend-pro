@@ -204,9 +204,8 @@ export class ConsultationsService {
         .replace(/\\/g, '\\\\')
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
-      // PostgreSQL: sin ESCAPE, `\` no trata `%`/`_` como literales; evita patrones rotos y 500 en la query.
       qb.andWhere(
-        `(COALESCE(patient.name, '') ILIKE :q ESCAPE '\\' OR COALESCE(patient.email, '') ILIKE :q ESCAPE '\\')`,
+        `(COALESCE(patient.name, '') ILIKE :q OR COALESCE(patient.email, '') ILIKE :q)`,
         { q: `%${escaped}%` },
       );
     }
