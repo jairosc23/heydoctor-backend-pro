@@ -49,11 +49,10 @@ export class PatientsService {
         .replace(/%/g, '\\%')
         .replace(/_/g, '\\_');
       qb.andWhere(
-        `(COALESCE(p.name, '') ILIKE :q ESCAPE '\\' OR COALESCE(p.email, '') ILIKE :q ESCAPE '\\')`,
+        `(COALESCE(p.name, '') ILIKE :q OR COALESCE(p.email, '') ILIKE :q)`,
         { q: `%${escaped}%` },
       );
     }
-
     const paginate =
       query !== undefined &&
       (query.page !== undefined ||
