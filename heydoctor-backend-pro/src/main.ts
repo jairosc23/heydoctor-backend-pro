@@ -96,6 +96,7 @@ async function bootstrap() {
       'Accept',
       'X-CSRF-Token',
       'X-Request-Id',
+      'X-Region',
       'X-HeyDoctor-Consultation-Id',
       'X-HeyDoctor-Call-Id',
     ],

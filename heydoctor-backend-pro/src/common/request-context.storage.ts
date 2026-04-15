@@ -4,6 +4,8 @@ export type RequestContextStore = {
   requestId: string;
   /** HTTP path (sin query string; evita filtrar tokens en logs). */
   path?: string;
+  /** Región efectiva (`x-region` / default) para trazas geo-routing. */
+  geoRegion?: string;
   /** UUID de usuario enmascarada para trazas (no PII directo). */
   userId?: string;
   /** Optional correlation from `X-HeyDoctor-Consultation-Id` (UUID). */

@@ -15,3 +15,10 @@ export const DEFAULT_QUEUE_JOB_OPTIONS: DefaultJobOptions = {
   removeOnComplete: 1000,
   removeOnFail: false,
 };
+
+/** BullMQ: mayor número = mayor prioridad en la cola. */
+export const QUEUE_JOB_PRIORITY = {
+  pdf: 15,
+  email: 8,
+  webhook: 2,
+} as const;

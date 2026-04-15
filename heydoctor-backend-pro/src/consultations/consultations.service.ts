@@ -6,6 +6,7 @@ import {
   Injectable,
   InternalServerErrorException,
   NotFoundException,
+  Optional,
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -25,6 +26,7 @@ import {
   reviveConsultationsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
+import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
@@ -82,6 +84,9 @@ export class ConsultationsService {
   constructor(
     @InjectRepository(Consultation)
     private readonly consultationsRepository: Repository<Consultation>,
+    @Optional()
+    @InjectRepository(Consultation, TYPEORM_READ_CONNECTION)
+    private readonly consultationsReadRepository: Repository<Consultation> | undefined,
     private readonly authorizationService: AuthorizationService,
     private readonly consentService: ConsentService,
     private readonly auditService: AuditService,
@@ -96,6 +101,11 @@ export class ConsultationsService {
     private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {}
 
+  /** Lecturas escalables: réplica si existe; escrituras usan siempre `consultationsRepository`. */
+  private consultForRead(): Repository<Consultation> {
+    return this.consultationsReadRepository ?? this.consultationsRepository;
+  }
+
   private async bumpConsultationsListCache(clinicId: string): Promise<void> {
     try {
       await bumpClinicListCacheVersion(this.cache, 'consultations', clinicId);
@@ -109,7 +119,7 @@ export class ConsultationsService {
     id: string,
     clinicId: string,
   ): Promise<Consultation | null> {
-    return this.consultationsRepository.findOne({
+    return this.consultForRead().findOne({
       where: { id, clinicId },
     });
   }
@@ -250,7 +260,7 @@ export class ConsultationsService {
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
 
-    const qb = this.consultationsRepository
+    const qb = this.consultForRead()
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
       .innerJoin('c.clinic', 'clinic')
@@ -413,7 +423,7 @@ export class ConsultationsService {
   ): Promise<Consultation> {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const consultation = await this.consultationsRepository.findOne({
+    const consultation = await this.consultForRead().findOne({
       where: { id, clinicId },
       relations: { patient: true },
     });
@@ -445,7 +455,7 @@ export class ConsultationsService {
   ): Promise<ConsultationAiSnapshot> {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const row = await this.consultationsRepository.findOne({
+    const row = await this.consultForRead().findOne({
       where: { id, clinicId },
       select: {
         id: true,

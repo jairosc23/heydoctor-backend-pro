@@ -1,7 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
 import type { JobsOptions, Queue } from 'bullmq';
-import { DEFAULT_QUEUE_JOB_OPTIONS } from './queue.constants';
+import { DEFAULT_QUEUE_JOB_OPTIONS, QUEUE_JOB_PRIORITY } from './queue.constants';
 import {
   emailQueueJobId,
   pdfQueueJobId,
@@ -39,7 +39,10 @@ export class QueueProducerService {
       recipientKey,
       dedupeExtra: data.dedupe,
     });
-    return this.emailQueue.add('email', data, mergeOpts(jobId, opts));
+    return this.emailQueue.add('email', data, mergeOpts(jobId, {
+      priority: QUEUE_JOB_PRIORITY.email,
+      ...opts,
+    }));
   }
 
   addPdfJob(
@@ -53,7 +56,10 @@ export class QueueProducerService {
       resourceId,
       variant: data.variant,
     });
-    return this.pdfQueue.add('pdf', data, mergeOpts(jobId, opts));
+    return this.pdfQueue.add('pdf', data, mergeOpts(jobId, {
+      priority: QUEUE_JOB_PRIORITY.pdf,
+      ...opts,
+    }));
   }
 
   addWebhookJob(
@@ -67,6 +73,9 @@ export class QueueProducerService {
       targetKey,
       payloadDigest: data.payloadDigest,
     });
-    return this.webhookQueue.add('webhook', data, mergeOpts(jobId, opts));
+    return this.webhookQueue.add('webhook', data, mergeOpts(jobId, {
+      priority: QUEUE_JOB_PRIORITY.webhook,
+      ...opts,
+    }));
   }
 }

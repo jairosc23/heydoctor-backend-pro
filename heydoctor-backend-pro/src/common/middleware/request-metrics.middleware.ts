@@ -5,6 +5,7 @@ import { APP_LOGGER } from '../logger/logger.tokens';
 import type { AppLoggerService } from '../logger/app-logger.service';
 import { HttpLoadTrackerService } from '../observability/http-load-tracker.service';
 import { PrometheusService } from '../observability/prometheus.service';
+import { getRequestContext } from '../request-context.storage';
 
 /**
  * Al cerrar la respuesta (`finish`), registra duración y código HTTP con el contexto ALS
@@ -57,11 +58,13 @@ export class RequestMetricsMiddleware implements NestMiddleware {
         durationBucket = 'gte500';
       }
       const rollingP95MsApprox = this.pushRollingAndApproxP95(durationMs);
+      const ctx = getRequestContext();
       this.log.log('http_request', {
         statusCode,
         durationMs,
         durationBucket,
         isError,
+        ...(ctx?.geoRegion ? { geoRegion: ctx.geoRegion } : {}),
         ...(rollingP95MsApprox !== undefined
           ? { rollingP95MsApprox }
           : {}),

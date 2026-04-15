@@ -4,6 +4,7 @@ import {
   Inject,
   Injectable,
   InternalServerErrorException,
+  Optional,
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -22,6 +23,7 @@ import {
   entityListCacheHardStoreTtlMs,
   revivePatientsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
+import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 import { HttpLoadTrackerService } from '../common/observability/http-load-tracker.service';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
@@ -37,6 +39,9 @@ export class PatientsService {
   constructor(
     @InjectRepository(Patient)
     private readonly patientsRepository: Repository<Patient>,
+    @Optional()
+    @InjectRepository(Patient, TYPEORM_READ_CONNECTION)
+    private readonly patientsReadRepository: Repository<Patient> | undefined,
     private readonly authorizationService: AuthorizationService,
     private readonly auditService: AuditService,
     @Inject(APP_LOGGER)
@@ -45,6 +50,11 @@ export class PatientsService {
     private readonly swrListRefreshLock: SwrListRefreshLockService,
     private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {}
+
+  /** Listados: réplica de lectura si está configurada. */
+  private patientsForList(): Repository<Patient> {
+    return this.patientsReadRepository ?? this.patientsRepository;
+  }
 
   async findAll(
     authUser: AuthenticatedUser,
@@ -124,7 +134,7 @@ export class PatientsService {
     clinicId: string,
     query?: PatientsListQueryDto,
   ): Promise<PaginatedResult<Patient>> {
-    const qb = this.patientsRepository
+    const qb = this.patientsForList()
       .createQueryBuilder('p')
       .innerJoin('p.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })

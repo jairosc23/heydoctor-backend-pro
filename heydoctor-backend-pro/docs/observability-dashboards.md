@@ -1,5 +1,7 @@
 # Paneles estándar (Prometheus / Grafana)
 
+Umbrales y reglas de alerta de ejemplo: [`prometheus-alerts.md`](./prometheus-alerts.md).
+
 Métricas HTTP: histograma `http_request_duration_seconds` (`method`, `route`, `status_code`).  
 Colas: `bullmq_queue_jobs` (`queue`, `state` ∈ `waiting` | `active` | `failed`).
 

@@ -51,11 +51,22 @@ import { ObservabilityModule } from './common/observability/observability.module
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
 import { QueueModule } from './queue/queue.module';
+import { TYPEORM_READ_CONNECTION } from './common/database/typeorm-read-replica';
+import { LoadSheddingMiddleware } from './common/middleware/load-shedding.middleware';
 import { RegionModule } from './common/region/region.module';
 import { CostAwareThrottlerGuard } from './common/throttler/cost-aware-throttler.guard';
 import { throttlerTrackerIpAndOptionalUser } from './common/throttler/throttler-tracker.util';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
+const readReplicaUrl = process.env.DATABASE_READ_REPLICA_URL?.trim();
+
+const typeOrmShared = {
+  type: 'postgres' as const,
+  ssl: { rejectUnauthorized: false },
+  autoLoadEntities: true,
+  synchronize: false,
+  logging: process.env.NODE_ENV === 'production' ? false : true,
+};
 
 @Module({
   imports: [
@@ -72,15 +83,20 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     QueueModule.forRoot(),
     JwtUserCacheModule,
     TypeOrmModule.forRoot({
-      type: 'postgres',
+      ...typeOrmShared,
       url: dbUrl,
-      ssl: { rejectUnauthorized: false },
-      autoLoadEntities: true,
-      synchronize: false,
-      logging: process.env.NODE_ENV === 'production' ? false : true,
       migrations: [join(__dirname, 'migrations', '*.{js,ts}')],
       migrationsRun: true,
     }),
+    ...(readReplicaUrl
+      ? [
+          TypeOrmModule.forRoot({
+            ...typeOrmShared,
+            name: TYPEORM_READ_CONNECTION,
+            url: readReplicaUrl,
+          }),
+        ]
+      : []),
     ScheduleModule.forRoot(),
     ThrottlerModule.forRootAsync({
       useFactory: () => {
@@ -216,6 +232,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     { provide: ThrottlerGuard, useClass: CostAwareThrottlerGuard },
     RequestIdMiddleware,
     RequestMetricsMiddleware,
+    LoadSheddingMiddleware,
     { provide: APP_INTERCEPTOR, useClass: UserRequestContextInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
@@ -226,6 +243,7 @@ export class AppModule implements NestModule {
       .apply(
         RequestIdMiddleware,
         RequestMetricsMiddleware,
+        LoadSheddingMiddleware,
         cookieParser(),
         CsrfMiddleware,
       )

@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { RegionRoutingService } from '../region/region-routing.service';
 import { sanitizePathForLog } from '../http-path.util';
 import { enterRequestContext } from '../request-context.storage';
 
@@ -44,6 +45,8 @@ function pickOptionalUuidHeader(
  */
 @Injectable()
 export class RequestIdMiddleware implements NestMiddleware {
+  constructor(private readonly regionRouting: RegionRoutingService) {}
+
   use(req: Request, res: Response, next: NextFunction): void {
     const requestId = pickRequestId(req);
     req.requestId = requestId;
@@ -53,7 +56,8 @@ export class RequestIdMiddleware implements NestMiddleware {
     );
     const callId = pickOptionalUuidHeader(req.headers['x-heydoctor-call-id']);
     const path = sanitizePathForLog(req.originalUrl ?? req.url ?? '');
-    enterRequestContext({ requestId, path, consultationId, callId });
+    const geoRegion = this.regionRouting.resolveRequestRegion(req.headers);
+    enterRequestContext({ requestId, path, geoRegion, consultationId, callId });
     next();
   }
 }
