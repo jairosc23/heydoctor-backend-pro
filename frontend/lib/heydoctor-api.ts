@@ -4,9 +4,12 @@
  *
  * `heydoctorFetch`: peticiones con `credentials: 'include'`, Bearer si hay token en
  * `localStorage`, y ante 401 una sola ronda de refresh deduplicado (evita “refresh storms”).
+ * Cabecera interna `x-hd-retried: 1` en el reintento evita bucles si el 401 persiste.
  */
 
 import { apiCredentialsInit } from './api-credentials';
+
+const HEADER_HD_RETRIED = 'x-hd-retried';
 
 export const HEYDOCTOR_ACCESS_TOKEN_STORAGE_KEY = 'heydoctor_access_token';
 
@@ -120,6 +123,17 @@ function mergeHeydoctorInit(init?: RequestInit): RequestInit {
   };
 }
 
+function initWithRetryMarker(init?: RequestInit): RequestInit {
+  const headers = new Headers(init?.headers);
+  headers.set(HEADER_HD_RETRIED, '1');
+  return { ...init, headers };
+}
+
+function isAlreadyRetriedInit(init?: RequestInit): boolean {
+  const h = new Headers(init?.headers);
+  return h.get(HEADER_HD_RETRIED) === '1';
+}
+
 /**
  * `fetch` al API Nest con cookies + Bearer; si la respuesta es 401, intenta refresh
  * (deduplicado) y reintenta la misma petición una vez.
@@ -128,6 +142,9 @@ export async function heydoctorFetch(
   input: RequestInfo | URL,
   init?: RequestInit,
 ): Promise<Response> {
+  if (isAlreadyRetriedInit(init)) {
+    return fetch(input, mergeHeydoctorInit(init));
+  }
   const first = await fetch(input, mergeHeydoctorInit(init));
   if (first.status !== 401) {
     return first;
@@ -136,5 +153,5 @@ export async function heydoctorFetch(
   if (!refreshed) {
     return first;
   }
-  return fetch(input, mergeHeydoctorInit(init));
+  return fetch(input, mergeHeydoctorInit(initWithRetryMarker(init)));
 }

@@ -36,13 +36,13 @@ import { CsrfService } from '../common/security/csrf.service';
 const REFRESH_COOKIE = 'refresh_token';
 const DEFAULT_REFRESH_MS = 7 * 24 * 60 * 60 * 1000;
 
-const CROSS_SITE_HTTP_ONLY_COOKIE_BASE = {
+/** Cookie `refresh_token` para SPAs cross-site (Vercel → Railway). */
+const REFRESH_COOKIE_OPTIONS = {
   httpOnly: true as const,
   secure: true as const,
   sameSite: 'none' as const,
+  path: '/' as const,
 };
-
-const REFRESH_COOKIE_PATH = '/';
 
 @Controller('auth')
 export class AuthController {
@@ -67,16 +67,14 @@ export class AuthController {
 
   private setRefreshCookie(res: Response, token: string): void {
     res.cookie(REFRESH_COOKIE, token, {
-      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
-      path: REFRESH_COOKIE_PATH,
+      ...REFRESH_COOKIE_OPTIONS,
       maxAge: this.refreshCookieMaxAgeMs(),
     });
   }
 
   private clearRefreshCookie(res: Response): void {
     res.clearCookie(REFRESH_COOKIE, {
-      ...CROSS_SITE_HTTP_ONLY_COOKIE_BASE,
-      path: REFRESH_COOKIE_PATH,
+      ...REFRESH_COOKIE_OPTIONS,
     });
   }
 

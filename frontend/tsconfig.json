@@ -13,6 +13,9 @@
     "isolatedModules": true
   },
   "include": [
+    "types/next-cache.d.ts",
+    "lib/actions/revalidate-doctors.ts",
+    "app/api/revalidate/doctors/route.ts",
     "hooks/useTelemedicineCall.ts",
     "lib/webrtc-connection-quality.ts",
     "lib/fetch-webrtc-ice-servers.ts",

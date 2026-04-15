@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type CSSProperties, type FormEvent } from 'react';
+import { revalidateDoctorsTag } from '../lib/actions/revalidate-doctors';
 import {
   registerDoctor,
   type RegisterDoctorPayload,
@@ -33,6 +34,11 @@ export function DoctorOnboardingForm({
     setDone(null);
     try {
       const r = await registerDoctor(backendOrigin, form);
+      try {
+        await revalidateDoctorsTag();
+      } catch {
+        // Sin App Router / next/cache el action puede fallar; el alta ya fue correcta.
+      }
       setDone('Registro exitoso. Ya puede iniciar sesión.');
       onRegistered?.({ email: r.email, profileSlug: r.profileSlug });
     } catch (err) {

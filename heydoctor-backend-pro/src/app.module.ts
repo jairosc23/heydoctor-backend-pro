@@ -45,6 +45,7 @@ import { WebrtcModule } from './webrtc/webrtc.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 import { UserRequestContextInterceptor } from './common/interceptors/user-request-context.interceptor';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
+import { RequestMetricsMiddleware } from './common/middleware/request-metrics.middleware';
 import { ObservabilityModule } from './common/observability/observability.module';
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
@@ -201,6 +202,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
   providers: [
     ThrottlerGuard,
     RequestIdMiddleware,
+    RequestMetricsMiddleware,
     { provide: APP_INTERCEPTOR, useClass: UserRequestContextInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
@@ -208,7 +210,12 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
     consumer
-      .apply(RequestIdMiddleware, cookieParser(), CsrfMiddleware)
+      .apply(
+        RequestIdMiddleware,
+        RequestMetricsMiddleware,
+        cookieParser(),
+        CsrfMiddleware,
+      )
       .forRoutes('*');
   }
 }
