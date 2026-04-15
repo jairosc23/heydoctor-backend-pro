@@ -24,13 +24,14 @@ import {
   LIST_CACHE_HARD_TTL_MS,
   entityListCacheHardStoreTtlMs,
   reviveConsultationsListFromCache,
-  scheduleEntityListSwrRefresh,
 } from '../common/cache/entity-list-cache.helper';
+import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
 import { getCurrentRequestId } from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { RegionRoutingService } from '../common/region/region-routing.service';
 import type { ConsultationsListQueryDto } from './dto/consultations-list-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { ConsentService } from '../consents/consent.service';
@@ -90,6 +91,8 @@ export class ConsultationsService {
     @Inject(ENV_CONFIG_TOKEN)
     private readonly env: EnvConfig,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    private readonly swrListRefreshLock: SwrListRefreshLockService,
+    private readonly regionRouting: RegionRoutingService,
   ) {}
 
   private async bumpConsultationsListCache(clinicId: string): Promise<void> {
@@ -137,7 +140,7 @@ export class ConsultationsService {
       doctorId: authUser.sub,
       chiefComplaint: dto.chiefComplaint.trim(),
       status: ConsultationStatus.DRAFT,
-      region: dto.region?.trim() ? dto.region.trim() : 'latam',
+      region: this.regionRouting.resolveStoredRegion(dto.region),
     });
     const saved = await this.consultationsRepository.save(entity);
 
@@ -191,7 +194,7 @@ export class ConsultationsService {
         if (age < LIST_CACHE_HARD_TTL_MS) {
           reviveConsultationsListFromCache(raw.payload);
           if (age >= LIST_CACHE_FRESH_MS) {
-            scheduleEntityListSwrRefresh(cacheKey, async () => {
+            this.swrListRefreshLock.scheduleRefresh(cacheKey, async () => {
               try {
                 const fresh = await runDb();
                 await this.cache.set(
@@ -679,7 +682,7 @@ export class ConsultationsService {
       consultation.status = dto.status;
     }
     if (dto.region !== undefined) {
-      consultation.region = dto.region.trim() ? dto.region.trim() : 'latam';
+      consultation.region = this.regionRouting.resolveStoredRegion(dto.region);
     }
 
     const saved = await this.consultationsRepository.save(consultation);

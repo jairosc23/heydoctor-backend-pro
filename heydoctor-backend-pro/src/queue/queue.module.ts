@@ -2,6 +2,7 @@ import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Module } from '@nestjs/common';
 import { DEFAULT_QUEUE_JOB_OPTIONS } from './queue.constants';
 import { QueueDlqBridgeService } from './queue-dlq-bridge.service';
+import { QueueProducerService } from './queue-producer.service';
 import {
   EmailDlqLogProcessor,
   PdfDlqLogProcessor,
@@ -57,8 +58,9 @@ export class QueueModule {
         PdfDlqLogProcessor,
         WebhookDlqLogProcessor,
         QueueDlqBridgeService,
+        QueueProducerService,
       ],
-      exports: [BullModule],
+      exports: [BullModule, QueueProducerService],
     };
   }
 }

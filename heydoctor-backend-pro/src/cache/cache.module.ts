@@ -1,10 +1,12 @@
-import { Logger, Module } from '@nestjs/common';
+import { Global, Logger, Module } from '@nestjs/common';
 import { CacheModule as NestCacheModule } from '@nestjs/cache-manager';
 import KeyvRedis from '@keyv/redis';
 import { Keyv } from 'keyv';
+import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 
 const logger = new Logger('CacheModule');
 
+@Global()
 @Module({
   imports: [
     NestCacheModule.registerAsync({
@@ -28,6 +30,7 @@ const logger = new Logger('CacheModule');
       },
     }),
   ],
-  exports: [NestCacheModule],
+  providers: [SwrListRefreshLockService],
+  exports: [NestCacheModule, SwrListRefreshLockService],
 })
 export class AppCacheModule {}

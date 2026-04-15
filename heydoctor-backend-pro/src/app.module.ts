@@ -50,6 +50,7 @@ import { ObservabilityModule } from './common/observability/observability.module
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
 import { QueueModule } from './queue/queue.module';
+import { RegionModule } from './common/region/region.module';
 import { CostAwareThrottlerGuard } from './common/throttler/cost-aware-throttler.guard';
 import { throttlerTrackerIpAndOptionalUser } from './common/throttler/throttler-tracker.util';
 
@@ -63,6 +64,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     }),
     LoggerModule,
     ObservabilityModule,
+    RegionModule,
     CsrfModule,
     AppCacheModule,
     QueueModule.forRoot(),
@@ -84,7 +86,12 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
         return {
           throttlers: [
             {
-              name: 'default',
+              name: 'burst',
+              ttl: 5_000,
+              limit: 20,
+            },
+            {
+              name: 'sustain',
               ttl: 60_000,
               limit: 100,
             },

@@ -22,8 +22,8 @@ import {
   LIST_CACHE_HARD_TTL_MS,
   entityListCacheHardStoreTtlMs,
   revivePatientsListFromCache,
-  scheduleEntityListSwrRefresh,
 } from '../common/cache/entity-list-cache.helper';
+import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
@@ -42,6 +42,7 @@ export class PatientsService {
     @Inject(APP_LOGGER)
     private readonly logger: LoggerService,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
+    private readonly swrListRefreshLock: SwrListRefreshLockService,
   ) {}
 
   async findAll(
@@ -70,7 +71,7 @@ export class PatientsService {
         if (age < LIST_CACHE_HARD_TTL_MS) {
           revivePatientsListFromCache(raw.payload);
           if (age >= LIST_CACHE_FRESH_MS) {
-            scheduleEntityListSwrRefresh(cacheKey, async () => {
+            this.swrListRefreshLock.scheduleRefresh(cacheKey, async () => {
               try {
                 const fresh = await runDb();
                 await this.cache.set(

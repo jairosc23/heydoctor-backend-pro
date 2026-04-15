@@ -37,7 +37,7 @@ type IceCandidatePayload = SignalingPayload & {
   candidate: unknown;
 };
 
-@SkipThrottle()
+@SkipThrottle({ burst: true, sustain: true })
 @WebSocketGateway({
   namespace: '/webrtc',
   cors: {

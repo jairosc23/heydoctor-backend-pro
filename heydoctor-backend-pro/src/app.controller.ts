@@ -3,14 +3,14 @@ import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller()
 export class AppController {
-  @SkipThrottle()
+  @SkipThrottle({ burst: true, sustain: true })
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Get('/')
   root() {
     return 'ok';
   }
 
-  @SkipThrottle()
+  @SkipThrottle({ burst: true, sustain: true })
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Get('/health')
   health() {

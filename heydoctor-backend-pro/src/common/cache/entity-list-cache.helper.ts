@@ -33,8 +33,6 @@ export type EntityListCacheEnvelope<T> = {
   payload: PaginatedResult<T>;
 };
 
-const swrInflight = new Set<string>();
-
 export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
     return JSON.stringify(value);
@@ -82,24 +80,6 @@ export async function bumpClinicListCacheVersion(
   const k = `${p}${clinicId}`;
   const cur = (await cache.get<number>(k)) ?? 0;
   await cache.set(k, cur + 1, VER_TTL_MS);
-}
-
-/**
- * Stale-while-revalidate: si el valor está entre fresh y hard TTL, sirve y
- * `revalidate` se ejecuta una vez por clave (deduplicado en memoria).
- */
-export function scheduleEntityListSwrRefresh(
-  dedupeKey: string,
-  revalidate: () => Promise<void>,
-): void {
-  if (swrInflight.has(dedupeKey)) return;
-  swrInflight.add(dedupeKey);
-  void Promise.resolve()
-    .then(() => revalidate())
-    .catch(() => undefined)
-    .finally(() => {
-      swrInflight.delete(dedupeKey);
-    });
 }
 
 function coerceDate(value: unknown): Date | undefined {

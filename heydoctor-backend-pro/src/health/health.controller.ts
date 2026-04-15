@@ -3,7 +3,7 @@ import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller()
 export class HealthController {
-  @SkipThrottle()
+  @SkipThrottle({ burst: true, sustain: true })
   @Header('Content-Type', 'text/plain; charset=utf-8')
   @Get('/healthz')
   healthz() {
@@ -16,7 +16,7 @@ export class HealthController {
  */
 @Controller('health')
 export class HealthApiController {
-  @SkipThrottle()
+  @SkipThrottle({ burst: true, sustain: true })
   @Get()
   health(): { ok: true; service: string } {
     return { ok: true, service: 'heydoctor-backend-pro' };
