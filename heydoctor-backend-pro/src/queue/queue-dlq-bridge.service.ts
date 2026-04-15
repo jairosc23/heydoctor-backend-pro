@@ -45,8 +45,13 @@ export class QueueDlqBridgeService implements OnModuleInit, OnModuleDestroy {
           try {
             const job = await main.getJob(jobId);
             if (!job) return;
-            const max = job.opts.attempts ?? 5;
-            if (job.attemptsMade < max) return;
+            const rawAttempts = job.opts.attempts;
+            const attempts =
+              typeof rawAttempts === 'number' && rawAttempts >= 1
+                ? rawAttempts
+                : 1;
+            // Solo DLQ cuando se agotaron los intentos configurados (evita copias en fallos intermedios).
+            if (job.attemptsMade < attempts) return;
             await dlq.add(
               'dead',
               {

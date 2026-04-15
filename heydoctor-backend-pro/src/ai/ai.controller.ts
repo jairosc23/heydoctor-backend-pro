@@ -1,4 +1,5 @@
 import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { ThrottleRouteCost } from '../common/throttler/throttle-route-cost.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
@@ -17,6 +18,7 @@ export class AiController {
   constructor(private readonly aiService: AiService) {}
 
   @Post('consultation-summary')
+  @ThrottleRouteCost(5)
   consultationSummary(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: GenerateAiDto,
@@ -28,6 +30,7 @@ export class AiController {
    * Non-blocking clinical decision support: differentials and education only.
    */
   @Post('consultation-assist')
+  @ThrottleRouteCost(5)
   consultationAssist(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: ConsultationAssistDto,

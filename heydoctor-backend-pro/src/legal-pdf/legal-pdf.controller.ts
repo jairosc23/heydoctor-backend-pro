@@ -6,6 +6,7 @@ import {
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
+import { ThrottleRouteCost } from '../common/throttler/throttle-route-cost.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -25,6 +26,7 @@ export class LegalPdfController {
   constructor(private readonly legalPdfService: LegalPdfService) {}
 
   @Get('consultation/:id/pdf')
+  @ThrottleRouteCost(4)
   async consultationPdf(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

@@ -8,6 +8,18 @@ import type { PaginatedResult } from '../types/paginated-result.type';
 export const LIST_CACHE_FRESH_MS = 30_000;
 /** TTL duro en almacén (Keyv); tras esto se recarga síncrono. */
 export const LIST_CACHE_HARD_TTL_MS = 180_000;
+/** Jitter máximo (ms) sumado al TTL duro al persistir, para no expirar todas las claves a la vez. */
+export const LIST_CACHE_HARD_TTL_JITTER_MS = 5_000;
+
+/**
+ * TTL efectivo para `cache.set` de listas (hard + jitter 0–{@link LIST_CACHE_HARD_TTL_JITTER_MS}).
+ */
+export function entityListCacheHardStoreTtlMs(): number {
+  return (
+    LIST_CACHE_HARD_TTL_MS +
+    Math.floor(Math.random() * (LIST_CACHE_HARD_TTL_JITTER_MS + 1))
+  );
+}
 
 const VER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PAT_VER_PREFIX = 'hd:cache:patients:v:';

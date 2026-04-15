@@ -25,6 +25,7 @@ import { SubscriptionPlan } from '../subscriptions/subscription.entity';
 import { AuditService } from '../audit/audit.service';
 import { extractClientHttpMeta } from '../common/http/client-meta.util';
 import { maskOptionalUuid } from '../common/observability/log-masking.util';
+import { ThrottleRouteCost } from '../common/throttler/throttle-route-cost.decorator';
 import { ConsultationsService } from './consultations.service';
 import { CreateConsultationDto } from './dto/create-consultation.dto';
 import { SignConsultationDto } from './dto/sign-consultation.dto';
@@ -81,6 +82,7 @@ export class ConsultationsController {
   }
 
   @Get(':id/ai')
+  @ThrottleRouteCost(4)
   @UseGuards(FeatureGuard)
   @RequirePlan(SubscriptionPlan.PRO)
   getConsultationAi(
@@ -125,6 +127,7 @@ export class ConsultationsController {
   }
 
   @Post(':id/start-call')
+  @ThrottleRouteCost(2)
   @UseGuards(FeatureGuard)
   @RequirePlan(SubscriptionPlan.PRO)
   startCall(
@@ -135,6 +138,7 @@ export class ConsultationsController {
   }
 
   @Post(':id/sign')
+  @ThrottleRouteCost(3)
   sign(
     @CurrentUser() user: AuthenticatedUser,
     @Param('id', new ParseUUIDPipe({ version: '4' })) id: string,

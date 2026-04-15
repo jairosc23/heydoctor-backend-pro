@@ -50,6 +50,7 @@ import { ObservabilityModule } from './common/observability/observability.module
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
 import { QueueModule } from './queue/queue.module';
+import { CostAwareThrottlerGuard } from './common/throttler/cost-aware-throttler.guard';
 import { throttlerTrackerIpAndOptionalUser } from './common/throttler/throttler-tracker.util';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
@@ -203,7 +204,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
   ],
   controllers: [AppController, HealthController, HealthApiController],
   providers: [
-    ThrottlerGuard,
+    { provide: ThrottlerGuard, useClass: CostAwareThrottlerGuard },
     RequestIdMiddleware,
     RequestMetricsMiddleware,
     { provide: APP_INTERCEPTOR, useClass: UserRequestContextInterceptor },

@@ -22,6 +22,7 @@ import {
   isCacheEnvelope,
   LIST_CACHE_FRESH_MS,
   LIST_CACHE_HARD_TTL_MS,
+  entityListCacheHardStoreTtlMs,
   reviveConsultationsListFromCache,
   scheduleEntityListSwrRefresh,
 } from '../common/cache/entity-list-cache.helper';
@@ -136,10 +137,7 @@ export class ConsultationsService {
       doctorId: authUser.sub,
       chiefComplaint: dto.chiefComplaint.trim(),
       status: ConsultationStatus.DRAFT,
-      region:
-        dto.region !== undefined && dto.region !== null
-          ? dto.region.trim() || null
-          : null,
+      region: dto.region?.trim() ? dto.region.trim() : 'latam',
     });
     const saved = await this.consultationsRepository.save(entity);
 
@@ -199,7 +197,7 @@ export class ConsultationsService {
                 await this.cache.set(
                   cacheKey,
                   { storedAt: Date.now(), payload: fresh },
-                  LIST_CACHE_HARD_TTL_MS,
+                  entityListCacheHardStoreTtlMs(),
                 );
               } catch {
                 /* noop */
@@ -233,7 +231,7 @@ export class ConsultationsService {
       await this.cache.set(
         cacheKey,
         { storedAt: Date.now(), payload: result },
-        LIST_CACHE_HARD_TTL_MS,
+        entityListCacheHardStoreTtlMs(),
       );
     } catch {
       /* noop */
@@ -334,10 +332,10 @@ export class ConsultationsService {
       if (useCursor) {
         const c = assertValidCursor(query!.cursor);
         const cAt = new Date(c.t);
-        qb.andWhere(
-          '(c.createdAt < :cAt OR (c.createdAt = :cAt AND c.id < :cId))',
-          { cAt, cId: c.id },
-        );
+        qb.andWhere('(c.createdAt, c.id) < (:cAt, :cId)', {
+          cAt,
+          cId: c.id,
+        });
         const pageSize = Math.min(query!.limit ?? 20, 100);
         qb.take(pageSize + 1);
         const rows = await qb.getMany();
@@ -681,7 +679,7 @@ export class ConsultationsService {
       consultation.status = dto.status;
     }
     if (dto.region !== undefined) {
-      consultation.region = dto.region.trim() || null;
+      consultation.region = dto.region.trim() ? dto.region.trim() : 'latam';
     }
 
     const saved = await this.consultationsRepository.save(consultation);

@@ -20,6 +20,7 @@ import {
   isCacheEnvelope,
   LIST_CACHE_FRESH_MS,
   LIST_CACHE_HARD_TTL_MS,
+  entityListCacheHardStoreTtlMs,
   revivePatientsListFromCache,
   scheduleEntityListSwrRefresh,
 } from '../common/cache/entity-list-cache.helper';
@@ -75,7 +76,7 @@ export class PatientsService {
                 await this.cache.set(
                   cacheKey,
                   { storedAt: Date.now(), payload: fresh },
-                  LIST_CACHE_HARD_TTL_MS,
+                  entityListCacheHardStoreTtlMs(),
                 );
               } catch {
                 /* noop */
@@ -109,7 +110,7 @@ export class PatientsService {
       await this.cache.set(
         cacheKey,
         { storedAt: Date.now(), payload: result },
-        LIST_CACHE_HARD_TTL_MS,
+        entityListCacheHardStoreTtlMs(),
       );
     } catch {
       /* noop */
@@ -163,10 +164,10 @@ export class PatientsService {
       if (useCursor) {
         const c = assertValidCursor(query!.cursor);
         const cAt = new Date(c.t);
-        qb.andWhere(
-          '(p.createdAt < :cAt OR (p.createdAt = :cAt AND p.id < :cId))',
-          { cAt, cId: c.id },
-        );
+        qb.andWhere('(p.createdAt, p.id) < (:cAt, :cId)', {
+          cAt,
+          cId: c.id,
+        });
         const pageSize = Math.min(query!.limit ?? 20, 100);
         qb.take(pageSize + 1);
         const rows = await qb.getMany();
