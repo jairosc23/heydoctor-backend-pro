@@ -24,6 +24,7 @@ import {
   revivePatientsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
 import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
+import { withReadReplicaFallback } from '../common/database/read-replica-fallback.util';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 import { HttpLoadTrackerService } from '../common/observability/http-load-tracker.service';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
@@ -50,11 +51,6 @@ export class PatientsService {
     private readonly swrListRefreshLock: SwrListRefreshLockService,
     private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {}
-
-  /** Listados: réplica de lectura si está configurada. */
-  private patientsForList(): Repository<Patient> {
-    return this.patientsReadRepository ?? this.patientsRepository;
-  }
 
   async findAll(
     authUser: AuthenticatedUser,
@@ -134,7 +130,21 @@ export class PatientsService {
     clinicId: string,
     query?: PatientsListQueryDto,
   ): Promise<PaginatedResult<Patient>> {
-    const qb = this.patientsForList()
+    return withReadReplicaFallback(
+      this.patientsReadRepository,
+      this.patientsRepository,
+      (repo) => this.executeLoadPatientsList(repo, clinicId, query),
+      this.logger,
+      'patients.list',
+    );
+  }
+
+  private async executeLoadPatientsList(
+    repo: Repository<Patient>,
+    clinicId: string,
+    query?: PatientsListQueryDto,
+  ): Promise<PaginatedResult<Patient>> {
+    const qb = repo
       .createQueryBuilder('p')
       .innerJoin('p.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })

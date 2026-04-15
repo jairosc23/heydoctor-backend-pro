@@ -3,6 +3,7 @@ import {
   LIST_CACHE_FRESH_MS,
   LIST_CACHE_HARD_TTL_MS,
 } from '../cache/entity-list-cache.helper';
+import { MitigationHooksService } from '../resilience/mitigation-hooks.service';
 
 const WINDOW_SEC = 5;
 const MAX_BUCKETS = 128;
@@ -17,6 +18,8 @@ const LIST_CACHE_FRESH_CAP_MS = Math.min(120_000, LIST_CACHE_HARD_TTL_MS - 15_00
  */
 @Injectable()
 export class HttpLoadTrackerService {
+  constructor(private readonly mitigationHooks: MitigationHooksService) {}
+
   private readonly perSecond = new Map<number, number>();
   /** Conteo de peticiones entrantes (antes de completar) para load shedding. */
   private readonly incomingPerSecond = new Map<number, number>();
@@ -69,6 +72,11 @@ export class HttpLoadTrackerService {
   getEntityListFreshMs(): number {
     const qps = this.getSmoothedQps();
     const extra = Math.floor(qps * FRESH_EXTRA_PER_QPS_MS);
-    return Math.min(LIST_CACHE_FRESH_CAP_MS, LIST_CACHE_FRESH_MS + Math.max(0, extra));
+    const mit = this.mitigationHooks.getMitigationFreshBoostMs();
+    const base = Math.min(
+      LIST_CACHE_FRESH_CAP_MS,
+      LIST_CACHE_FRESH_MS + Math.max(0, extra),
+    );
+    return Math.min(LIST_CACHE_HARD_TTL_MS - 5_000, base + mit);
   }
 }

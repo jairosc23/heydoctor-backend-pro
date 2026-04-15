@@ -27,10 +27,14 @@ import {
 } from '../common/cache/entity-list-cache.helper';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
+import { withReadReplicaFallback } from '../common/database/read-replica-fallback.util';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
-import { getCurrentRequestId } from '../common/request-context.storage';
+import {
+  getCurrentRequestId,
+  getRequestContext,
+} from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { HttpLoadTrackerService } from '../common/observability/http-load-tracker.service';
 import { RegionRoutingService } from '../common/region/region-routing.service';
@@ -101,9 +105,22 @@ export class ConsultationsService {
     private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {}
 
-  /** Lecturas escalables: réplica si existe; escrituras usan siempre `consultationsRepository`. */
-  private consultForRead(): Repository<Consultation> {
-    return this.consultationsReadRepository ?? this.consultationsRepository;
+  private enforceWriteRegion(
+    consultation: Consultation,
+    dtoRegion?: string | null,
+  ): void {
+    const ctx = getRequestContext();
+    const effective =
+      dtoRegion !== undefined
+        ? this.regionRouting.resolveStoredRegion(dtoRegion)
+        : consultation.region;
+    this.regionRouting.assertEntityRegionConsistency(
+      'write',
+      effective,
+      ctx?.geoRegion ?? this.regionRouting.defaultRegion,
+      Boolean(ctx?.geoRegionWasExplicit),
+      this.logger,
+    );
   }
 
   private async bumpConsultationsListCache(clinicId: string): Promise<void> {
@@ -119,9 +136,13 @@ export class ConsultationsService {
     id: string,
     clinicId: string,
   ): Promise<Consultation | null> {
-    return this.consultForRead().findOne({
-      where: { id, clinicId },
-    });
+    return withReadReplicaFallback(
+      this.consultationsReadRepository,
+      this.consultationsRepository,
+      (r) => r.findOne({ where: { id, clinicId } }),
+      this.logger,
+      'consultations.findByIdForClinic',
+    );
   }
 
   async create(
@@ -139,6 +160,13 @@ export class ConsultationsService {
     if (!consent) {
       throw new ForbiddenException('Consent required before consultation');
     }
+
+    const ctx = getRequestContext();
+    this.regionRouting.assertCreateRegionMatchesRequest(
+      Boolean(ctx?.geoRegionWasExplicit),
+      dto.region,
+      ctx?.geoRegion ?? this.regionRouting.defaultRegion,
+    );
 
     const entity = this.consultationsRepository.create({
       patientId: dto.patientId,
@@ -257,10 +285,24 @@ export class ConsultationsService {
     clinicId: string,
     query?: ConsultationsListQueryDto,
   ): Promise<PaginatedResult<Consultation>> {
+    return withReadReplicaFallback(
+      this.consultationsReadRepository,
+      this.consultationsRepository,
+      (repo) => this.executeLoadConsultationsList(repo, clinicId, query),
+      this.logger,
+      'consultations.list',
+    );
+  }
+
+  private async executeLoadConsultationsList(
+    repo: Repository<Consultation>,
+    clinicId: string,
+    query?: ConsultationsListQueryDto,
+  ): Promise<PaginatedResult<Consultation>> {
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
 
-    const qb = this.consultForRead()
+    const qb = repo
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
       .innerJoin('c.clinic', 'clinic')
@@ -423,10 +465,17 @@ export class ConsultationsService {
   ): Promise<Consultation> {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const consultation = await this.consultForRead().findOne({
-      where: { id, clinicId },
-      relations: { patient: true },
-    });
+    const consultation = await withReadReplicaFallback(
+      this.consultationsReadRepository,
+      this.consultationsRepository,
+      (r) =>
+        r.findOne({
+          where: { id, clinicId },
+          relations: { patient: true },
+        }),
+      this.logger,
+      'consultations.findOne',
+    );
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
     }
@@ -434,6 +483,14 @@ export class ConsultationsService {
       authUser,
       consultation.clinicId,
       user,
+    );
+    const ctx = getRequestContext();
+    this.regionRouting.assertEntityRegionConsistency(
+      'read',
+      consultation.region,
+      ctx?.geoRegion ?? this.regionRouting.defaultRegion,
+      Boolean(ctx?.geoRegionWasExplicit),
+      this.logger,
     );
     return consultation;
   }
@@ -455,17 +512,25 @@ export class ConsultationsService {
   ): Promise<ConsultationAiSnapshot> {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const row = await this.consultForRead().findOne({
-      where: { id, clinicId },
-      select: {
-        id: true,
-        aiSummary: true,
-        aiSuggestedDiagnosis: true,
-        aiImprovedNotes: true,
-        aiGeneratedAt: true,
-        clinicId: true,
-      },
-    });
+    const row = await withReadReplicaFallback(
+      this.consultationsReadRepository,
+      this.consultationsRepository,
+      (r) =>
+        r.findOne({
+          where: { id, clinicId },
+          select: {
+            id: true,
+            aiSummary: true,
+            aiSuggestedDiagnosis: true,
+            aiImprovedNotes: true,
+            aiGeneratedAt: true,
+            clinicId: true,
+            region: true,
+          },
+        }),
+      this.logger,
+      'consultations.getConsultationAi',
+    );
     if (!row) {
       throw new NotFoundException('Consultation not found');
     }
@@ -473,6 +538,14 @@ export class ConsultationsService {
       authUser,
       row.clinicId,
       user,
+    );
+    const ctx = getRequestContext();
+    this.regionRouting.assertEntityRegionConsistency(
+      'read',
+      row.region,
+      ctx?.geoRegion ?? this.regionRouting.defaultRegion,
+      Boolean(ctx?.geoRegionWasExplicit),
+      this.logger,
     );
     return {
       summary: row.aiSummary ?? null,
@@ -505,6 +578,8 @@ export class ConsultationsService {
       consultation.clinicId,
       user,
     );
+
+    this.enforceWriteRegion(consultation);
 
     if (
       consultation.status !== ConsultationStatus.IN_PROGRESS &&
@@ -551,6 +626,8 @@ export class ConsultationsService {
       consultation.clinicId,
       user,
     );
+
+    this.enforceWriteRegion(consultation);
 
     if (authUser.role !== UserRole.DOCTOR) {
       throw new ForbiddenException('Only doctor can sign first');
@@ -635,6 +712,8 @@ export class ConsultationsService {
       consultation.clinicId,
       user,
     );
+
+    this.enforceWriteRegion(consultation, dto.region);
 
     if (consultation.status === ConsultationStatus.LOCKED) {
       throw new ForbiddenException(
@@ -838,6 +917,8 @@ export class ConsultationsService {
       consultation.clinicId,
       user,
     );
+
+    this.enforceWriteRegion(consultation);
 
     if (consultation.status === ConsultationStatus.LOCKED) {
       throw new ForbiddenException(

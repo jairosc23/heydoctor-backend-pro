@@ -116,7 +116,7 @@ const typeOrmShared = {
             {
               name: 'loginEmail',
               ttl: 15 * 60_000,
-              limit: 8,
+              limit: 5,
               skipIf: (context: ExecutionContext) => {
                 const req = context.switchToHttp().getRequest<Request>();
                 if (req.method !== 'POST') {
@@ -145,7 +145,7 @@ const typeOrmShared = {
             {
               name: 'loginIp',
               ttl: 15 * 60_000,
-              limit: 40,
+              limit: 25,
               skipIf: (context: ExecutionContext) => {
                 const req = context.switchToHttp().getRequest<Request>();
                 if (req.method !== 'POST') {
@@ -162,7 +162,7 @@ const typeOrmShared = {
             {
               name: 'magicLink',
               ttl: 60 * 60_000,
-              limit: 20,
+              limit: 12,
               skipIf: (context: ExecutionContext) => {
                 const req = context.switchToHttp().getRequest<Request>();
                 if (req.method !== 'POST') {

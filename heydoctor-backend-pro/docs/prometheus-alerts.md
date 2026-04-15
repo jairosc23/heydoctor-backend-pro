@@ -65,4 +65,19 @@ sum(rate(http_request_duration_seconds_count[5m]))
 
 ## Réplica de lectura
 
-Monitorear lag de réplica en Postgres (fuera de la app): si el lag supera el SLA, desactivar temporalmente `DATABASE_READ_REPLICA_URL` o escalar réplica.
+Monitorear lag de réplica en Postgres (fuera de la app): si el lag supera el SLA, desactivar temporalmente `DATABASE_READ_REPLICA_URL` o escalar réplica. Las lecturas de listados reintentan automáticamente en el primario si la réplica falla.
+
+## Mitigación automática (hooks)
+
+La app acumula **refuerzo de TTL soft de caché** cuando el load shedding detecta presión (`MitigationHooksService.notifyLoadPressure`). Para acciones operadas por alertas:
+
+| Acción | Mecanismo |
+|--------|-----------|
+| Más margen de caché | Llamar en runtime `MitigationHooksService.applyAlertMitigation({ cacheFreshBoostMs: 30000 })` (p. ej. desde un webhook interno tras alerta de saturación). |
+| Pausar colas | `applyAlertMitigation({ pauseQueues: true })` solo tiene efecto si `MITIGATION_ALERT_PAUSE_QUEUES=true` en el entorno (pausa `email`, `pdf`, `webhook`). **Reanudar** con `queue.resume()` en Redis/CLI o despliegue. |
+
+**Runbook Alertmanager (ejemplo):** receptor `webhook_configs` → servicio interno que traduzca el payload y invoque el método anterior (o escale réplicas en lugar de pausar colas en producción clínica).
+
+## Tráfico sospechoso
+
+Logs estructurados `security_suspicious_traffic` cuando una IP supera ~**800** hits en ventana **60 s** (throttle de log ~45 s por IP). Revisar WAF / bloqueo upstream.

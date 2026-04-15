@@ -4,10 +4,14 @@ import type { LoggerService } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import { APP_LOGGER } from '../../common/logger/logger.tokens';
 import { maskOptionalUuid } from '../../common/observability/log-masking.util';
+import { QUEUE_WORKER_LIMITER } from '../queue-worker.constants';
 
 /** Cola `pdf`: generación asíncrona de documentos (p. ej. legal PDF). */
 @Injectable()
-@Processor('pdf', { concurrency: 2 })
+@Processor('pdf', {
+  concurrency: 2,
+  limiter: QUEUE_WORKER_LIMITER.pdf,
+})
 export class PdfQueueProcessor extends WorkerHost {
   constructor(@Inject(APP_LOGGER) private readonly log: LoggerService) {
     super();

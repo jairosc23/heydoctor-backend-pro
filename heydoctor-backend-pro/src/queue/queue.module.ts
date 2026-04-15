@@ -1,8 +1,10 @@
 import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Module } from '@nestjs/common';
+import { ResilienceModule } from '../common/resilience/resilience.module';
 import { DEFAULT_QUEUE_JOB_OPTIONS } from './queue.constants';
 import { QueueDlqBridgeService } from './queue-dlq-bridge.service';
 import { QueueMetricsService } from './queue-metrics.service';
+import { QueueMitigationRegistrarService } from './queue-mitigation-registrar.service';
 import { QueueProducerService } from './queue-producer.service';
 import {
   EmailDlqLogProcessor,
@@ -36,6 +38,7 @@ export class QueueModule {
     return {
       module: QueueModule,
       imports: [
+        ResilienceModule,
         BullModule.forRoot({
           connection: {
             url,
@@ -60,6 +63,7 @@ export class QueueModule {
         WebhookDlqLogProcessor,
         QueueDlqBridgeService,
         QueueMetricsService,
+        QueueMitigationRegistrarService,
         QueueProducerService,
       ],
       exports: [BullModule, QueueProducerService],

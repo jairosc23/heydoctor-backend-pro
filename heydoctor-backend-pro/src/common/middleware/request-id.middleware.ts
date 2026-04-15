@@ -56,8 +56,19 @@ export class RequestIdMiddleware implements NestMiddleware {
     );
     const callId = pickOptionalUuidHeader(req.headers['x-heydoctor-call-id']);
     const path = sanitizePathForLog(req.originalUrl ?? req.url ?? '');
+    const explicitHeader =
+      Boolean(
+        this.regionRouting.getRawRegionHeader(req.headers)?.trim().length,
+      );
     const geoRegion = this.regionRouting.resolveRequestRegion(req.headers);
-    enterRequestContext({ requestId, path, geoRegion, consultationId, callId });
+    enterRequestContext({
+      requestId,
+      path,
+      geoRegion,
+      geoRegionWasExplicit: explicitHeader,
+      consultationId,
+      callId,
+    });
     next();
   }
 }

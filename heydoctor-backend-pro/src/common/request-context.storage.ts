@@ -6,6 +6,8 @@ export type RequestContextStore = {
   path?: string;
   /** Región efectiva (`x-region` / default) para trazas geo-routing. */
   geoRegion?: string;
+  /** True si el cliente envió `x-region` explícito. */
+  geoRegionWasExplicit?: boolean;
   /** UUID de usuario enmascarada para trazas (no PII directo). */
   userId?: string;
   /** Optional correlation from `X-HeyDoctor-Consultation-Id` (UUID). */
