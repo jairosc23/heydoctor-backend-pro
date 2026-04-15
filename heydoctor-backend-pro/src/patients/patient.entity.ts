@@ -11,6 +11,7 @@ import { Clinic } from '../clinic/clinic.entity';
 
 @Entity('patients')
 @Index('UQ_patients_clinic_email', ['clinic', 'email'], { unique: true })
+@Index('IDX_patients_clinic_created_at', ['clinicId', 'createdAt'])
 export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;

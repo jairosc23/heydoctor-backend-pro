@@ -33,7 +33,10 @@ export class EnvConfig {
   // ── CORS ──
   readonly corsOrigin: string[];
 
-  // ── CACHE / REDIS (optional) ──
+  /**
+   * Redis opcional: caché Keyv (`AppCacheModule`), Throttler distribuido, BullMQ (`QueueModule`).
+   * Compatible con Railway Redis y Upstash (`rediss://`).
+   */
   readonly redisUrl: string | null;
 
   // ── PAYKU ──

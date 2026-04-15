@@ -21,6 +21,7 @@ import { ConsultationStatus } from './consultation-status.enum';
  * Columnas clínicas: `chief_complaint`, `treatment_plan`; `status` → `consultations_status_enum`.
  */
 @Index(['clinic', 'createdAt'])
+@Index('IDX_consultations_patient_created_at', ['patientId', 'createdAt'])
 @Entity('consultations')
 export class Consultation {
   @PrimaryGeneratedColumn('uuid')

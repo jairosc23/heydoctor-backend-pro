@@ -1,3 +1,4 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   ConflictException,
   Inject,
@@ -6,10 +7,18 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { Cache } from 'cache-manager';
 import { QueryFailedError, Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AuditService } from '../audit/audit.service';
 import { AuthorizationService } from '../authorization/authorization.service';
+import {
+  bumpClinicListCacheVersion,
+  entityListCacheKey,
+  ENTITY_LIST_CACHE_TTL_MS,
+  getClinicListCacheVersion,
+  revivePatientsListFromCache,
+} from '../common/cache/entity-list-cache.helper';
 import type { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
@@ -26,6 +35,7 @@ export class PatientsService {
     private readonly auditService: AuditService,
     @Inject(APP_LOGGER)
     private readonly logger: LoggerService,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
 
   async findAll(
@@ -34,6 +44,22 @@ export class PatientsService {
   ): Promise<PaginatedResult<Patient>> {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
+
+    try {
+      const ver = await getClinicListCacheVersion(
+        this.cache,
+        'patients',
+        clinicId,
+      );
+      const cacheKey = entityListCacheKey('pat', clinicId, ver, query ?? {});
+      const hit = await this.cache.get<PaginatedResult<Patient>>(cacheKey);
+      if (hit) {
+        revivePatientsListFromCache(hit);
+        return hit;
+      }
+    } catch {
+      /* Redis / Keyv indisponible: continuar sin caché */
+    }
 
     const qb = this.patientsRepository
       .createQueryBuilder('p')
@@ -77,16 +103,30 @@ export class PatientsService {
       }
       const data = await qb.getMany();
 
+      let result: PaginatedResult<Patient>;
       if (!paginate) {
-        return { data, total, page: 1, limit: total };
+        result = { data, total, page: 1, limit: total };
+      } else {
+        const resolvedPage =
+          offset !== undefined && limit !== undefined && limit > 0
+            ? Math.floor(offset / limit) + 1
+            : page;
+        result = { data, total, page: resolvedPage, limit: limit ?? 20 };
       }
 
-      const resolvedPage =
-        offset !== undefined && limit !== undefined && limit > 0
-          ? Math.floor(offset / limit) + 1
-          : page;
+      try {
+        const ver = await getClinicListCacheVersion(
+          this.cache,
+          'patients',
+          clinicId,
+        );
+        const cacheKey = entityListCacheKey('pat', clinicId, ver, query ?? {});
+        await this.cache.set(cacheKey, result, ENTITY_LIST_CACHE_TTL_MS);
+      } catch {
+        /* noop */
+      }
 
-      return { data, total, page: resolvedPage, limit: limit ?? 20 };
+      return result;
     } catch (error) {
       const pgDetail =
         error instanceof QueryFailedError
@@ -148,6 +188,12 @@ export class PatientsService {
       httpStatus: 201,
       metadata: { email: saved.email },
     });
+
+    try {
+      await bumpClinicListCacheVersion(this.cache, 'patients', clinicId);
+    } catch {
+      /* noop */
+    }
 
     this.logger.log('Patient created', {
       patientId: maskUuid(saved.id),

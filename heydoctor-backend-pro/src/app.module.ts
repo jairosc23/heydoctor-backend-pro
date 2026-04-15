@@ -49,6 +49,7 @@ import { RequestMetricsMiddleware } from './common/middleware/request-metrics.mi
 import { ObservabilityModule } from './common/observability/observability.module';
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
+import { QueueModule } from './queue/queue.module';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 
@@ -62,6 +63,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
     ObservabilityModule,
     CsrfModule,
     AppCacheModule,
+    QueueModule.forRoot(),
     JwtUserCacheModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -82,7 +84,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
             {
               name: 'default',
               ttl: 60_000,
-              limit: 120,
+              limit: 100,
             },
             {
               name: 'loginEmail',

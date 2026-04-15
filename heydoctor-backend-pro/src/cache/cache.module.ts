@@ -10,6 +10,7 @@ const logger = new Logger('CacheModule');
     NestCacheModule.registerAsync({
       isGlobal: true,
       useFactory: async () => {
+        /** Railway Redis, Upstash u otro compatible con URL `redis(s)://`. */
         const redisUrl = process.env.REDIS_URL?.trim();
         if (redisUrl) {
           return {

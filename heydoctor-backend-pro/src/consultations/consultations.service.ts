@@ -1,3 +1,4 @@
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   ForbiddenException,
@@ -8,10 +9,18 @@ import {
   type LoggerService,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import type { Cache } from 'cache-manager';
 import { QueryFailedError, Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 import { AiService } from '../ai/ai.service';
 import { AuditService } from '../audit/audit.service';
+import {
+  bumpClinicListCacheVersion,
+  entityListCacheKey,
+  ENTITY_LIST_CACHE_TTL_MS,
+  getClinicListCacheVersion,
+  reviveConsultationsListFromCache,
+} from '../common/cache/entity-list-cache.helper';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
 import { getCurrentRequestId } from '../common/request-context.storage';
@@ -74,7 +83,16 @@ export class ConsultationsService {
     private readonly logger: LoggerService,
     @Inject(ENV_CONFIG_TOKEN)
     private readonly env: EnvConfig,
+    @Inject(CACHE_MANAGER) private readonly cache: Cache,
   ) {}
+
+  private async bumpConsultationsListCache(clinicId: string): Promise<void> {
+    try {
+      await bumpClinicListCacheVersion(this.cache, 'consultations', clinicId);
+    } catch {
+      /* noop */
+    }
+  }
 
   /** Scoped lookup for billing / integrations (no auth side-effects). */
   async findByIdForClinic(
@@ -116,6 +134,8 @@ export class ConsultationsService {
     });
     const saved = await this.consultationsRepository.save(entity);
 
+    await this.bumpConsultationsListCache(clinicId);
+
     void this.auditService.logSuccess({
       userId: authUser.sub,
       action: 'CONSULTATION_CREATED',
@@ -144,6 +164,23 @@ export class ConsultationsService {
   ): Promise<PaginatedResult<Consultation>> {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
+
+    try {
+      const ver = await getClinicListCacheVersion(
+        this.cache,
+        'consultations',
+        clinicId,
+      );
+      const cacheKey = entityListCacheKey('cons', clinicId, ver, query ?? {});
+      const hit =
+        await this.cache.get<PaginatedResult<Consultation>>(cacheKey);
+      if (hit) {
+        reviveConsultationsListFromCache(hit);
+        return hit;
+      }
+    } catch {
+      /* sin caché */
+    }
 
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
@@ -239,16 +276,30 @@ export class ConsultationsService {
       }
       const data = await qb.getMany();
 
+      let result: PaginatedResult<Consultation>;
       if (!paginate) {
-        return { data, total, page: 1, limit: total };
+        result = { data, total, page: 1, limit: total };
+      } else {
+        const resolvedPage =
+          offset !== undefined && limit !== undefined && limit > 0
+            ? Math.floor(offset / limit) + 1
+            : page;
+        result = { data, total, page: resolvedPage, limit: limit ?? 20 };
       }
 
-      const resolvedPage =
-        offset !== undefined && limit !== undefined && limit > 0
-          ? Math.floor(offset / limit) + 1
-          : page;
+      try {
+        const ver = await getClinicListCacheVersion(
+          this.cache,
+          'consultations',
+          clinicId,
+        );
+        const cacheKey = entityListCacheKey('cons', clinicId, ver, query ?? {});
+        await this.cache.set(cacheKey, result, ENTITY_LIST_CACHE_TTL_MS);
+      } catch {
+        /* noop */
+      }
 
-      return { data, total, page: resolvedPage, limit: limit ?? 20 };
+      return result;
     } catch (error) {
       const pgDetail =
         error instanceof QueryFailedError
@@ -378,6 +429,7 @@ export class ConsultationsService {
     if (consultation.status === ConsultationStatus.DRAFT) {
       consultation.status = ConsultationStatus.IN_PROGRESS;
       await this.consultationsRepository.save(consultation);
+      await this.bumpConsultationsListCache(clinicId);
     }
 
     void this.auditService.logSuccess({
@@ -443,6 +495,8 @@ export class ConsultationsService {
     consultation.status = ConsultationStatus.SIGNED;
 
     const saved = await this.consultationsRepository.save(consultation);
+
+    await this.bumpConsultationsListCache(saved.clinicId);
 
     logConsultationStatusChange({
       auditService: this.auditService,
@@ -551,6 +605,8 @@ export class ConsultationsService {
     }
 
     const saved = await this.consultationsRepository.save(consultation);
+
+    await this.bumpConsultationsListCache(saved.clinicId ?? clinicId);
 
     const clinicalDocumentationChanged =
       saved.chiefComplaint !== prevChiefComplaint ||
