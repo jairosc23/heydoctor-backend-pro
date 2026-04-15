@@ -17,10 +17,15 @@ import { AuditService } from '../audit/audit.service';
 import {
   bumpClinicListCacheVersion,
   entityListCacheKey,
-  ENTITY_LIST_CACHE_TTL_MS,
+  type EntityListCacheEnvelope,
   getClinicListCacheVersion,
+  isCacheEnvelope,
+  LIST_CACHE_FRESH_MS,
+  LIST_CACHE_HARD_TTL_MS,
   reviveConsultationsListFromCache,
+  scheduleEntityListSwrRefresh,
 } from '../common/cache/entity-list-cache.helper';
+import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
 import { getCurrentRequestId } from '../common/request-context.storage';
@@ -131,6 +136,10 @@ export class ConsultationsService {
       doctorId: authUser.sub,
       chiefComplaint: dto.chiefComplaint.trim(),
       status: ConsultationStatus.DRAFT,
+      region:
+        dto.region !== undefined && dto.region !== null
+          ? dto.region.trim() || null
+          : null,
     });
     const saved = await this.consultationsRepository.save(entity);
 
@@ -165,6 +174,9 @@ export class ConsultationsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
+    const runDb = (): Promise<PaginatedResult<Consultation>> =>
+      this.loadConsultationsList(clinicId, query);
+
     try {
       const ver = await getClinicListCacheVersion(
         this.cache,
@@ -172,29 +184,77 @@ export class ConsultationsService {
         clinicId,
       );
       const cacheKey = entityListCacheKey('cons', clinicId, ver, query ?? {});
-      const hit =
-        await this.cache.get<PaginatedResult<Consultation>>(cacheKey);
-      if (hit) {
-        reviveConsultationsListFromCache(hit);
-        return hit;
+      const raw = await this.cache.get<
+        EntityListCacheEnvelope<Consultation> | PaginatedResult<Consultation>
+      >(cacheKey);
+
+      if (isCacheEnvelope<Consultation>(raw)) {
+        const age = Date.now() - raw.storedAt;
+        if (age < LIST_CACHE_HARD_TTL_MS) {
+          reviveConsultationsListFromCache(raw.payload);
+          if (age >= LIST_CACHE_FRESH_MS) {
+            scheduleEntityListSwrRefresh(cacheKey, async () => {
+              try {
+                const fresh = await runDb();
+                await this.cache.set(
+                  cacheKey,
+                  { storedAt: Date.now(), payload: fresh },
+                  LIST_CACHE_HARD_TTL_MS,
+                );
+              } catch {
+                /* noop */
+              }
+            });
+          }
+          return raw.payload;
+        }
+      } else if (
+        raw &&
+        typeof raw === 'object' &&
+        'data' in raw &&
+        Array.isArray((raw as PaginatedResult<Consultation>).data)
+      ) {
+        const legacy = raw as PaginatedResult<Consultation>;
+        reviveConsultationsListFromCache(legacy);
+        return legacy;
       }
     } catch {
       /* sin caché */
     }
 
+    const result = await runDb();
+    try {
+      const ver = await getClinicListCacheVersion(
+        this.cache,
+        'consultations',
+        clinicId,
+      );
+      const cacheKey = entityListCacheKey('cons', clinicId, ver, query ?? {});
+      await this.cache.set(
+        cacheKey,
+        { storedAt: Date.now(), payload: result },
+        LIST_CACHE_HARD_TTL_MS,
+      );
+    } catch {
+      /* noop */
+    }
+    return result;
+  }
+
+  private async loadConsultationsList(
+    clinicId: string,
+    query?: ConsultationsListQueryDto,
+  ): Promise<PaginatedResult<Consultation>> {
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
 
-    /**
-     * QueryBuilder con joins explícitos.
-     * Ignora `query.clinicId` (viene del JWT, no del query string).
-     */
     const qb = this.consultationsRepository
       .createQueryBuilder('c')
       .leftJoinAndSelect('c.patient', 'patient')
       .innerJoin('c.clinic', 'clinic')
       .where('c.clinicId = :clinicId', { clinicId })
-      .orderBy('c.createdAt', 'DESC');
+      .orderBy('c.createdAt', 'DESC')
+      .addOrderBy('c.id', 'DESC');
 
     if (query?.patientId) {
       qb.andWhere('c.patientId = :patientId', {
@@ -252,7 +312,9 @@ export class ConsultationsService {
       );
     }
 
+    const useCursor = Boolean(query?.cursor?.trim());
     const paginate =
+      !useCursor &&
       query !== undefined &&
       (query.page !== undefined ||
         query.limit !== undefined ||
@@ -269,6 +331,33 @@ export class ConsultationsService {
           : undefined;
 
     try {
+      if (useCursor) {
+        const c = assertValidCursor(query!.cursor);
+        const cAt = new Date(c.t);
+        qb.andWhere(
+          '(c.createdAt < :cAt OR (c.createdAt = :cAt AND c.id < :cId))',
+          { cAt, cId: c.id },
+        );
+        const pageSize = Math.min(query!.limit ?? 20, 100);
+        qb.take(pageSize + 1);
+        const rows = await qb.getMany();
+        const hasMore = rows.length > pageSize;
+        const data = hasMore ? rows.slice(0, pageSize) : rows;
+        const last = data[data.length - 1];
+        const nextCursor =
+          hasMore && last
+            ? encodeListCursor(last.createdAt, last.id)
+            : null;
+        return {
+          data,
+          total: -1,
+          page: 1,
+          limit: pageSize,
+          nextCursor,
+          hasMore,
+        };
+      }
+
       const total = await qb.clone().getCount();
 
       if (paginate && skip !== undefined && limit !== undefined) {
@@ -276,30 +365,16 @@ export class ConsultationsService {
       }
       const data = await qb.getMany();
 
-      let result: PaginatedResult<Consultation>;
       if (!paginate) {
-        result = { data, total, page: 1, limit: total };
-      } else {
-        const resolvedPage =
-          offset !== undefined && limit !== undefined && limit > 0
-            ? Math.floor(offset / limit) + 1
-            : page;
-        result = { data, total, page: resolvedPage, limit: limit ?? 20 };
+        return { data, total, page: 1, limit: total };
       }
 
-      try {
-        const ver = await getClinicListCacheVersion(
-          this.cache,
-          'consultations',
-          clinicId,
-        );
-        const cacheKey = entityListCacheKey('cons', clinicId, ver, query ?? {});
-        await this.cache.set(cacheKey, result, ENTITY_LIST_CACHE_TTL_MS);
-      } catch {
-        /* noop */
-      }
+      const resolvedPage =
+        offset !== undefined && limit !== undefined && limit > 0
+          ? Math.floor(offset / limit) + 1
+          : page;
 
-      return result;
+      return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
       const pgDetail =
         error instanceof QueryFailedError
@@ -317,9 +392,11 @@ export class ConsultationsService {
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
-          context: paginate
-            ? 'consultations.findAll.paginated'
-            : 'consultations.findAll',
+          context: useCursor
+            ? 'consultations.findAll.cursor'
+            : paginate
+              ? 'consultations.findAll.paginated'
+              : 'consultations.findAll',
           error: pgDetail,
         }),
         stack,
@@ -602,6 +679,9 @@ export class ConsultationsService {
     }
     if (dto.status !== undefined) {
       consultation.status = dto.status;
+    }
+    if (dto.region !== undefined) {
+      consultation.region = dto.region.trim() || null;
     }
 
     const saved = await this.consultationsRepository.save(consultation);

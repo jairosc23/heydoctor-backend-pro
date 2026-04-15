@@ -1,5 +1,12 @@
 import { BullModule } from '@nestjs/bullmq';
 import { DynamicModule, Module } from '@nestjs/common';
+import { DEFAULT_QUEUE_JOB_OPTIONS } from './queue.constants';
+import { QueueDlqBridgeService } from './queue-dlq-bridge.service';
+import {
+  EmailDlqLogProcessor,
+  PdfDlqLogProcessor,
+  WebhookDlqLogProcessor,
+} from './processors/dlq-log.processor';
 import { EmailQueueProcessor } from './processors/email-queue.processor';
 import { PdfQueueProcessor } from './processors/pdf-queue.processor';
 import { WebhookQueueProcessor } from './processors/webhook-queue.processor';
@@ -34,15 +41,22 @@ export class QueueModule {
           },
         }),
         BullModule.registerQueue(
-          { name: 'email' },
-          { name: 'pdf' },
-          { name: 'webhook' },
+          { name: 'email', defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS },
+          { name: 'pdf', defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS },
+          { name: 'webhook', defaultJobOptions: DEFAULT_QUEUE_JOB_OPTIONS },
+          { name: 'email-dlq' },
+          { name: 'pdf-dlq' },
+          { name: 'webhook-dlq' },
         ),
       ],
       providers: [
         EmailQueueProcessor,
         PdfQueueProcessor,
         WebhookQueueProcessor,
+        EmailDlqLogProcessor,
+        PdfDlqLogProcessor,
+        WebhookDlqLogProcessor,
+        QueueDlqBridgeService,
       ],
       exports: [BullModule],
     };

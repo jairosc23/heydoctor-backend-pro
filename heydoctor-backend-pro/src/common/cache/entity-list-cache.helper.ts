@@ -4,12 +4,24 @@ import type { Consultation } from '../../consultations/consultation.entity';
 import type { Patient } from '../../patients/patient.entity';
 import type { PaginatedResult } from '../types/paginated-result.type';
 
-/** TTL de listados cacheados (pacientes / consultas por clínica). */
-export const ENTITY_LIST_CACHE_TTL_MS = 60_000;
+/** Tras este tiempo el valor sigue sirviéndose pero dispara revalidación en segundo plano. */
+export const LIST_CACHE_FRESH_MS = 30_000;
+/** TTL duro en almacén (Keyv); tras esto se recarga síncrono. */
+export const LIST_CACHE_HARD_TTL_MS = 180_000;
 
 const VER_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const PAT_VER_PREFIX = 'hd:cache:patients:v:';
 const CONS_VER_PREFIX = 'hd:cache:consultations:v:';
+
+/** @deprecated usar envelope + HARD_TTL */
+export const ENTITY_LIST_CACHE_TTL_MS = LIST_CACHE_HARD_TTL_MS;
+
+export type EntityListCacheEnvelope<T> = {
+  storedAt: number;
+  payload: PaginatedResult<T>;
+};
+
+const swrInflight = new Set<string>();
 
 export function stableStringify(value: unknown): string {
   if (value === null || typeof value !== 'object') {
@@ -60,6 +72,24 @@ export async function bumpClinicListCacheVersion(
   await cache.set(k, cur + 1, VER_TTL_MS);
 }
 
+/**
+ * Stale-while-revalidate: si el valor está entre fresh y hard TTL, sirve y
+ * `revalidate` se ejecuta una vez por clave (deduplicado en memoria).
+ */
+export function scheduleEntityListSwrRefresh(
+  dedupeKey: string,
+  revalidate: () => Promise<void>,
+): void {
+  if (swrInflight.has(dedupeKey)) return;
+  swrInflight.add(dedupeKey);
+  void Promise.resolve()
+    .then(() => revalidate())
+    .catch(() => undefined)
+    .finally(() => {
+      swrInflight.delete(dedupeKey);
+    });
+}
+
 function coerceDate(value: unknown): Date | undefined {
   if (value instanceof Date) return value;
   if (typeof value === 'string' || typeof value === 'number') {
@@ -101,4 +131,19 @@ export function reviveConsultationsListFromCache(
       if (pd) (c.patient as { createdAt: Date }).createdAt = pd;
     }
   }
+}
+
+export function isCacheEnvelope<T>(
+  raw: unknown,
+): raw is EntityListCacheEnvelope<T> {
+  return (
+    raw !== null &&
+    typeof raw === 'object' &&
+    'storedAt' in raw &&
+    'payload' in raw &&
+    typeof (raw as EntityListCacheEnvelope<T>).storedAt === 'number' &&
+    (raw as EntityListCacheEnvelope<T>).payload !== null &&
+    typeof (raw as EntityListCacheEnvelope<T>).payload === 'object' &&
+    Array.isArray((raw as EntityListCacheEnvelope<T>).payload.data)
+  );
 }

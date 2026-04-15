@@ -52,6 +52,7 @@ async function bootstrap() {
       { path: '/', method: RequestMethod.GET },
       { path: 'health', method: RequestMethod.GET },
       { path: 'healthz', method: RequestMethod.GET },
+      { path: 'metrics', method: RequestMethod.GET },
       /** Links mágicos para pacientes (sin `/api` en SMS/email). */
       { path: 'appointments/confirm/(.*)', method: RequestMethod.GET },
       { path: 'appointments/cancel/(.*)', method: RequestMethod.GET },

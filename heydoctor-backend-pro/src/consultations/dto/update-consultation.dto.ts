@@ -38,4 +38,9 @@ export class UpdateConsultationDto {
   @IsOptional()
   @IsEnum(ConsultationStatus)
   status?: ConsultationStatus;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  region?: string;
 }

@@ -104,6 +104,12 @@ export class Consultation {
   })
   status: ConsultationStatus;
 
+  /**
+   * Región / datacenter lógico (multi-región, cumplimiento). Opcional.
+   */
+  @Column({ type: 'varchar', length: 32, nullable: true })
+  region: string | null;
+
   @Column({ name: 'ai_summary', type: 'text', nullable: true })
   aiSummary: string | null;
 

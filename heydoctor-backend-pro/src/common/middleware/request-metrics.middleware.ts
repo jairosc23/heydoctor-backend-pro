@@ -3,6 +3,7 @@ import type { LoggerService } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { APP_LOGGER } from '../logger/logger.tokens';
 import type { AppLoggerService } from '../logger/app-logger.service';
+import { PrometheusService } from '../observability/prometheus.service';
 
 /**
  * Al cerrar la respuesta (`finish`), registra duración y código HTTP con el contexto ALS
@@ -15,7 +16,10 @@ export class RequestMetricsMiddleware implements NestMiddleware {
   private readonly log: AppLoggerService;
   private readonly rollingDurationsMs: number[] = [];
 
-  constructor(@Inject(APP_LOGGER) logger: LoggerService) {
+  constructor(
+    @Inject(APP_LOGGER) logger: LoggerService,
+    private readonly prometheus: PrometheusService,
+  ) {
     this.log = logger as AppLoggerService;
   }
 
@@ -60,6 +64,12 @@ export class RequestMetricsMiddleware implements NestMiddleware {
           ? { rollingP95MsApprox }
           : {}),
       });
+      this.prometheus.observeHttpRequest(
+        req.method,
+        req.originalUrl ?? req.url ?? '/',
+        statusCode,
+        durationMs,
+      );
     });
     next();
   }

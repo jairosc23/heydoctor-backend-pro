@@ -15,14 +15,19 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import {
   bumpClinicListCacheVersion,
   entityListCacheKey,
-  ENTITY_LIST_CACHE_TTL_MS,
+  type EntityListCacheEnvelope,
   getClinicListCacheVersion,
+  isCacheEnvelope,
+  LIST_CACHE_FRESH_MS,
+  LIST_CACHE_HARD_TTL_MS,
   revivePatientsListFromCache,
+  scheduleEntityListSwrRefresh,
 } from '../common/cache/entity-list-cache.helper';
-import type { PatientsListQueryDto } from './dto/patients-list-query.dto';
+import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
+import type { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { Patient } from './patient.entity';
 
@@ -45,6 +50,9 @@ export class PatientsService {
     const { clinicId } =
       await this.authorizationService.getUserWithClinic(authUser);
 
+    const runDb = (): Promise<PaginatedResult<Patient>> =>
+      this.loadPatientsList(clinicId, query);
+
     try {
       const ver = await getClinicListCacheVersion(
         this.cache,
@@ -52,20 +60,73 @@ export class PatientsService {
         clinicId,
       );
       const cacheKey = entityListCacheKey('pat', clinicId, ver, query ?? {});
-      const hit = await this.cache.get<PaginatedResult<Patient>>(cacheKey);
-      if (hit) {
-        revivePatientsListFromCache(hit);
-        return hit;
+      const raw = await this.cache.get<
+        EntityListCacheEnvelope<Patient> | PaginatedResult<Patient>
+      >(cacheKey);
+
+      if (isCacheEnvelope<Patient>(raw)) {
+        const age = Date.now() - raw.storedAt;
+        if (age < LIST_CACHE_HARD_TTL_MS) {
+          revivePatientsListFromCache(raw.payload);
+          if (age >= LIST_CACHE_FRESH_MS) {
+            scheduleEntityListSwrRefresh(cacheKey, async () => {
+              try {
+                const fresh = await runDb();
+                await this.cache.set(
+                  cacheKey,
+                  { storedAt: Date.now(), payload: fresh },
+                  LIST_CACHE_HARD_TTL_MS,
+                );
+              } catch {
+                /* noop */
+              }
+            });
+          }
+          return raw.payload;
+        }
+      } else if (
+        raw &&
+        typeof raw === 'object' &&
+        'data' in raw &&
+        Array.isArray((raw as PaginatedResult<Patient>).data)
+      ) {
+        const legacy = raw as PaginatedResult<Patient>;
+        revivePatientsListFromCache(legacy);
+        return legacy;
       }
     } catch {
-      /* Redis / Keyv indisponible: continuar sin caché */
+      /* sin caché */
     }
 
+    const result = await runDb();
+    try {
+      const ver = await getClinicListCacheVersion(
+        this.cache,
+        'patients',
+        clinicId,
+      );
+      const cacheKey = entityListCacheKey('pat', clinicId, ver, query ?? {});
+      await this.cache.set(
+        cacheKey,
+        { storedAt: Date.now(), payload: result },
+        LIST_CACHE_HARD_TTL_MS,
+      );
+    } catch {
+      /* noop */
+    }
+    return result;
+  }
+
+  private async loadPatientsList(
+    clinicId: string,
+    query?: PatientsListQueryDto,
+  ): Promise<PaginatedResult<Patient>> {
     const qb = this.patientsRepository
       .createQueryBuilder('p')
       .innerJoin('p.clinic', 'clinic')
       .where('clinic.id = :clinicId', { clinicId })
-      .orderBy('p.createdAt', 'DESC');
+      .orderBy('p.createdAt', 'DESC')
+      .addOrderBy('p.id', 'DESC');
 
     const rawSearch = query?.search;
     const search = typeof rawSearch === 'string' ? rawSearch.trim() : '';
@@ -79,7 +140,10 @@ export class PatientsService {
         { q: `%${escaped}%` },
       );
     }
+
+    const useCursor = Boolean(query?.cursor?.trim());
     const paginate =
+      !useCursor &&
       query !== undefined &&
       (query.page !== undefined ||
         query.limit !== undefined ||
@@ -96,6 +160,33 @@ export class PatientsService {
           : undefined;
 
     try {
+      if (useCursor) {
+        const c = assertValidCursor(query!.cursor);
+        const cAt = new Date(c.t);
+        qb.andWhere(
+          '(p.createdAt < :cAt OR (p.createdAt = :cAt AND p.id < :cId))',
+          { cAt, cId: c.id },
+        );
+        const pageSize = Math.min(query!.limit ?? 20, 100);
+        qb.take(pageSize + 1);
+        const rows = await qb.getMany();
+        const hasMore = rows.length > pageSize;
+        const data = hasMore ? rows.slice(0, pageSize) : rows;
+        const last = data[data.length - 1];
+        const nextCursor =
+          hasMore && last
+            ? encodeListCursor(last.createdAt, last.id)
+            : null;
+        return {
+          data,
+          total: -1,
+          page: 1,
+          limit: pageSize,
+          nextCursor,
+          hasMore,
+        };
+      }
+
       const total = await qb.clone().getCount();
 
       if (paginate && skip !== undefined && limit !== undefined) {
@@ -103,35 +194,23 @@ export class PatientsService {
       }
       const data = await qb.getMany();
 
-      let result: PaginatedResult<Patient>;
       if (!paginate) {
-        result = { data, total, page: 1, limit: total };
-      } else {
-        const resolvedPage =
-          offset !== undefined && limit !== undefined && limit > 0
-            ? Math.floor(offset / limit) + 1
-            : page;
-        result = { data, total, page: resolvedPage, limit: limit ?? 20 };
+        return { data, total, page: 1, limit: total };
       }
 
-      try {
-        const ver = await getClinicListCacheVersion(
-          this.cache,
-          'patients',
-          clinicId,
-        );
-        const cacheKey = entityListCacheKey('pat', clinicId, ver, query ?? {});
-        await this.cache.set(cacheKey, result, ENTITY_LIST_CACHE_TTL_MS);
-      } catch {
-        /* noop */
-      }
+      const resolvedPage =
+        offset !== undefined && limit !== undefined && limit > 0
+          ? Math.floor(offset / limit) + 1
+          : page;
 
-      return result;
+      return { data, total, page: resolvedPage, limit: limit ?? 20 };
     } catch (error) {
       const pgDetail =
         error instanceof QueryFailedError
-          ? String((error as QueryFailedError & { driverError?: { message?: string } })
-              .driverError?.message ?? error.message)
+          ? String(
+              (error as QueryFailedError & { driverError?: { message?: string } })
+                .driverError?.message ?? error.message,
+            )
           : error instanceof Error
             ? error.message
             : String(error);
@@ -139,7 +218,11 @@ export class PatientsService {
       this.logger.error(
         JSON.stringify({
           msg: 'query_failed',
-          context: paginate ? 'patients.findAll.paginated' : 'patients.findAll',
+          context: useCursor
+            ? 'patients.findAll.cursor'
+            : paginate
+              ? 'patients.findAll.paginated'
+              : 'patients.findAll',
           error: pgDetail,
         }),
         stack,

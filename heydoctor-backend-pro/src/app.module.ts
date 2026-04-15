@@ -50,6 +50,7 @@ import { ObservabilityModule } from './common/observability/observability.module
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
 import { QueueModule } from './queue/queue.module';
+import { throttlerTrackerIpAndOptionalUser } from './common/throttler/throttler-tracker.util';
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 
@@ -172,7 +173,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
           ...(redisUrl
             ? { storage: new ThrottlerStorageRedisService(redisUrl) }
             : {}),
-          getTracker: (req) => String(req.ip ?? 'unknown'),
+          getTracker: (req) => throttlerTrackerIpAndOptionalUser(req),
         };
       },
     }),
