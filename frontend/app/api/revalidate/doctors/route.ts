@@ -2,6 +2,32 @@ import { revalidateTag } from 'next/cache';
 import { NextRequest, NextResponse } from 'next/server';
 
 const MAX_BODY_BYTES = 2048;
+const NONCE_HEADER = 'x-hd-nonce';
+const NONCE_MAX_LEN = 128;
+const NONCE_TTL_MS = 60_000;
+
+const nonceSeen = new Map<string, number>();
+
+function pruneExpiredNonces(now: number): void {
+  const drop: string[] = [];
+  nonceSeen.forEach((exp, k) => {
+    if (exp <= now) drop.push(k);
+  });
+  for (const k of drop) nonceSeen.delete(k);
+}
+
+type NonceCheck = 'ok' | 'replay' | 'bad';
+
+function tryConsumeNonce(headerVal: string | null): NonceCheck {
+  if (!headerVal?.trim()) return 'bad';
+  const nonce = headerVal.trim();
+  if (nonce.length > NONCE_MAX_LEN) return 'bad';
+  const now = Date.now();
+  pruneExpiredNonces(now);
+  if (nonceSeen.has(nonce)) return 'replay';
+  nonceSeen.set(nonce, now + NONCE_TTL_MS);
+  return 'ok';
+}
 
 function parseAllowlist(raw: string | undefined): string[] {
   if (!raw?.trim()) return [];
@@ -39,8 +65,8 @@ function bearerMatchesAuthorization(authHeader: string | null | undefined): bool
 
 /**
  * Revalidación on-demand: `Authorization: Bearer`, secret actual o anterior,
- * allowlist opcional (`REVALIDATE_ALLOWED_IPS`, IPs en x-forwarded-for),
- * cuerpo acotado.
+ * allowlist opcional (`REVALIDATE_ALLOWED_IPS`), cuerpo acotado,
+ * anti-replay con cabecera `x-hd-nonce` (única por llamada, TTL 60s en memoria).
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const allowlist = parseAllowlist(process.env.REVALIDATE_ALLOWED_IPS);
@@ -71,6 +97,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   if (!bearerMatchesAuthorization(req.headers.get('authorization'))) {
     return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
+  const nonceStatus = tryConsumeNonce(req.headers.get(NONCE_HEADER));
+  if (nonceStatus === 'bad') {
+    return NextResponse.json({ ok: false }, { status: 400 });
+  }
+  if (nonceStatus === 'replay') {
+    return NextResponse.json({ ok: false }, { status: 409 });
   }
 
   revalidateTag('doctors');

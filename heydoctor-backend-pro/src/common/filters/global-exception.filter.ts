@@ -11,6 +11,7 @@ import {
 import type { Request, Response } from 'express';
 import * as Sentry from '@sentry/node';
 import { ENV_CONFIG_TOKEN, type EnvConfig } from '../../config/env.config';
+import { sanitizePathForLog } from '../http-path.util';
 
 type ErrorBody = {
   statusCode: number;
@@ -38,8 +39,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const requestId = request.requestId;
     const safePath =
       typeof request.url === 'string'
-        ? (request.url.split('?')[0] ?? request.url)
-        : request.url;
+        ? sanitizePathForLog(request.url)
+        : String(request.url ?? '');
 
     /** Temporal: error real en Railway (sin 4xx ruidosos: HttpException < 500). */
     const shouldCaptureForDebug =

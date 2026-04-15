@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
+import { sanitizePathForLog } from '../http-path.util';
 import { enterRequestContext } from '../request-context.storage';
 
 /** Accept inbound trace ids (load balancers, gateways); cap length to avoid abuse. */
@@ -51,9 +52,7 @@ export class RequestIdMiddleware implements NestMiddleware {
       req.headers['x-heydoctor-consultation-id'],
     );
     const callId = pickOptionalUuidHeader(req.headers['x-heydoctor-call-id']);
-    const pathRaw = (req.originalUrl ?? req.url ?? '').split('?')[0] ?? '';
-    const path =
-      pathRaw.length > 512 ? `${pathRaw.slice(0, 512)}…` : pathRaw;
+    const path = sanitizePathForLog(req.originalUrl ?? req.url ?? '');
     enterRequestContext({ requestId, path, consultationId, callId });
     next();
   }

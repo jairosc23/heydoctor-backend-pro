@@ -65,6 +65,33 @@ async function fetchWithTimeout(
   }
 }
 
+/** Un reintento solo ante fallo de red / timeout (no ante 4xx/5xx). */
+function isRetriableNetworkError(e: unknown): boolean {
+  if (e instanceof TypeError) return true;
+  if (e instanceof DOMException && e.name === 'AbortError') return true;
+  if (
+    e !== null &&
+    typeof e === 'object' &&
+    'name' in e &&
+    (e as { name: string }).name === 'AbortError'
+  ) {
+    return true;
+  }
+  return false;
+}
+
+async function fetchWithTimeoutOneNetworkRetry(
+  input: RequestInfo | URL,
+  init: RequestInit,
+): Promise<Response> {
+  try {
+    return await fetchWithTimeout(input, init);
+  } catch (e) {
+    if (!isRetriableNetworkError(e)) throw e;
+    return await fetchWithTimeout(input, init);
+  }
+}
+
 export const HEYDOCTOR_ACCESS_TOKEN_STORAGE_KEY = 'heydoctor_access_token';
 
 export type HeydoctorWindow = Window & { __API_URL__?: string };
@@ -197,9 +224,12 @@ export async function heydoctorFetch(
   init?: RequestInit,
 ): Promise<Response> {
   if (isAlreadyRetriedInit(init)) {
-    return fetchWithTimeout(input, mergeHeydoctorInit(init));
+    return fetchWithTimeoutOneNetworkRetry(input, mergeHeydoctorInit(init));
   }
-  const first = await fetchWithTimeout(input, mergeHeydoctorInit(init));
+  const first = await fetchWithTimeoutOneNetworkRetry(
+    input,
+    mergeHeydoctorInit(init),
+  );
   if (first.status !== 401) {
     return first;
   }
@@ -207,5 +237,8 @@ export async function heydoctorFetch(
   if (!refreshed) {
     return first;
   }
-  return fetchWithTimeout(input, mergeHeydoctorInit(initWithRetryMarker(init)));
+  return fetchWithTimeoutOneNetworkRetry(
+    input,
+    mergeHeydoctorInit(initWithRetryMarker(init)),
+  );
 }
