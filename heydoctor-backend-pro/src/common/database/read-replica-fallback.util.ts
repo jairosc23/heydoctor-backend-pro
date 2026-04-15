@@ -1,8 +1,10 @@
 import type { LoggerService } from '@nestjs/common';
 import type { Repository, ObjectLiteral } from 'typeorm';
+import type { ReadReplicaCircuitLike } from './read-replica-circuit.service';
 
 /**
  * Ejecuta una lectura preferiendo réplica; ante fallo, reintenta en primario.
+ * Si el circuit breaker está abierto, no consulta la réplica hasta el cooldown.
  */
 export async function withReadReplicaFallback<TEntity extends ObjectLiteral, T>(
   readRepo: Repository<TEntity> | undefined,
@@ -10,13 +12,21 @@ export async function withReadReplicaFallback<TEntity extends ObjectLiteral, T>(
   run: (repo: Repository<TEntity>) => Promise<T>,
   log: LoggerService,
   context: string,
+  circuit?: ReadReplicaCircuitLike,
 ): Promise<T> {
-  if (!readRepo) {
+  const useReplica =
+    Boolean(readRepo) &&
+    (!circuit || circuit.shouldAttemptReplica());
+
+  if (!useReplica) {
     return run(primaryRepo);
   }
   try {
-    return await run(readRepo);
+    const out = await run(readRepo!);
+    circuit?.recordReplicaSuccess();
+    return out;
   } catch (e) {
+    circuit?.recordReplicaFailure();
     log.warn(
       JSON.stringify({
         msg: 'read_replica_fallback',

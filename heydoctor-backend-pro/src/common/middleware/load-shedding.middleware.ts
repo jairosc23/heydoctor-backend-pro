@@ -15,6 +15,21 @@ function parseThreshold(): number {
   return Number.isFinite(n) && n > 0 ? n : DEFAULT_SHED_QPS;
 }
 
+const DEFAULT_CRITICAL_PREFIXES = ['/api/auth', '/api/payku'];
+
+function parseCriticalPrefixes(): string[] {
+  const raw = process.env.LOAD_SHED_CRITICAL_PREFIXES?.trim();
+  if (!raw) {
+    return DEFAULT_CRITICAL_PREFIXES;
+  }
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length > 0);
+}
+
+const criticalPathPrefixes = parseCriticalPrefixes();
+
 function isLoadShedExempt(url: string): boolean {
   const path = (url.split('?')[0] ?? '').toLowerCase();
   return (
@@ -24,6 +39,17 @@ function isLoadShedExempt(url: string): boolean {
     path === '/metrics' ||
     path === '/api/health'
   );
+}
+
+/** Rutas críticas: no aplicar 429/503 por shedding (auth, webhooks, etc.). */
+function isLoadShedCritical(url: string): boolean {
+  const path = (url.split('?')[0] ?? '').toLowerCase();
+  for (const p of criticalPathPrefixes) {
+    if (path === p || path.startsWith(`${p}/`)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function progressiveDropRoll(ip: string, requestId: string): number {
@@ -53,9 +79,41 @@ export class LoadSheddingMiddleware implements NestMiddleware {
       next();
       return;
     }
-    this.httpLoad.recordIncoming();
     const ip = String(req.ip ?? req.socket?.remoteAddress ?? 'unknown');
+
+    if (isLoadShedCritical(url)) {
+      this.httpLoad.recordIncoming();
+      this.suspiciousTraffic.recordIpHit(ip);
+      const banRetryCrit =
+        this.suspiciousTraffic.getTemporaryBanRetryAfterSeconds(ip);
+      if (banRetryCrit !== null) {
+        res
+          .status(403)
+          .setHeader('Retry-After', String(banRetryCrit))
+          .json({
+            statusCode: 403,
+            message: 'Temporarily blocked — excessive traffic',
+            error: 'Forbidden',
+          });
+        return;
+      }
+      const qpsCrit = this.httpLoad.getSmoothedIncomingQps();
+      this.mitigationHooks.notifyLoadPressure(qpsCrit / this.threshold);
+      next();
+      return;
+    }
+
+    this.httpLoad.recordIncoming();
     this.suspiciousTraffic.recordIpHit(ip);
+    const banRetry = this.suspiciousTraffic.getTemporaryBanRetryAfterSeconds(ip);
+    if (banRetry !== null) {
+      res.status(403).setHeader('Retry-After', String(banRetry)).json({
+        statusCode: 403,
+        message: 'Temporarily blocked — excessive traffic',
+        error: 'Forbidden',
+      });
+      return;
+    }
 
     const qps = this.httpLoad.getSmoothedIncomingQps();
     const ratio = qps / this.threshold;

@@ -2,6 +2,9 @@ import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { RegionRoutingService } from '../region/region-routing.service';
+
+/** Cabecera de respuesta: región efectiva de la petición (sticky para el cliente). */
+export const REGION_STICKY_RESPONSE_HEADER = 'X-HeyDoctor-Region-Sticky';
 import { sanitizePathForLog } from '../http-path.util';
 import { enterRequestContext } from '../request-context.storage';
 
@@ -61,6 +64,7 @@ export class RequestIdMiddleware implements NestMiddleware {
         this.regionRouting.getRawRegionHeader(req.headers)?.trim().length,
       );
     const geoRegion = this.regionRouting.resolveRequestRegion(req.headers);
+    res.setHeader(REGION_STICKY_RESPONSE_HEADER, geoRegion);
     enterRequestContext({
       requestId,
       path,

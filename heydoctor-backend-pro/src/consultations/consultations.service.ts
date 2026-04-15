@@ -26,6 +26,7 @@ import {
   reviveConsultationsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
+import { ReadReplicaCircuitService } from '../common/database/read-replica-circuit.service';
 import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
 import { withReadReplicaFallback } from '../common/database/read-replica-fallback.util';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
@@ -103,6 +104,7 @@ export class ConsultationsService {
     private readonly swrListRefreshLock: SwrListRefreshLockService,
     private readonly regionRouting: RegionRoutingService,
     private readonly httpLoadTracker: HttpLoadTrackerService,
+    private readonly readReplicaCircuit: ReadReplicaCircuitService,
   ) {}
 
   private enforceWriteRegion(
@@ -142,6 +144,7 @@ export class ConsultationsService {
       (r) => r.findOne({ where: { id, clinicId } }),
       this.logger,
       'consultations.findByIdForClinic',
+      this.readReplicaCircuit,
     );
   }
 
@@ -291,6 +294,7 @@ export class ConsultationsService {
       (repo) => this.executeLoadConsultationsList(repo, clinicId, query),
       this.logger,
       'consultations.list',
+      this.readReplicaCircuit,
     );
   }
 
@@ -475,6 +479,7 @@ export class ConsultationsService {
         }),
       this.logger,
       'consultations.findOne',
+      this.readReplicaCircuit,
     );
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -530,6 +535,7 @@ export class ConsultationsService {
         }),
       this.logger,
       'consultations.getConsultationAi',
+      this.readReplicaCircuit,
     );
     if (!row) {
       throw new NotFoundException('Consultation not found');

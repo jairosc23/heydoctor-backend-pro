@@ -100,7 +100,7 @@ async function bootstrap() {
       'X-HeyDoctor-Consultation-Id',
       'X-HeyDoctor-Call-Id',
     ],
-    exposedHeaders: ['X-Request-Id'],
+    exposedHeaders: ['X-Request-Id', 'X-HeyDoctor-Region-Sticky'],
   });
 
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {

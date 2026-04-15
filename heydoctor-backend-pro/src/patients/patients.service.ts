@@ -23,6 +23,7 @@ import {
   entityListCacheHardStoreTtlMs,
   revivePatientsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
+import { ReadReplicaCircuitService } from '../common/database/read-replica-circuit.service';
 import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
 import { withReadReplicaFallback } from '../common/database/read-replica-fallback.util';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
@@ -50,6 +51,7 @@ export class PatientsService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly swrListRefreshLock: SwrListRefreshLockService,
     private readonly httpLoadTracker: HttpLoadTrackerService,
+    private readonly readReplicaCircuit: ReadReplicaCircuitService,
   ) {}
 
   async findAll(
@@ -136,6 +138,7 @@ export class PatientsService {
       (repo) => this.executeLoadPatientsList(repo, clinicId, query),
       this.logger,
       'patients.list',
+      this.readReplicaCircuit,
     );
   }
 
