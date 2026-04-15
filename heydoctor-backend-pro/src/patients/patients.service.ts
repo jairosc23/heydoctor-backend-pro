@@ -23,6 +23,7 @@ import {
   entityListCacheHardStoreTtlMs,
   revivePatientsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
+import { ChaosRuntimeService } from '../common/chaos/chaos-runtime.service';
 import { ReadReplicaCircuitService } from '../common/database/read-replica-circuit.service';
 import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
 import { withReadReplicaFallback } from '../common/database/read-replica-fallback.util';
@@ -52,6 +53,7 @@ export class PatientsService {
     private readonly swrListRefreshLock: SwrListRefreshLockService,
     private readonly httpLoadTracker: HttpLoadTrackerService,
     private readonly readReplicaCircuit: ReadReplicaCircuitService,
+    private readonly chaosRuntime: ChaosRuntimeService,
   ) {}
 
   async findAll(
@@ -65,6 +67,10 @@ export class PatientsService {
       this.loadPatientsList(clinicId, query);
 
     try {
+      if (this.chaosRuntime.shouldSimulate('redis')) {
+        this.chaosRuntime.logRuntime('redis', { path: 'patients.findAll' });
+        throw new Error('chaos_runtime redis simulated failure');
+      }
       const ver = await getClinicListCacheVersion(
         this.cache,
         'patients',
@@ -132,6 +138,14 @@ export class PatientsService {
     clinicId: string,
     query?: PatientsListQueryDto,
   ): Promise<PaginatedResult<Patient>> {
+    if (this.chaosRuntime.shouldSimulate('replica')) {
+      this.chaosRuntime.logRuntime('replica', { context: 'patients.list' });
+      return this.executeLoadPatientsList(
+        this.patientsRepository,
+        clinicId,
+        query,
+      );
+    }
     return withReadReplicaFallback(
       this.patientsReadRepository,
       this.patientsRepository,

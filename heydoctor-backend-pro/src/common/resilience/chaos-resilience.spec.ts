@@ -15,6 +15,7 @@ import { Patient } from '../../patients/patient.entity';
 import { PatientsService } from '../../patients/patients.service';
 import { AuditService } from '../../audit/audit.service';
 import { AuthorizationService } from '../../authorization/authorization.service';
+import { ChaosRuntimeService } from '../chaos/chaos-runtime.service';
 import { APP_LOGGER } from '../logger/logger.tokens';
 import {
   ReadReplicaCircuitService,
@@ -113,6 +114,13 @@ describe('Chaos resilience (production validation)', () => {
               shouldAttemptReplica: () => true,
               recordReplicaSuccess: jest.fn(),
               recordReplicaFailure: jest.fn(),
+            },
+          },
+          {
+            provide: ChaosRuntimeService,
+            useValue: {
+              shouldSimulate: jest.fn().mockReturnValue(false),
+              logRuntime: jest.fn(),
             },
           },
         ],
@@ -282,6 +290,13 @@ describe('Chaos resilience (production validation)', () => {
         providers: [
           QueueProducerService,
           { provide: APP_LOGGER, useValue: log },
+          {
+            provide: ChaosRuntimeService,
+            useValue: {
+              shouldSimulate: jest.fn().mockReturnValue(false),
+              logRuntime: jest.fn(),
+            },
+          },
           { provide: getQueueToken('email'), useValue: failingQueue },
           { provide: getQueueToken('pdf'), useValue: { add: jest.fn() } },
           { provide: getQueueToken('webhook'), useValue: { add: jest.fn() } },

@@ -46,6 +46,7 @@ import { GlobalExceptionFilter } from './common/filters/global-exception.filter'
 import { UserRequestContextInterceptor } from './common/interceptors/user-request-context.interceptor';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { RequestMetricsMiddleware } from './common/middleware/request-metrics.middleware';
+import { ChaosRuntimeModule } from './common/chaos/chaos-runtime.module';
 import { DatabaseRoutingModule } from './common/database/database-routing.module';
 import { ObservabilityModule } from './common/observability/observability.module';
 import { CsrfMiddleware } from './common/security/csrf.middleware';
@@ -75,6 +76,7 @@ const typeOrmShared = {
       envFilePath: ['.env.local', '.env'],
     }),
     LoggerModule,
+    ChaosRuntimeModule,
     ObservabilityModule,
     DatabaseRoutingModule,
     RegionModule,

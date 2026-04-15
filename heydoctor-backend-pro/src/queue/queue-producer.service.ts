@@ -1,6 +1,7 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Inject, Injectable, type LoggerService } from '@nestjs/common';
 import type { Job, JobsOptions, Queue } from 'bullmq';
+import { ChaosRuntimeService } from '../common/chaos/chaos-runtime.service';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { DEFAULT_QUEUE_JOB_OPTIONS, QUEUE_JOB_PRIORITY } from './queue.constants';
 import {
@@ -25,6 +26,7 @@ const mergeOpts = (
 export class QueueProducerService {
   constructor(
     @Inject(APP_LOGGER) private readonly log: LoggerService,
+    private readonly chaosRuntime: ChaosRuntimeService,
     @InjectQueue('email') private readonly emailQueue: Queue,
     @InjectQueue('pdf') private readonly pdfQueue: Queue,
     @InjectQueue('webhook') private readonly webhookQueue: Queue,
@@ -37,6 +39,10 @@ export class QueueProducerService {
     queueName: string,
     run: () => Promise<T>,
   ): Promise<T | undefined> {
+    if (this.chaosRuntime.shouldSimulate('queue')) {
+      this.chaosRuntime.logRuntime('queue', { queue: queueName });
+      return undefined;
+    }
     try {
       return await run();
     } catch (e) {

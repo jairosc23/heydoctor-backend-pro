@@ -25,6 +25,7 @@ import {
   entityListCacheHardStoreTtlMs,
   reviveConsultationsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
+import { ChaosRuntimeService } from '../common/chaos/chaos-runtime.service';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
 import { ReadReplicaCircuitService } from '../common/database/read-replica-circuit.service';
 import { TYPEORM_READ_CONNECTION } from '../common/database/typeorm-read-replica';
@@ -105,7 +106,26 @@ export class ConsultationsService {
     private readonly regionRouting: RegionRoutingService,
     private readonly httpLoadTracker: HttpLoadTrackerService,
     private readonly readReplicaCircuit: ReadReplicaCircuitService,
+    private readonly chaosRuntime: ChaosRuntimeService,
   ) {}
+
+  private async withConsultationReadReplica<T>(
+    context: string,
+    run: (repo: Repository<Consultation>) => Promise<T>,
+  ): Promise<T> {
+    if (this.chaosRuntime.shouldSimulate('replica')) {
+      this.chaosRuntime.logRuntime('replica', { context });
+      return run(this.consultationsRepository);
+    }
+    return withReadReplicaFallback(
+      this.consultationsReadRepository,
+      this.consultationsRepository,
+      run,
+      this.logger,
+      context,
+      this.readReplicaCircuit,
+    );
+  }
 
   private enforceWriteRegion(
     consultation: Consultation,
@@ -138,13 +158,9 @@ export class ConsultationsService {
     id: string,
     clinicId: string,
   ): Promise<Consultation | null> {
-    return withReadReplicaFallback(
-      this.consultationsReadRepository,
-      this.consultationsRepository,
-      (r) => r.findOne({ where: { id, clinicId } }),
-      this.logger,
+    return this.withConsultationReadReplica(
       'consultations.findByIdForClinic',
-      this.readReplicaCircuit,
+      (r) => r.findOne({ where: { id, clinicId } }),
     );
   }
 
@@ -221,6 +237,10 @@ export class ConsultationsService {
       this.loadConsultationsList(clinicId, query);
 
     try {
+      if (this.chaosRuntime.shouldSimulate('redis')) {
+        this.chaosRuntime.logRuntime('redis', { path: 'consultations.findAll' });
+        throw new Error('chaos_runtime redis simulated failure');
+      }
       const ver = await getClinicListCacheVersion(
         this.cache,
         'consultations',
@@ -288,13 +308,8 @@ export class ConsultationsService {
     clinicId: string,
     query?: ConsultationsListQueryDto,
   ): Promise<PaginatedResult<Consultation>> {
-    return withReadReplicaFallback(
-      this.consultationsReadRepository,
-      this.consultationsRepository,
-      (repo) => this.executeLoadConsultationsList(repo, clinicId, query),
-      this.logger,
-      'consultations.list',
-      this.readReplicaCircuit,
+    return this.withConsultationReadReplica('consultations.list', (repo) =>
+      this.executeLoadConsultationsList(repo, clinicId, query),
     );
   }
 
@@ -469,17 +484,13 @@ export class ConsultationsService {
   ): Promise<Consultation> {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const consultation = await withReadReplicaFallback(
-      this.consultationsReadRepository,
-      this.consultationsRepository,
+    const consultation = await this.withConsultationReadReplica(
+      'consultations.findOne',
       (r) =>
         r.findOne({
           where: { id, clinicId },
           relations: { patient: true },
         }),
-      this.logger,
-      'consultations.findOne',
-      this.readReplicaCircuit,
     );
     if (!consultation) {
       throw new NotFoundException('Consultation not found');
@@ -517,9 +528,8 @@ export class ConsultationsService {
   ): Promise<ConsultationAiSnapshot> {
     const { clinicId, user } =
       await this.authorizationService.getUserWithClinic(authUser);
-    const row = await withReadReplicaFallback(
-      this.consultationsReadRepository,
-      this.consultationsRepository,
+    const row = await this.withConsultationReadReplica(
+      'consultations.getConsultationAi',
       (r) =>
         r.findOne({
           where: { id, clinicId },
@@ -533,9 +543,6 @@ export class ConsultationsService {
             region: true,
           },
         }),
-      this.logger,
-      'consultations.getConsultationAi',
-      this.readReplicaCircuit,
     );
     if (!row) {
       throw new NotFoundException('Consultation not found');
