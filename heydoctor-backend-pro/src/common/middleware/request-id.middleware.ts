@@ -51,7 +51,10 @@ export class RequestIdMiddleware implements NestMiddleware {
       req.headers['x-heydoctor-consultation-id'],
     );
     const callId = pickOptionalUuidHeader(req.headers['x-heydoctor-call-id']);
-    enterRequestContext({ requestId, consultationId, callId });
+    const pathRaw = (req.originalUrl ?? req.url ?? '').split('?')[0] ?? '';
+    const path =
+      pathRaw.length > 512 ? `${pathRaw.slice(0, 512)}…` : pathRaw;
+    enterRequestContext({ requestId, path, consultationId, callId });
     next();
   }
 }

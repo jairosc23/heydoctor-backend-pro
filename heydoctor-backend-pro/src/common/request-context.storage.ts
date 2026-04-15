@@ -2,6 +2,10 @@ import { AsyncLocalStorage } from 'async_hooks';
 
 export type RequestContextStore = {
   requestId: string;
+  /** HTTP path (sin query string; evita filtrar tokens en logs). */
+  path?: string;
+  /** UUID de usuario enmascarada para trazas (no PII directo). */
+  userId?: string;
   /** Optional correlation from `X-HeyDoctor-Consultation-Id` (UUID). */
   consultationId?: string;
   /** Optional per-call session id from `X-HeyDoctor-Call-Id` (UUID). */
@@ -16,6 +20,14 @@ const storage = new AsyncLocalStorage<RequestContextStore>();
  */
 export function enterRequestContext(ctx: RequestContextStore): void {
   storage.enterWith(ctx);
+}
+
+/** Añade campos al contexto actual (p. ej. `userId` tras JWT) sin perder `requestId` / `path`. */
+export function mergeRequestContext(partial: Partial<RequestContextStore>): void {
+  const cur = storage.getStore();
+  if (cur) {
+    storage.enterWith({ ...cur, ...partial });
+  }
 }
 
 export function getRequestContext(): RequestContextStore | undefined {
@@ -33,4 +45,12 @@ export function getContextConsultationId(): string | undefined {
 
 export function getContextCallId(): string | undefined {
   return storage.getStore()?.callId;
+}
+
+export function getContextPath(): string | undefined {
+  return storage.getStore()?.path;
+}
+
+export function getContextUserIdForLog(): string | undefined {
+  return storage.getStore()?.userId;
 }

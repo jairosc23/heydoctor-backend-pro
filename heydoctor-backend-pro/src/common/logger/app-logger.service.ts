@@ -2,6 +2,8 @@ import { Injectable, Logger, type LoggerService } from '@nestjs/common';
 import {
   getContextCallId,
   getContextConsultationId,
+  getContextPath,
+  getContextUserIdForLog,
   getCurrentRequestId,
 } from '../request-context.storage';
 
@@ -82,6 +84,14 @@ export class AppLoggerService implements LoggerService {
     if (call !== undefined && out.callId === undefined) {
       out.callId = call;
     }
+    const path = getContextPath();
+    if (path !== undefined && out.path === undefined) {
+      out.path = path;
+    }
+    const userId = getContextUserIdForLog();
+    if (userId !== undefined && out.userId === undefined) {
+      out.userId = userId;
+    }
     return Object.keys(out).length > 0 ? out : undefined;
   }
 
@@ -129,6 +139,10 @@ export class AppLoggerService implements LoggerService {
       message,
     };
     if (requestId !== undefined) row.requestId = requestId;
+    const path = getContextPath();
+    if (path !== undefined) row.path = path;
+    const userId = getContextUserIdForLog();
+    if (userId !== undefined) row.userId = userId;
     if (extra) Object.assign(row, extra);
     try {
       return JSON.stringify(row);

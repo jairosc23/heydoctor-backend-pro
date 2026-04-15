@@ -6,7 +6,7 @@ import {
   Module,
   NestModule,
 } from '@nestjs/common';
-import { APP_FILTER } from '@nestjs/core';
+import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import type { Request } from 'express';
 import cookieParser from 'cookie-parser';
 import { ConfigModule } from '@nestjs/config';
@@ -43,6 +43,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PlatformModule } from './platform/platform.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { UserRequestContextInterceptor } from './common/interceptors/user-request-context.interceptor';
 import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ObservabilityModule } from './common/observability/observability.module';
 import { CsrfMiddleware } from './common/security/csrf.middleware';
@@ -200,6 +201,7 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
   providers: [
     ThrottlerGuard,
     RequestIdMiddleware,
+    { provide: APP_INTERCEPTOR, useClass: UserRequestContextInterceptor },
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
