@@ -20,7 +20,6 @@ import {
   type EntityListCacheEnvelope,
   getClinicListCacheVersion,
   isCacheEnvelope,
-  LIST_CACHE_FRESH_MS,
   LIST_CACHE_HARD_TTL_MS,
   entityListCacheHardStoreTtlMs,
   reviveConsultationsListFromCache,
@@ -31,6 +30,7 @@ import { APP_LOGGER } from '../common/logger/logger.tokens';
 import { maskUuid } from '../common/observability/log-masking.util';
 import { getCurrentRequestId } from '../common/request-context.storage';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { HttpLoadTrackerService } from '../common/observability/http-load-tracker.service';
 import { RegionRoutingService } from '../common/region/region-routing.service';
 import type { ConsultationsListQueryDto } from './dto/consultations-list-query.dto';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
@@ -93,6 +93,7 @@ export class ConsultationsService {
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly swrListRefreshLock: SwrListRefreshLockService,
     private readonly regionRouting: RegionRoutingService,
+    private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {}
 
   private async bumpConsultationsListCache(clinicId: string): Promise<void> {
@@ -193,7 +194,7 @@ export class ConsultationsService {
         const age = Date.now() - raw.storedAt;
         if (age < LIST_CACHE_HARD_TTL_MS) {
           reviveConsultationsListFromCache(raw.payload);
-          if (age >= LIST_CACHE_FRESH_MS) {
+          if (age >= this.httpLoadTracker.getEntityListFreshMs()) {
             this.swrListRefreshLock.scheduleRefresh(cacheKey, async () => {
               try {
                 const fresh = await runDb();

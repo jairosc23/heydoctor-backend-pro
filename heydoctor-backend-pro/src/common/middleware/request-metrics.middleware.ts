@@ -3,6 +3,7 @@ import type { LoggerService } from '@nestjs/common';
 import type { NextFunction, Request, Response } from 'express';
 import { APP_LOGGER } from '../logger/logger.tokens';
 import type { AppLoggerService } from '../logger/app-logger.service';
+import { HttpLoadTrackerService } from '../observability/http-load-tracker.service';
 import { PrometheusService } from '../observability/prometheus.service';
 
 /**
@@ -19,6 +20,7 @@ export class RequestMetricsMiddleware implements NestMiddleware {
   constructor(
     @Inject(APP_LOGGER) logger: LoggerService,
     private readonly prometheus: PrometheusService,
+    private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {
     this.log = logger as AppLoggerService;
   }
@@ -64,6 +66,7 @@ export class RequestMetricsMiddleware implements NestMiddleware {
           ? { rollingP95MsApprox }
           : {}),
       });
+      this.httpLoadTracker.recordRequest();
       this.prometheus.observeHttpRequest(
         req.method,
         req.originalUrl ?? req.url ?? '/',

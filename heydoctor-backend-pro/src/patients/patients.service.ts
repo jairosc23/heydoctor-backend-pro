@@ -18,12 +18,12 @@ import {
   type EntityListCacheEnvelope,
   getClinicListCacheVersion,
   isCacheEnvelope,
-  LIST_CACHE_FRESH_MS,
   LIST_CACHE_HARD_TTL_MS,
   entityListCacheHardStoreTtlMs,
   revivePatientsListFromCache,
 } from '../common/cache/entity-list-cache.helper';
 import { SwrListRefreshLockService } from '../common/cache/swr-list-refresh-lock.service';
+import { HttpLoadTrackerService } from '../common/observability/http-load-tracker.service';
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
@@ -43,6 +43,7 @@ export class PatientsService {
     private readonly logger: LoggerService,
     @Inject(CACHE_MANAGER) private readonly cache: Cache,
     private readonly swrListRefreshLock: SwrListRefreshLockService,
+    private readonly httpLoadTracker: HttpLoadTrackerService,
   ) {}
 
   async findAll(
@@ -70,7 +71,7 @@ export class PatientsService {
         const age = Date.now() - raw.storedAt;
         if (age < LIST_CACHE_HARD_TTL_MS) {
           revivePatientsListFromCache(raw.payload);
-          if (age >= LIST_CACHE_FRESH_MS) {
+          if (age >= this.httpLoadTracker.getEntityListFreshMs()) {
             this.swrListRefreshLock.scheduleRefresh(cacheKey, async () => {
               try {
                 const fresh = await runDb();

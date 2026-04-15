@@ -8,9 +8,43 @@ import {
   type ThrottlerRequest,
   type ThrottlerStorage,
 } from '@nestjs/throttler';
+import type { Request } from 'express';
+import { decode } from 'jsonwebtoken';
+import { UserRole } from '../../users/user-role.enum';
 import { THROTTLE_ROUTE_COST } from './throttle-route-cost.decorator';
 
 const MAX_ROUTE_COST = 20;
+
+/** Admin: menor coste efectivo (más cupo bajo mismo límite de bucket). */
+function adaptiveRouteCost(cost: number, req: Record<string, unknown>): number {
+  const r = req as unknown as Request;
+  if (readThrottleRole(r) === UserRole.ADMIN) {
+    return Math.max(1, Math.ceil(cost / 2));
+  }
+  return cost;
+}
+
+function readThrottleRole(req: Request): UserRole | undefined {
+  const u = req.user as { role?: UserRole } | undefined;
+  if (u?.role === UserRole.ADMIN || u?.role === UserRole.DOCTOR) {
+    return u.role;
+  }
+  const auth = req.headers?.authorization;
+  if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
+    const token = auth.slice('Bearer '.length).trim();
+    if (token.length > 0) {
+      try {
+        const payload = decode(token) as { role?: string } | null;
+        if (payload?.role === UserRole.ADMIN || payload?.role === UserRole.DOCTOR) {
+          return payload.role as UserRole;
+        }
+      } catch {
+        /* token ilegible */
+      }
+    }
+  }
+  return undefined;
+}
 
 @Injectable()
 export class CostAwareThrottlerGuard extends ThrottlerGuard {
@@ -29,10 +63,12 @@ export class CostAwareThrottlerGuard extends ThrottlerGuard {
       handler,
       classRef,
     ]);
-    const cost = Math.min(
+    const baseCost = Math.min(
       MAX_ROUTE_COST,
       Math.max(1, Math.floor(typeof meta === 'number' && Number.isFinite(meta) ? meta : 1)),
     );
+    const { req: reqEarly } = this.getRequestResponse(props.context);
+    const cost = adaptiveRouteCost(baseCost, reqEarly);
 
     if (cost === 1) {
       return super.handleRequest(props);
