@@ -20,9 +20,21 @@ export class RequestMetricsMiddleware implements NestMiddleware {
     const start = Date.now();
     res.on('finish', () => {
       const durationMs = Date.now() - start;
+      const statusCode = res.statusCode;
+      const isError = statusCode >= 400;
+      let durationBucket: 'lt100' | 'lt500' | 'gte500';
+      if (durationMs < 100) {
+        durationBucket = 'lt100';
+      } else if (durationMs < 500) {
+        durationBucket = 'lt500';
+      } else {
+        durationBucket = 'gte500';
+      }
       this.log.log('http_request', {
-        statusCode: res.statusCode,
+        statusCode,
         durationMs,
+        durationBucket,
+        isError,
       });
     });
     next();

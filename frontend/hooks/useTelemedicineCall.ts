@@ -750,19 +750,21 @@ export function useTelemedicineCall(
     remoteIdRef.current = null;
     onRemoteUserId?.(null);
 
-    let socket = externalSocket ?? null;
-    if (!socket) {
-      const origin = backendOrigin.replace(/\/$/, '');
-      socket = io(`${origin}/webrtc`, {
-        path: socketPath,
-        transports: ['websocket', 'polling'],
-        withCredentials: true,
-        autoConnect: true,
-      });
-      ownSocketRef.current = true;
-    } else {
+    const socket: Socket = (() => {
+      const existing = externalSocket ?? null;
+      if (!existing) {
+        ownSocketRef.current = true;
+        const origin = backendOrigin.replace(/\/$/, '');
+        return io(`${origin}/webrtc`, {
+          path: socketPath,
+          transports: ['websocket', 'polling'],
+          withCredentials: true,
+          autoConnect: true,
+        });
+      }
       ownSocketRef.current = false;
-    }
+      return existing;
+    })();
 
     await new Promise<void>((resolve, reject) => {
       if (socket.connected) {

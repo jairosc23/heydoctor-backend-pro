@@ -10,6 +10,60 @@
 import { apiCredentialsInit } from './api-credentials';
 
 const HEADER_HD_RETRIED = 'x-hd-retried';
+const HEYDOCTOR_FETCH_TIMEOUT_MS = 8_000;
+
+function withFetchTimeout(
+  init: RequestInit | undefined,
+  ms: number,
+): { init: RequestInit; clearTimer: () => void } {
+  const timeoutCtrl = new AbortController();
+  const timer = setTimeout(() => timeoutCtrl.abort(), ms);
+  const clearTimer = () => clearTimeout(timer);
+  const userSignal = init?.signal;
+  let signal: AbortSignal;
+
+  if (userSignal) {
+    const combine =
+      typeof AbortSignal !== 'undefined'
+        ? (
+            AbortSignal as typeof AbortSignal & {
+              any?: (signals: AbortSignal[]) => AbortSignal;
+            }
+          ).any
+        : undefined;
+    if (typeof combine === 'function') {
+      signal = combine([userSignal, timeoutCtrl.signal]);
+    } else {
+      const merged = new AbortController();
+      const onAbort = () => {
+        clearTimer();
+        merged.abort();
+      };
+      userSignal.addEventListener('abort', onAbort, { once: true });
+      timeoutCtrl.signal.addEventListener('abort', onAbort, { once: true });
+      signal = merged.signal;
+    }
+  } else {
+    signal = timeoutCtrl.signal;
+  }
+
+  return {
+    init: { ...init, signal },
+    clearTimer,
+  };
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+): Promise<Response> {
+  const { init: timedInit, clearTimer } = withFetchTimeout(init, HEYDOCTOR_FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(input, timedInit);
+  } finally {
+    clearTimer();
+  }
+}
 
 export const HEYDOCTOR_ACCESS_TOKEN_STORAGE_KEY = 'heydoctor_access_token';
 
@@ -76,7 +130,7 @@ let refreshPromise: Promise<boolean> | null = null;
 
 async function refreshAccessToken(): Promise<boolean> {
   const base = requireHeydoctorApiBase();
-  const res = await fetch(`${base}/api/auth/refresh`, {
+  const res = await fetchWithTimeout(`${base}/api/auth/refresh`, {
     method: 'POST',
     ...apiCredentialsInit,
     headers: {
@@ -143,9 +197,9 @@ export async function heydoctorFetch(
   init?: RequestInit,
 ): Promise<Response> {
   if (isAlreadyRetriedInit(init)) {
-    return fetch(input, mergeHeydoctorInit(init));
+    return fetchWithTimeout(input, mergeHeydoctorInit(init));
   }
-  const first = await fetch(input, mergeHeydoctorInit(init));
+  const first = await fetchWithTimeout(input, mergeHeydoctorInit(init));
   if (first.status !== 401) {
     return first;
   }
@@ -153,5 +207,5 @@ export async function heydoctorFetch(
   if (!refreshed) {
     return first;
   }
-  return fetch(input, mergeHeydoctorInit(initWithRetryMarker(init)));
+  return fetchWithTimeout(input, mergeHeydoctorInit(initWithRetryMarker(init)));
 }
