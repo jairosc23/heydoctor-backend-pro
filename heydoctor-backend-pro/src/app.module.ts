@@ -43,6 +43,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { PlatformModule } from './platform/platform.module';
 import { WebrtcModule } from './webrtc/webrtc.module';
 import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
+import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { ObservabilityModule } from './common/observability/observability.module';
 import { CsrfMiddleware } from './common/security/csrf.middleware';
 import { CsrfModule } from './common/security/csrf.module';
@@ -198,11 +199,14 @@ const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
   controllers: [AppController, HealthController, HealthApiController],
   providers: [
     ThrottlerGuard,
+    RequestIdMiddleware,
     { provide: APP_FILTER, useClass: GlobalExceptionFilter },
   ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(cookieParser(), CsrfMiddleware).forRoutes('*');
+    consumer
+      .apply(RequestIdMiddleware, cookieParser(), CsrfMiddleware)
+      .forRoutes('*');
   }
 }

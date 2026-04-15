@@ -1,3 +1,4 @@
+import { Injectable, NestMiddleware } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import type { NextFunction, Request, Response } from 'express';
 import { enterRequestContext } from '../request-context.storage';
@@ -38,18 +39,19 @@ function pickOptionalUuidHeader(
 }
 
 /**
- * Binds `req.requestId`, optional consultation/call correlation headers,
- * and AsyncLocalStorage for the request.
+ * Binds `req.requestId`, AsyncLocalStorage, y envía `X-Request-Id` en la respuesta.
  */
-export class RequestIdMiddleware {
-  use = (req: Request, _res: Response, next: NextFunction): void => {
+@Injectable()
+export class RequestIdMiddleware implements NestMiddleware {
+  use(req: Request, res: Response, next: NextFunction): void {
     const requestId = pickRequestId(req);
     req.requestId = requestId;
+    res.setHeader('X-Request-Id', requestId);
     const consultationId = pickOptionalUuidHeader(
       req.headers['x-heydoctor-consultation-id'],
     );
     const callId = pickOptionalUuidHeader(req.headers['x-heydoctor-call-id']);
     enterRequestContext({ requestId, consultationId, callId });
     next();
-  };
+  }
 }

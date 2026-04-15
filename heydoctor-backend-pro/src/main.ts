@@ -7,7 +7,6 @@ import helmet from 'helmet';
 import { logExpressRouteStackIfEnabled } from './common/bootstrap/log-express-routes';
 import { validateAndLogEnv } from './config/env-startup-check';
 import { EnvConfig, ENV_CONFIG_TOKEN } from './config/env.config';
-import { RequestIdMiddleware } from './common/middleware/request-id.middleware';
 import { AppModule } from './app.module';
 import type { Request, Response } from 'express';
 
@@ -59,7 +58,6 @@ async function bootstrap() {
     ],
   });
 
-  app.use(new RequestIdMiddleware().use);
   /**
    * Throttler global (AppModule) + bucket login por email; JwtAuthGuard solo en rutas protegidas.
    */
@@ -96,9 +94,11 @@ async function bootstrap() {
       'Authorization',
       'Accept',
       'X-CSRF-Token',
+      'X-Request-Id',
       'X-HeyDoctor-Consultation-Id',
       'X-HeyDoctor-Call-Id',
     ],
+    exposedHeaders: ['X-Request-Id'],
   });
 
   app.use((_req: unknown, res: { setHeader: (k: string, v: string) => void }, next: () => void) => {
@@ -140,6 +140,20 @@ async function bootstrap() {
 }
 
 bootstrap().catch((err: unknown) => {
-  console.error('[HeyDoctor] Fatal startup error', err);
+  const msg = err instanceof Error ? err.message : String(err);
+  const stack = err instanceof Error ? err.stack : undefined;
+  if (process.env.NODE_ENV === 'production') {
+    console.error(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        level: 'error',
+        message: 'Fatal startup error',
+        detail: msg,
+        stack,
+      }),
+    );
+  } else {
+    console.error('[HeyDoctor] Fatal startup error', err);
+  }
   process.exit(1);
 });

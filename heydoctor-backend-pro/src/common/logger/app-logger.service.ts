@@ -22,6 +22,10 @@ function serializeContext(meta: Record<string, unknown>): string {
   }
 }
 
+function isProductionJsonLogs(): boolean {
+  return process.env.NODE_ENV === 'production';
+}
+
 /**
  * Wraps Nest Logger and prefixes plain-text log lines with the HTTP correlation ID when
  * {@link getCurrentRequestId} is set (RequestIdMiddleware + AsyncLocalStorage).
@@ -89,6 +93,23 @@ export class AppLoggerService implements LoggerService {
     const base = this.plainText(rawMessage);
     const merged = this.mergeRequestMeta(meta);
     const ts = new Date().toISOString();
+    if (isProductionJsonLogs()) {
+      const row: Record<string, unknown> = {
+        ts,
+        level: level.toLowerCase(),
+        message: base,
+      };
+      if (merged !== undefined) {
+        for (const [k, v] of Object.entries(merged)) {
+          if (row[k] === undefined) row[k] = v;
+        }
+      }
+      try {
+        return JSON.stringify(row);
+      } catch {
+        return JSON.stringify({ ts, level: level.toLowerCase(), message: base });
+      }
+    }
     let out = `[${level}] ${ts} ${base}`;
     if (merged !== undefined && Object.keys(merged).length > 0) {
       out += ` | ${serializeContext(merged)}`;
@@ -96,14 +117,48 @@ export class AppLoggerService implements LoggerService {
     return out;
   }
 
+  private jsonPlainLine(
+    level: string,
+    message: string,
+    extra?: Record<string, unknown>,
+  ): string {
+    const requestId = getCurrentRequestId();
+    const row: Record<string, unknown> = {
+      ts: new Date().toISOString(),
+      level,
+      message,
+    };
+    if (requestId !== undefined) row.requestId = requestId;
+    if (extra) Object.assign(row, extra);
+    try {
+      return JSON.stringify(row);
+    } catch {
+      return JSON.stringify({ ts: row.ts, level, message });
+    }
+  }
+
   log(message: any, context?: string): void;
   log(message: any, meta: Record<string, unknown>): void;
   log(message: any, second?: string | Record<string, unknown>): void {
     if (second === undefined) {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.log(
+          this.jsonPlainLine('info', this.plainText(message)),
+        );
+        return;
+      }
       this.nestLogger.log(this.formatMessage(message));
       return;
     }
     if (typeof second === 'string') {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.log(
+          this.jsonPlainLine('info', this.plainText(message), {
+            nestContext: second,
+          }),
+        );
+        return;
+      }
       this.nestLogger.log(this.formatMessage(message), second);
       return;
     }
@@ -146,17 +201,40 @@ export class AppLoggerService implements LoggerService {
       } else if (typeof third === 'string') {
         nestCtx = third;
       }
+      if (isProductionJsonLogs()) {
+        const merged = this.mergeRequestMeta(meta);
+        const row: Record<string, unknown> = {
+          ts: new Date().toISOString(),
+          level: 'error',
+          message: text,
+          stack,
+        };
+        if (nestCtx !== undefined) row.nestContext = nestCtx;
+        if (merged) Object.assign(row, merged);
+        this.nestLogger.error(JSON.stringify(row));
+        return;
+      }
       const line = this.formatStructuredLine('ERROR', text, meta);
       this.nestLogger.error(line, stack, nestCtx);
       return;
     }
 
     if (second === undefined) {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.error(this.jsonPlainLine('error', text));
+        return;
+      }
       this.nestLogger.error(this.formatMessage(text));
       return;
     }
 
     if (typeof second === 'string' && third === undefined) {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.error(
+          this.jsonPlainLine('error', text, { trace: second }),
+        );
+        return;
+      }
       this.nestLogger.error(this.formatMessage(text), second);
       return;
     }
@@ -185,10 +263,24 @@ export class AppLoggerService implements LoggerService {
   warn(message: any, meta: Record<string, unknown>): void;
   warn(message: any, second?: string | Record<string, unknown>): void {
     if (second === undefined) {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.warn(
+          this.jsonPlainLine('warn', this.plainText(message)),
+        );
+        return;
+      }
       this.nestLogger.warn(this.formatMessage(message));
       return;
     }
     if (typeof second === 'string') {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.warn(
+          this.jsonPlainLine('warn', this.plainText(message), {
+            nestContext: second,
+          }),
+        );
+        return;
+      }
       this.nestLogger.warn(this.formatMessage(message), second);
       return;
     }
@@ -208,10 +300,24 @@ export class AppLoggerService implements LoggerService {
   debug(message: any, meta: Record<string, unknown>): void;
   debug(message: any, second?: string | Record<string, unknown>): void {
     if (second === undefined) {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.debug(
+          this.jsonPlainLine('debug', this.plainText(message)),
+        );
+        return;
+      }
       this.nestLogger.debug(this.formatMessage(message));
       return;
     }
     if (typeof second === 'string') {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.debug(
+          this.jsonPlainLine('debug', this.plainText(message), {
+            nestContext: second,
+          }),
+        );
+        return;
+      }
       this.nestLogger.debug(this.formatMessage(message), second);
       return;
     }
@@ -231,10 +337,24 @@ export class AppLoggerService implements LoggerService {
   verbose(message: any, meta: Record<string, unknown>): void;
   verbose(message: any, second?: string | Record<string, unknown>): void {
     if (second === undefined) {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.verbose(
+          this.jsonPlainLine('verbose', this.plainText(message)),
+        );
+        return;
+      }
       this.nestLogger.verbose(this.formatMessage(message));
       return;
     }
     if (typeof second === 'string') {
+      if (isProductionJsonLogs()) {
+        this.nestLogger.verbose(
+          this.jsonPlainLine('verbose', this.plainText(message), {
+            nestContext: second,
+          }),
+        );
+        return;
+      }
       this.nestLogger.verbose(this.formatMessage(message), second);
       return;
     }

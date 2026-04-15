@@ -47,7 +47,14 @@ export function validateAndLogEnv(env: EnvConfig): string[] {
   ];
 
   if (process.env.NODE_ENV === 'production') {
-    console.log('[HeyDoctor] Environment configuration validated (production).');
+    console.log(
+      JSON.stringify({
+        ts: new Date().toISOString(),
+        level: 'info',
+        message: 'Environment configuration validated (production)',
+        service: 'heydoctor-backend-pro',
+      }),
+    );
   } else {
     console.log('\n╔══════════════════════════════════════════════════════════╗');
     console.log('║           HeyDoctor — Environment Configuration         ║');
