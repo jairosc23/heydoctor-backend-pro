@@ -242,3 +242,45 @@ export async function heydoctorFetch(
     mergeHeydoctorInit(initWithRetryMarker(init)),
   );
 }
+
+/** Respuesta de GET /api/admin/metrics/dashboard (rol admin). */
+export type AdminBusinessDashboard = {
+  asOf: string;
+  consultationsCreated: number;
+  consultationsCompleted: number;
+  totalRevenue: number;
+  currency: string;
+  /** Porcentaje 0–100 */
+  abandonmentRate: number;
+  byDay: Array<{
+    date: string;
+    consultations: number;
+    revenue: number;
+  }>;
+};
+
+/**
+ * Métricas de negocio (consultas, ingresos, abandono). Requiere JWT admin.
+ * Usa `heydoctorFetch` (cookies + Bearer + refresh ante 401).
+ */
+export async function fetchAdminBusinessDashboard(): Promise<AdminBusinessDashboard> {
+  const base = requireHeydoctorApiBase();
+  const res = await heydoctorFetch(`${base}/api/admin/metrics/dashboard`);
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(
+      `No se pudo cargar el dashboard (${res.status}): ${text.slice(0, 200)}`,
+    );
+  }
+  return res.json() as Promise<AdminBusinessDashboard>;
+}
+
+/**
+ * Punto de entrada único para llamadas al API Nest (extensible).
+ */
+export const heydoctorApi = {
+  fetch: heydoctorFetch,
+  admin: {
+    getBusinessDashboard: fetchAdminBusinessDashboard,
+  },
+} as const;

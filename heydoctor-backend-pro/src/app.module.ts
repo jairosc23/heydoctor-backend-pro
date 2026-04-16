@@ -16,6 +16,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis';
 import { AppController } from './app.controller';
 import { AppCacheModule } from './cache/cache.module';
+import { AdminModule } from './admin/admin.module';
 import { AiModule } from './ai/ai.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { AuditModule } from './audit/audit.module';
@@ -217,6 +218,7 @@ const typeOrmShared = {
     ConsultationsModule,
     LegalPdfModule,
     LegalModule,
+    AdminModule,
     MetricsModule,
     PaykuModule,
     SubscriptionsModule,

@@ -26,6 +26,7 @@ export { ConnectionQualityBadge } from './ConnectionQualityBadge';
 export type { ConnectionQualityBadgeProps } from './ConnectionQualityBadge';
 export { PlatformAdminDashboard } from './PlatformAdminDashboard';
 export type { PlatformAdminDashboardProps } from './PlatformAdminDashboard';
+export { BusinessAdminDashboard } from './BusinessAdminDashboard';
 export { DoctorOnboardingForm } from './DoctorOnboardingForm';
 export type { DoctorOnboardingFormProps } from './DoctorOnboardingForm';
 export { ConsultationPaymentPanel } from './ConsultationPaymentPanel';
