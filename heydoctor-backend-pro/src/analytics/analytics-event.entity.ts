@@ -12,6 +12,9 @@ export const ANALYTICS_EVENT_NAMES = [
   'consultation_started',
   'consultation_paid',
   'consultation_completed',
+  'payment_initiated',
+  'payment_failed',
+  'payment_abandoned',
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
