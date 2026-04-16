@@ -2,6 +2,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -40,6 +41,32 @@ import {
 import type { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { Patient } from './patient.entity';
+
+/** Postgres driver error a veces sin `instanceof QueryFailedError` tras bundling. */
+function pgErrorFromUnknown(err: unknown): { code?: string; detail?: string } {
+  if (!err || typeof err !== 'object') {
+    return {};
+  }
+  const e = err as Record<string, unknown>;
+  const de = e.driverError;
+  if (de && typeof de === 'object') {
+    const d = de as Record<string, unknown>;
+    return {
+      code: typeof d.code === 'string' ? d.code : undefined,
+      detail: typeof d.detail === 'string' ? d.detail : undefined,
+    };
+  }
+  const code = e.code;
+  return {
+    code: typeof code === 'string' ? code : undefined,
+    detail: typeof e.detail === 'string' ? e.detail : undefined,
+  };
+}
+
+function isQueryFailedError(err: unknown): boolean {
+  return err instanceof QueryFailedError ||
+    (err instanceof Error && err.name === 'QueryFailedError');
+}
 
 @Injectable()
 export class PatientsService {
@@ -298,9 +325,59 @@ export class PatientsService {
       name: dto.name,
       firstName: dto.firstName,
       lastName: dto.lastName,
-      email: maskEmail(dto.email ?? ''),
+      email: maskEmail((dto.email ?? '').trim() || ''),
     });
 
+    try {
+      return await this.executeCreatePatient(dto, authUser);
+    } catch (error) {
+      if (error instanceof HttpException) {
+        throw error;
+      }
+      console.error('PATIENT_CREATE_UNEXPECTED', error);
+      this.logger.error(
+        JSON.stringify({
+          msg: 'patient_create_unexpected',
+          name: error instanceof Error ? error.name : typeof error,
+          pg: pgErrorFromUnknown(error),
+        }),
+        error instanceof Error ? error.stack : undefined,
+      );
+      const pg = pgErrorFromUnknown(error);
+      if (pg.code === '23505') {
+        throw new ConflictException(
+          'A patient with this email already exists',
+        );
+      }
+      if (pg.code === '23503') {
+        throw new BadRequestException('Invalid patient data');
+      }
+      if (isQueryFailedError(error)) {
+        const qe = error as QueryFailedError;
+        const driver = qe.driverError as { code?: string } | undefined;
+        if (driver?.code === '23505') {
+          throw new ConflictException(
+            'A patient with this email already exists',
+          );
+        }
+        if (driver?.code === '23503') {
+          throw new BadRequestException('Invalid patient data');
+        }
+        throw new BadRequestException('Invalid patient data');
+      }
+      if (error instanceof TypeError) {
+        throw new BadRequestException('Invalid patient data');
+      }
+      throw new BadRequestException(
+        'No se pudo crear el paciente. Revisa los datos o inténtalo más tarde.',
+      );
+    }
+  }
+
+  private async executeCreatePatient(
+    dto: CreatePatientDto,
+    authUser: AuthenticatedUser,
+  ): Promise<Patient> {
     let clinicId: string;
     try {
       ({ clinicId } = await this.authorizationService.getUserWithClinic(
@@ -317,7 +394,11 @@ export class PatientsService {
       throw new BadRequestException('Invalid patient data');
     }
 
-    const email = dto.email.trim().toLowerCase();
+    const emailRaw = dto.email?.trim() ?? '';
+    if (!emailRaw) {
+      throw new BadRequestException('Invalid patient data');
+    }
+    const email = emailRaw.toLowerCase();
 
     const existing = await this.patientsRepository.findOne({
       where: { clinicId, email },
@@ -342,11 +423,11 @@ export class PatientsService {
       saved = await this.patientsRepository.save(entity);
     } catch (error) {
       console.error('PATIENT_CREATE_ERROR', error);
-      if (error instanceof QueryFailedError) {
-        const driverError = error.driverError as
+      if (isQueryFailedError(error)) {
+        const driverError = (error as QueryFailedError).driverError as
           | { code?: string; detail?: string }
           | undefined;
-        const code = driverError?.code;
+        const code = driverError?.code ?? pgErrorFromUnknown(error).code;
         if (code === '23505') {
           throw new ConflictException(
             'A patient with this email already exists',
@@ -361,11 +442,14 @@ export class PatientsService {
             code,
             detail: driverError?.detail,
           }),
-          error.stack,
+          error instanceof Error ? error.stack : undefined,
         );
       } else {
         this.logger.error(
-          JSON.stringify({ msg: 'patient_create_failed' }),
+          JSON.stringify({
+            msg: 'patient_create_failed',
+            pg: pgErrorFromUnknown(error),
+          }),
           error instanceof Error ? error.stack : undefined,
         );
       }
