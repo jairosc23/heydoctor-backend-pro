@@ -1,8 +1,10 @@
 import {
   Body,
   Controller,
+  Get,
   Headers,
   HttpCode,
+  Param,
   Post,
   UseGuards,
 } from '@nestjs/common';
@@ -15,6 +17,18 @@ import { PaykuService } from './payku.service';
 @Controller('payku')
 export class PaykuController {
   constructor(private readonly paykuService: PaykuService) {}
+
+  @Get('consultation/:consultationId/payment-status')
+  @UseGuards(JwtAuthGuard)
+  async consultationPaymentStatus(
+    @Param('consultationId') consultationId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.paykuService.getConsultationPaymentStatus(
+      consultationId,
+      user,
+    );
+  }
 
   @Post('create-payment-session')
   @UseGuards(JwtAuthGuard)

@@ -104,6 +104,11 @@ export class PaykuService {
       );
     }
 
+    await this.paymentsRepository.delete({
+      consultationId,
+      status: PaykuPaymentStatus.FAILED,
+    });
+
     const existing = await this.paymentsRepository.findOne({
       where: {
         consultationId,
@@ -168,6 +173,9 @@ export class PaykuService {
             urlnotify: `${backendUrl}/api/payku/webhook`,
           }),
         });
+        if (!res.ok) {
+          throw new Error(`Payku HTTP ${res.status}`);
+        }
         const data = (await res.json()) as { url?: string; redirect_url?: string };
         paymentUrl = data.url ?? data.redirect_url ?? '';
         if (!paymentUrl) {
@@ -175,6 +183,8 @@ export class PaykuService {
         }
       } catch (err) {
         this.logger.error('Payku API call failed', err);
+        saved.status = PaykuPaymentStatus.FAILED;
+        await this.paymentsRepository.save(saved);
         throw new BadRequestException(
           'Could not create payment session with Payku',
         );
@@ -200,6 +210,44 @@ export class PaykuService {
     });
 
     return { paymentId: saved.id, paymentUrl };
+  }
+
+  /** Estado de pago para la consulta (verificación post-redirect; fuente de verdad en BD). */
+  async getConsultationPaymentStatus(
+    consultationId: string,
+    authUser: AuthenticatedUser,
+  ): Promise<{
+    isPaid: boolean;
+    hasPending: boolean;
+    hasFailed: boolean;
+  }> {
+    const { clinicId } =
+      await this.authorizationService.getUserWithClinic(authUser);
+
+    const consultation = await this.consultationsRepository.findOne({
+      where: { id: consultationId, clinicId },
+    });
+    if (!consultation) {
+      throw new NotFoundException('Consultation not found');
+    }
+
+    const [paid, pending, failed] = await Promise.all([
+      this.paymentsRepository.findOne({
+        where: { consultationId, status: PaykuPaymentStatus.PAID },
+      }),
+      this.paymentsRepository.findOne({
+        where: { consultationId, status: PaykuPaymentStatus.PENDING },
+      }),
+      this.paymentsRepository.findOne({
+        where: { consultationId, status: PaykuPaymentStatus.FAILED },
+      }),
+    ]);
+
+    return {
+      isPaid: !!paid,
+      hasPending: !!pending,
+      hasFailed: !!failed,
+    };
   }
 
   /**

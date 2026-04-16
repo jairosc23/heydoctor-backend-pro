@@ -113,6 +113,10 @@ const ROUTE_MAP: Record<string, AuditActionDescriptor> = {
     action: 'PAYMENT_SESSION_CREATED',
     resource: 'payment',
   },
+  'GET /api/payku/consultation/:id/payment-status': {
+    action: 'PAYMENT_STATUS_READ',
+    resource: 'payment',
+  },
   'POST /api/payku/webhook': {
     action: 'PAYKU_WEBHOOK_RECEIVED',
     resource: 'payment',
