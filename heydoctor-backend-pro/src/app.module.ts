@@ -17,6 +17,7 @@ import { ThrottlerStorageRedisService } from '@nest-lab/throttler-storage-redis'
 import { AppController } from './app.controller';
 import { AppCacheModule } from './cache/cache.module';
 import { AdminModule } from './admin/admin.module';
+import { AnalyticsModule } from './analytics/analytics.module';
 import { AiModule } from './ai/ai.module';
 import { AppointmentsModule } from './appointments/appointments.module';
 import { AuditModule } from './audit/audit.module';
@@ -198,6 +199,29 @@ const typeOrmShared = {
                 return `webrtc:${String(r.ip ?? 'unknown')}`;
               },
             },
+            {
+              name: 'analyticsIngest',
+              ttl: 60_000,
+              limit: 240,
+              skipIf: (context: ExecutionContext) => {
+                const req = context.switchToHttp().getRequest<Request>();
+                if (req.method !== 'POST') {
+                  return true;
+                }
+                const path =
+                  req.originalUrl?.split('?')[0] ?? req.url ?? '';
+                return !path.endsWith('/analytics/collect');
+              },
+              getTracker: (req: Record<string, unknown>) => {
+                const r = req as unknown as Request;
+                const sid = (r.body as { sessionId?: string } | undefined)
+                  ?.sessionId;
+                if (typeof sid === 'string' && sid.trim().length > 0) {
+                  return `analytics:${sid.trim().slice(0, 48)}`;
+                }
+                return `analytics:ip:${String(r.ip ?? 'unknown')}`;
+              },
+            },
           ],
           ...(redisUrl
             ? { storage: new ThrottlerStorageRedisService(redisUrl) }
@@ -219,6 +243,7 @@ const typeOrmShared = {
     LegalPdfModule,
     LegalModule,
     AdminModule,
+    AnalyticsModule,
     MetricsModule,
     PaykuModule,
     SubscriptionsModule,

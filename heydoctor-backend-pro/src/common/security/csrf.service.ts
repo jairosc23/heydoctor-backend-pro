@@ -58,6 +58,10 @@ export class CsrfService {
     if (path.endsWith('/payku/webhook')) {
       return true;
     }
+    /** SPA (Vercel): eventos de analítica sin cookie CSRF del API. */
+    if (path.endsWith('/analytics/collect')) {
+      return true;
+    }
     return false;
   }
 

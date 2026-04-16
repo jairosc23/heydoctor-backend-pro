@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AuditLog } from '../audit/audit-log.entity';
+import { AnalyticsModule } from '../analytics/analytics.module';
 import { AuditModule } from '../audit/audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { Consultation } from '../consultations/consultation.entity';
@@ -11,7 +11,8 @@ import { AdminBusinessDashboardService } from './admin-business-dashboard.servic
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Consultation, PaykuPayment, AuditLog, User]),
+    TypeOrmModule.forFeature([Consultation, PaykuPayment, User]),
+    AnalyticsModule,
     AuthModule,
     AuditModule,
   ],

@@ -7,6 +7,10 @@ import {
   type Consultation,
   type ConsultationStatus,
 } from '../lib/api-consultations';
+import {
+  trackConsultationCompleted,
+  trackConsultationStarted,
+} from '../lib/analytics';
 import { SmartDiagnosisPicker } from './SmartDiagnosisPicker';
 
 const TERMINAL_STATUSES: ConsultationStatus[] = [
@@ -61,6 +65,8 @@ export function ClinicalConsultationForm({
   const [status, setStatus] = useState<ConsultationStatus>('draft');
 
   const hydrated = useRef(false);
+  const startedTracked = useRef(false);
+  const lastServerStatus = useRef<ConsultationStatus | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSynced = useRef<string>('');
 
@@ -71,6 +77,7 @@ export function ClinicalConsultationForm({
     setTreatmentPlan(c.treatmentPlan ?? '');
     setNotes(c.notes ?? '');
     setStatus(c.status);
+    lastServerStatus.current = c.status;
     lastSynced.current = JSON.stringify({
       chiefComplaint: c.chiefComplaint ?? '',
       symptoms: c.symptoms ?? '',
@@ -88,7 +95,13 @@ export function ClinicalConsultationForm({
       setError(null);
       try {
         const c = await fetchConsultation(consultationId);
-        if (!cancelled) applyConsultation(c);
+        if (!cancelled) {
+          applyConsultation(c);
+          if (!startedTracked.current) {
+            startedTracked.current = true;
+            void trackConsultationStarted(consultationId);
+          }
+        }
       } catch (e) {
         if (!cancelled) setError((e as Error).message);
       } finally {
@@ -110,7 +123,17 @@ export function ClinicalConsultationForm({
       else setSaving(true);
       setError(null);
       try {
+        const prev = lastServerStatus.current;
         const updated = await patchConsultation(consultationId, patch);
+        if (
+          prev != null &&
+          TERMINAL_STATUSES.includes(updated.status) &&
+          !TERMINAL_STATUSES.includes(prev)
+        ) {
+          void trackConsultationCompleted(consultationId, {
+            status: updated.status,
+          });
+        }
         applyConsultation(updated);
         if (mode === 'auto') {
           setAutosaveState('saved');

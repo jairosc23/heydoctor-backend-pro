@@ -1,3 +1,5 @@
+export { AnalyticsProvider } from './AnalyticsProvider';
+export type { AnalyticsProviderProps } from './AnalyticsProvider';
 export { CopilotPanel } from './CopilotPanel';
 export { ClinicalAlertsPanel } from './ClinicalAlertsPanel';
 export { PredictiveInsightsPanel } from './PredictiveInsightsPanel';

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createPaymentSession } from '../lib/api-payments';
+import { trackConsultationPaid } from '../lib/analytics';
 
 export type ConsultationPaymentPanelProps = {
   backendOrigin: string;
@@ -31,6 +32,12 @@ export function ConsultationPaymentPanel({
         consultationId,
         amount,
         currency,
+      });
+      void trackConsultationPaid(consultationId, {
+        amount,
+        currency,
+        paymentSessionId: r.sessionId,
+        status: r.status,
       });
       setResult(
         `Estado: ${r.status} · Sesión mock ${r.sessionId} · ${r.currency} ${r.amount} — ${r.message}`,

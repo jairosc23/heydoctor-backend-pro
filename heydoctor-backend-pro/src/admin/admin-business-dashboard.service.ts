@@ -2,8 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import type { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
-import { AuditLog } from '../audit/audit-log.entity';
-import { AuditOutcome } from '../audit/audit-outcome.enum';
+import { AnalyticsService } from '../analytics/analytics.service';
 import { AuditService } from '../audit/audit.service';
 import { Consultation } from '../consultations/consultation.entity';
 import { ConsultationStatus } from '../consultations/consultation-status.enum';
@@ -28,9 +27,6 @@ const OPEN_FUNNEL: ConsultationStatus[] = [
 
 const TERMINAL_SQL = TERMINAL.map((s) => `'${s}'`).join(', ');
 
-/** Proxy de “visitas” al producto clínico: tráfico auditado a listado/detalle de consultas. */
-const FUNNEL_VISIT_ACTIONS = ['CONSULTATION_LIST', 'CONSULTATION_READ'];
-
 @Injectable()
 export class AdminBusinessDashboardService {
   constructor(
@@ -38,10 +34,9 @@ export class AdminBusinessDashboardService {
     private readonly consultationsRepository: Repository<Consultation>,
     @InjectRepository(PaykuPayment)
     private readonly paykuRepository: Repository<PaykuPayment>,
-    @InjectRepository(AuditLog)
-    private readonly auditLogsRepository: Repository<AuditLog>,
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly analyticsService: AnalyticsService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -105,7 +100,7 @@ export class AdminBusinessDashboardService {
       consultRows,
       revenueRows,
       doctorRevRows,
-      visitsFromAudit,
+      uniqueVisitSessions,
     ] = await Promise.all([
       this.consultationsRepository
         .createQueryBuilder('c')
@@ -228,15 +223,7 @@ export class AdminBusinessDashboardService {
       ) as Promise<
         Array<{ doctorId: string; revenue: string; consCount: number }>
       >,
-      this.auditLogsRepository
-        .createQueryBuilder('a')
-        .where('a.createdAt >= :ds AND a.createdAt < :de', {
-          ds: dayStart,
-          de: dayEnd,
-        })
-        .andWhere('a.action IN (:...act)', { act: FUNNEL_VISIT_ACTIONS })
-        .andWhere('a.status = :st', { st: AuditOutcome.SUCCESS })
-        .getCount(),
+      this.analyticsService.countUniquePageViewSessions(dayStart, dayEnd),
     ]);
 
     const totalRevenue = Number(revenueRow?.sum ?? 0);
@@ -316,9 +303,9 @@ export class AdminBusinessDashboardService {
       avgConsultationTimeMinutes,
       revenuePerDoctor,
       funnel: {
-        visits: visitsFromAudit,
+        visits: uniqueVisitSessions,
         visitsSource:
-          'audit_logs: CONSULTATION_LIST + CONSULTATION_READ (éxito, hoy UTC)',
+          'analytics_events: page_view — sesiones únicas (SDK heydoctor-frontend, hoy UTC)',
         created: createdToday,
         paid: paidConsultationsToday,
         completed: completedToday,
