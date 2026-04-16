@@ -1,5 +1,6 @@
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import {
+  BadRequestException,
   ConflictException,
   Inject,
   Injectable,
@@ -32,7 +33,10 @@ import { HttpLoadTrackerService } from '../common/observability/http-load-tracke
 import { assertValidCursor, encodeListCursor } from '../common/pagination/cursor-pagination.util';
 import type { PaginatedResult } from '../common/types/paginated-result.type';
 import { APP_LOGGER } from '../common/logger/logger.tokens';
-import { maskUuid } from '../common/observability/log-masking.util';
+import {
+  maskEmail,
+  maskUuid,
+} from '../common/observability/log-masking.util';
 import type { PatientsListQueryDto } from './dto/patients-list-query.dto';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { Patient } from './patient.entity';
@@ -275,12 +279,44 @@ export class PatientsService {
     return this.authorizationService.assertPatientInClinic(authUser, id);
   }
 
+  /** Nombre para almacenar: `name` o first + last (trim, sin exigir ambos apellidos). */
+  private resolvePatientDisplayName(dto: CreatePatientDto): string {
+    const direct = dto.name?.trim() ?? '';
+    if (direct !== '') {
+      return direct;
+    }
+    const fn = dto.firstName?.trim() ?? '';
+    const ln = dto.lastName?.trim() ?? '';
+    return [fn, ln].filter((p) => p !== '').join(' ').trim();
+  }
+
   async create(
     dto: CreatePatientDto,
     authUser: AuthenticatedUser,
   ): Promise<Patient> {
-    const { clinicId } =
-      await this.authorizationService.getUserWithClinic(authUser);
+    console.error('PATIENT_CREATE_PAYLOAD', {
+      name: dto.name,
+      firstName: dto.firstName,
+      lastName: dto.lastName,
+      email: maskEmail(dto.email ?? ''),
+    });
+
+    let clinicId: string;
+    try {
+      ({ clinicId } = await this.authorizationService.getUserWithClinic(
+        authUser,
+      ));
+    } catch (error) {
+      console.error('PATIENT_CREATE_ERROR', error);
+      throw error;
+    }
+
+    const displayName = this.resolvePatientDisplayName(dto);
+    if (!displayName) {
+      console.error('PATIENT_CREATE_ERROR', new Error('empty_display_name'));
+      throw new BadRequestException('Invalid patient data');
+    }
+
     const email = dto.email.trim().toLowerCase();
 
     const existing = await this.patientsRepository.findOne({
@@ -296,11 +332,45 @@ export class PatientsService {
     }
 
     const entity = this.patientsRepository.create({
-      name: dto.name.trim(),
+      name: displayName,
       email,
       clinicId,
     });
-    const saved = await this.patientsRepository.save(entity);
+
+    let saved: Patient;
+    try {
+      saved = await this.patientsRepository.save(entity);
+    } catch (error) {
+      console.error('PATIENT_CREATE_ERROR', error);
+      if (error instanceof QueryFailedError) {
+        const driverError = error.driverError as
+          | { code?: string; detail?: string }
+          | undefined;
+        const code = driverError?.code;
+        if (code === '23505') {
+          throw new ConflictException(
+            'A patient with this email already exists',
+          );
+        }
+        if (code === '23503') {
+          throw new BadRequestException('Invalid patient data');
+        }
+        this.logger.error(
+          JSON.stringify({
+            msg: 'patient_create_query_failed',
+            code,
+            detail: driverError?.detail,
+          }),
+          error.stack,
+        );
+      } else {
+        this.logger.error(
+          JSON.stringify({ msg: 'patient_create_failed' }),
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+      throw new BadRequestException('Invalid patient data');
+    }
 
     void this.auditService.logSuccess({
       userId: authUser.sub,

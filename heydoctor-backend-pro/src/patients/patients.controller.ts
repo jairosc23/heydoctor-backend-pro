@@ -104,13 +104,18 @@ export class PatientsController {
   }
 
   @Post()
-  create(
+  async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreatePatientDto,
   ) {
     this.logRequest(
       `create requested by user ${maskUuid(user.sub)} (${maskEmail(user.email)})`,
     );
-    return this.patientsService.create(dto, user);
+    try {
+      return await this.patientsService.create(dto, user);
+    } catch (error) {
+      console.error('CREATE_PATIENT_ERROR', error);
+      throw error;
+    }
   }
 }
