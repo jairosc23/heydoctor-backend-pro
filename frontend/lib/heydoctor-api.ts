@@ -252,6 +252,27 @@ export type AdminBusinessDashboard = {
   currency: string;
   /** Porcentaje 0–100 */
   abandonmentRate: number;
+  /** Pagos atribuibles / consultas creadas hoy (0–100). */
+  conversionRate: number;
+  /** Pacientes con 2+ consultas en ventana 30 días (UTC). */
+  repeatUsers: number;
+  /** Minutos promedio creación → cierre (consultas cerradas hoy). */
+  avgConsultationTimeMinutes: number | null;
+  /** Ingreso hoy / médicos con ingreso hoy. */
+  revenuePerDoctor: number;
+  funnel: {
+    visits: number | null;
+    visitsSource: string;
+    created: number;
+    paid: number;
+    completed: number;
+  };
+  doctorPerformance: Array<{
+    doctorId: string;
+    displayName: string;
+    consultationsWithRevenue: number;
+    revenue: number;
+  }>;
   byDay: Array<{
     date: string;
     consultations: number;
