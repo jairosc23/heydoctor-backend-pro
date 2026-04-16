@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -30,6 +31,8 @@ import {
   assertPaykuWebhookAuthenticated,
   type PaykuWebhookAuthConfig,
 } from './payku-webhook-auth';
+import { EnvConfig, ENV_CONFIG_TOKEN } from '../config/env.config';
+import { toConsultationPriceResponse } from '../payments/consultation-payment-price';
 
 const SYSTEM_USER: AuthenticatedUser = {
   sub: 'system-payku-webhook',
@@ -57,6 +60,8 @@ export class PaykuService {
     private readonly consultationsRepository: Repository<Consultation>,
     private readonly dataSource: DataSource,
     private readonly config: ConfigService,
+    @Inject(ENV_CONFIG_TOKEN)
+    private readonly envConfig: EnvConfig,
     private readonly authorizationService: AuthorizationService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly auditService: AuditService,
@@ -121,8 +126,8 @@ export class PaykuService {
       throw new BadRequestException('Consultation is already paid');
     }
 
-    const amount = Number(
-      this.config.get<string>('CONSULTATION_PAYMENT_AMOUNT_CLP') ?? '15000',
+    const { amount, currency } = toConsultationPriceResponse(
+      this.envConfig.consultationPaymentAmountClp,
     );
 
     const frontendUrl =
@@ -135,7 +140,7 @@ export class PaykuService {
       userId: authUser.sub,
       consultationId,
       amount,
-      currency: 'CLP',
+      currency,
       status: PaykuPaymentStatus.PENDING,
     });
     const saved = await this.paymentsRepository.save(payment);
@@ -157,7 +162,7 @@ export class PaykuService {
             order: saved.id,
             subject: `Consulta médica HeyDoctor`,
             amount,
-            currency: 'CLP',
+            currency,
             payment_id: saved.id,
             urlreturn: `${frontendUrl}/panel/consultas/${consultationId}?payment=success`,
             urlnotify: `${backendUrl}/api/payku/webhook`,
