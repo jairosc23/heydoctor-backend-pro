@@ -22,6 +22,16 @@ if (sentryDsn) {
 }
 
 async function bootstrap() {
+  console.log(
+    'DATABASE_URL:',
+    process.env.DATABASE_URL?.trim() ? 'SET' : 'MISSING',
+  );
+  console.log(
+    'DATABASE_PUBLIC_URL:',
+    process.env.DATABASE_PUBLIC_URL?.trim() ? 'SET' : 'MISSING',
+  );
+  console.log('NODE_ENV:', process.env.NODE_ENV ?? '(unset)');
+
   const app = await NestFactory.create(AppModule);
 
   const server = app.getHttpAdapter().getInstance();
@@ -53,6 +63,8 @@ async function bootstrap() {
       { path: 'health', method: RequestMethod.GET },
       { path: 'healthz', method: RequestMethod.GET },
       { path: 'metrics', method: RequestMethod.GET },
+      /** Diagnóstico DB (Railway / incidentes). */
+      { path: 'debug/db', method: RequestMethod.GET },
       /** Links mágicos para pacientes (sin `/api` en SMS/email). */
       { path: 'appointments/confirm/(.*)', method: RequestMethod.GET },
       { path: 'appointments/cancel/(.*)', method: RequestMethod.GET },
@@ -134,7 +146,10 @@ async function bootstrap() {
 
   await app.listen(port, '0.0.0.0');
 
-  bootstrapLogger.log('Migrations should be applied');
+  bootstrapLogger.log(
+    'TypeORM: migrationsRun=true on default connection (see AppModule)',
+  );
+  bootstrapLogger.log('GET /debug/db — DB connectivity probe (no /api prefix)');
   bootstrapLogger.log(
     `Listening 0.0.0.0:${port} — AuthModule: POST /api/auth/login (JwtAuthGuard no es global; login es público)`,
   );

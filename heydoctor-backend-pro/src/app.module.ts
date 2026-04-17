@@ -38,6 +38,7 @@ import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { UsersModule } from './users/users.module';
 import { DoctorApplicationsModule } from './doctor-applications/doctor-applications.module';
 import { DoctorProfilesModule } from './doctor-profiles/doctor-profiles.module';
+import { DebugModule } from './debug/debug.module';
 import { GdprModule } from './gdpr/gdpr.module';
 import { HealthApiController, HealthController } from './health/health.controller';
 import { DoctorsModule } from './doctors/doctors.module';
@@ -62,6 +63,12 @@ import { throttlerTrackerIpAndOptionalUser } from './common/throttler/throttler-
 
 const dbUrl = process.env.DATABASE_PUBLIC_URL || process.env.DATABASE_URL;
 const readReplicaUrl = process.env.DATABASE_READ_REPLICA_URL?.trim();
+
+if (!dbUrl?.trim()) {
+  console.error(
+    'FATAL: No database URL — set DATABASE_URL or DATABASE_PUBLIC_URL (Railway)',
+  );
+}
 
 const typeOrmShared = {
   type: 'postgres' as const,
@@ -101,6 +108,7 @@ const typeOrmShared = {
           }),
         ]
       : []),
+    DebugModule,
     ScheduleModule.forRoot(),
     ThrottlerModule.forRootAsync({
       useFactory: () => {
