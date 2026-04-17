@@ -70,12 +70,14 @@ if (!dbUrl?.trim()) {
   );
 }
 
+/** Railway Postgres: SSL obligatorio; `rejectUnauthorized: false` evita fallos con certs gestionados. */
 const typeOrmShared = {
   type: 'postgres' as const,
   ssl: { rejectUnauthorized: false },
   autoLoadEntities: true,
   synchronize: false,
-  logging: process.env.NODE_ENV === 'production' ? false : true,
+  /** Activo en todos los entornos para diagnosticar fallos de conexión/consulta en Railway. */
+  logging: true,
 };
 
 @Module({
@@ -105,6 +107,7 @@ const typeOrmShared = {
             ...typeOrmShared,
             name: TYPEORM_READ_CONNECTION,
             url: readReplicaUrl,
+            migrationsRun: false,
           }),
         ]
       : []),

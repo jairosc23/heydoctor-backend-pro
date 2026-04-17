@@ -22,6 +22,7 @@ if (sentryDsn) {
 }
 
 async function bootstrap() {
+  console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL?.trim());
   console.log(
     'DATABASE_URL:',
     process.env.DATABASE_URL?.trim() ? 'SET' : 'MISSING',

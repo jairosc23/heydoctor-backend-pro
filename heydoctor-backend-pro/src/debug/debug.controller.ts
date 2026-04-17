@@ -13,12 +13,34 @@ export class DebugController {
 
   @SkipThrottle({ burst: true, sustain: true })
   @Get('db')
-  async db(): Promise<{ connected: boolean }> {
+  async db(): Promise<
+    | { ok: true; patientsTableOk: boolean; consultationsTableOk: boolean }
+    | { ok: false; error: string }
+  > {
     try {
-      await this.dataSource.query('SELECT 1 AS ok');
-      return { connected: true };
-    } catch {
-      return { connected: false };
+      await this.dataSource.query('SELECT 1');
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      };
     }
+
+    let patientsTableOk = false;
+    let consultationsTableOk = false;
+    try {
+      await this.dataSource.query('SELECT 1 FROM patients LIMIT 1');
+      patientsTableOk = true;
+    } catch {
+      patientsTableOk = false;
+    }
+    try {
+      await this.dataSource.query('SELECT 1 FROM consultations LIMIT 1');
+      consultationsTableOk = true;
+    } catch {
+      consultationsTableOk = false;
+    }
+
+    return { ok: true, patientsTableOk, consultationsTableOk };
   }
 }
