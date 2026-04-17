@@ -8,4 +8,4 @@ cmds = ["cd heydoctor-backend-pro && npm ci"]
 cmds = ["cd heydoctor-backend-pro && rm -rf dist && npm run build"]
 
 [start]
-cmd = "cd heydoctor-backend-pro && node dist/main"
+cmd = "cd heydoctor-backend-pro && npm run start:prod"

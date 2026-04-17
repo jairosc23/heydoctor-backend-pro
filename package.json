@@ -5,8 +5,8 @@
   "description": "HeyDoctor Backend (NestJS)",
   "scripts": {
     "build": "cd heydoctor-backend-pro && npm ci && rm -rf dist && npm run build",
-    "start": "cd heydoctor-backend-pro && node dist/main",
-    "start:prod": "cd heydoctor-backend-pro && node dist/main",
+    "start": "cd heydoctor-backend-pro && npm run start:prod",
+    "start:prod": "cd heydoctor-backend-pro && npm run start:prod",
     "strapi:start": "strapi start",
     "strapi:build": "strapi build",
     "strapi:develop": "strapi develop"
