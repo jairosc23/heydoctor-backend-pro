@@ -33,9 +33,18 @@ export type EntityListCacheEnvelope<T> = {
   payload: PaginatedResult<T>;
 };
 
+/**
+ * Serialización estable para claves de caché.
+ * Importante: `JSON.stringify(undefined)` devuelve `undefined` (no string); si se propaga a
+ * `createHash().update()` Node lanza TypeError → 500 "Internal server error" en listados.
+ */
 export function stableStringify(value: unknown): string {
+  if (value === undefined) {
+    return '"__undefined__"';
+  }
   if (value === null || typeof value !== 'object') {
-    return JSON.stringify(value);
+    const s = JSON.stringify(value);
+    return typeof s === 'string' ? s : '"__invalid__"';
   }
   if (Array.isArray(value)) {
     return `[${value.map((x) => stableStringify(x)).join(',')}]`;
@@ -95,6 +104,9 @@ function coerceDate(value: unknown): Date | undefined {
 export function revivePatientsListFromCache(
   row: PaginatedResult<Patient>,
 ): void {
+  if (!row?.data || !Array.isArray(row.data)) {
+    return;
+  }
   for (const p of row.data) {
     const d = coerceDate(p.createdAt as unknown);
     if (d) (p as { createdAt: Date }).createdAt = d;
@@ -104,6 +116,9 @@ export function revivePatientsListFromCache(
 export function reviveConsultationsListFromCache(
   row: PaginatedResult<Consultation>,
 ): void {
+  if (!row?.data || !Array.isArray(row.data)) {
+    return;
+  }
   const rowMutable = row.data as unknown as Array<
     Consultation & Record<string, Date | undefined>
   >;
