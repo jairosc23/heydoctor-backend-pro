@@ -1,3 +1,0 @@
-# Railway: arranque con migraciones antes de Nest (ver package.json → start:prod).
-[deploy]
-startCommand = "npm run start:prod"
