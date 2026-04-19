@@ -39,8 +39,8 @@ export class User {
   @JoinColumn({ name: 'clinic_id' })
   clinic: Clinic;
 
-  /** Misma columna que `clinic`; FK explícita para metadata TypeORM (Find / QueryBuilder). */
-  @Column({ name: 'clinic_id', type: 'uuid' })
+  /** FK `clinic_id`; columna explícita para el índice compuesto en metadata TypeORM. */
+  @Column({ name: 'clinic_id', type: 'uuid', nullable: false })
   clinicId: string;
 
   @Column({ name: 'is_active', default: true })
