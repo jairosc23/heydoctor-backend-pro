@@ -335,21 +335,44 @@ export class AuthService {
     ctx: RequestContext,
   ): Promise<{ accessToken: string; newRefreshToken: string }> {
     const tokenHash = hashToken(rawToken);
+    const tokenHashPrefix = tokenHash.slice(0, 8);
+
+    this.logger.log('[REFRESH] Validating refresh token', {
+      tokenHashPrefix,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent?.slice(0, 80) ?? null,
+    });
 
     const stored = await this.refreshTokenRepository.findOne({
       where: { tokenHash },
     });
 
     if (!stored) {
-      throw new UnauthorizedException('Invalid refresh token');
+      this.logger.warn('[REFRESH] Token not found in DB — invalid or already rotated', {
+        tokenHashPrefix,
+        ip: ctx.ip,
+      });
+      throw new UnauthorizedException('AUTH_REFRESH: token not found');
     }
+
+    this.logger.log('[REFRESH] Token found in DB', {
+      tokenHashPrefix,
+      sessionId: stored.id,
+      userId: maskUuid(stored.userId),
+      revokedAt: stored.revokedAt?.toISOString() ?? null,
+      expiresAt: stored.expiresAt.toISOString(),
+      now: new Date().toISOString(),
+      isExpired: stored.expiresAt < new Date(),
+    });
 
     if (stored.revokedAt) {
       await this.revokeAllUserTokens(stored.userId);
       this.logger.error('SECURITY_ALERT', {
         type: 'TOKEN_REUSE_DETECTED',
-        userId: stored.userId,
+        userId: maskUuid(stored.userId),
         clinicId: stored.clinicId ?? null,
+        tokenHashPrefix,
+        revokedAt: stored.revokedAt.toISOString(),
       });
       await this.logSecurityEvent(
         'TOKEN_REUSE_DETECTED',
@@ -362,11 +385,26 @@ export class AuthService {
         },
         stored.clinicId,
       );
-      throw new UnauthorizedException('Refresh token reuse detected');
+      throw new UnauthorizedException('AUTH_REFRESH: token already revoked (reuse detected)');
     }
 
     if (stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token expired');
+      this.logger.warn('[REFRESH] Token expired', {
+        tokenHashPrefix,
+        sessionId: stored.id,
+        userId: maskUuid(stored.userId),
+        expiresAt: stored.expiresAt.toISOString(),
+        now: new Date().toISOString(),
+        expiredByMs: new Date().getTime() - stored.expiresAt.getTime(),
+      });
+      await this.logSecurityEvent(
+        'TOKEN_REFRESH_FAIL',
+        stored.userId,
+        ctx,
+        { reason: 'token_expired', sessionId: stored.id },
+        stored.clinicId,
+      );
+      throw new UnauthorizedException('AUTH_REFRESH: token expired');
     }
 
     const nowRot = new Date();
@@ -381,7 +419,20 @@ export class AuthService {
 
     const user = await this.usersService.findById(stored.userId);
     if (!user || user.isActive === false) {
-      throw new UnauthorizedException('User not found');
+      this.logger.warn('[REFRESH] User not found or inactive after token validation', {
+        tokenHashPrefix,
+        userId: maskUuid(stored.userId),
+        userFound: !!user,
+        isActive: user?.isActive,
+      });
+      await this.logSecurityEvent(
+        'TOKEN_REFRESH_FAIL',
+        stored.userId,
+        ctx,
+        { reason: user ? 'user_inactive' : 'user_not_found', sessionId: stored.id },
+        stored.clinicId,
+      );
+      throw new UnauthorizedException('AUTH_REFRESH: user not found or inactive');
     }
 
     const payload: JwtPayload = {
@@ -391,6 +442,13 @@ export class AuthService {
     };
     const accessToken = await this.jwtService.signAsync(payload);
     const newRefreshToken = await this.createRefreshToken(user.id, ctx, user.clinicId);
+
+    this.logger.log('[REFRESH] Token rotated successfully', {
+      tokenHashPrefix,
+      userId: maskUuid(user.id),
+      clinicId: user.clinicId ? maskUuid(user.clinicId) : null,
+      previousSessionId: stored.id,
+    });
 
     await this.logSecurityEvent(
       'TOKEN_REFRESH',

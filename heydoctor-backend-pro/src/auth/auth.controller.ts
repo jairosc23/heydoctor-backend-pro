@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Logger,
   Param,
   ParseUUIDPipe,
   Post,
@@ -46,6 +47,8 @@ const REFRESH_COOKIE_OPTIONS = {
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly config: ConfigService,
@@ -200,17 +203,44 @@ export class AuthController {
     @Res({ passthrough: true }) res: Response,
   ) {
     const rawToken = req.cookies?.[REFRESH_COOKIE];
+    const allCookieKeys = req.cookies ? Object.keys(req.cookies) : [];
+
+    this.logger.log('[REFRESH] POST /auth/refresh received', {
+      hasCookie: !!rawToken,
+      tokenLength: typeof rawToken === 'string' ? rawToken.length : 0,
+      cookieKeys: allCookieKeys,
+      ip: req.ip,
+      origin: req.headers['origin'] ?? null,
+      userAgent: (req.headers['user-agent'] as string | undefined)?.slice(0, 80) ?? null,
+    });
+
     if (!rawToken) {
-      throw new UnauthorizedException('No refresh token');
+      this.logger.warn('[REFRESH] No refresh_token cookie present', {
+        cookieKeys: allCookieKeys,
+        ip: req.ip,
+        origin: req.headers['origin'] ?? null,
+      });
+      throw new UnauthorizedException('AUTH_REFRESH: no refresh_token cookie');
     }
 
     const ctx = extractContext(req);
-    const { accessToken, newRefreshToken } =
-      await this.authService.validateAndRotateRefreshToken(rawToken, ctx);
+    try {
+      const { accessToken, newRefreshToken } =
+        await this.authService.validateAndRotateRefreshToken(rawToken, ctx);
 
-    this.setRefreshCookie(res, newRefreshToken);
-    const csrfToken = this.csrfService.attach(res);
-    return { access_token: accessToken, csrfToken };
+      this.setRefreshCookie(res, newRefreshToken);
+      const csrfToken = this.csrfService.attach(res);
+      this.logger.log('[REFRESH] Token refresh successful', { ip: ctx.ip });
+      return { access_token: accessToken, csrfToken };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn('[REFRESH] Token refresh failed', {
+        error: message,
+        ip: ctx.ip,
+        origin: req.headers['origin'] ?? null,
+      });
+      throw err;
+    }
   }
 
   @Post('logout')
